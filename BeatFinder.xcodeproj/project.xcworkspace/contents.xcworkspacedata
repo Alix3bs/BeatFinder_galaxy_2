@@ -4,4 +4,22 @@
    <FileRef
       location = "self:">
    </FileRef>
+   <FileRef
+      location = "group:SupabaseConfig.swift">
+   </FileRef>
+   <FileRef
+      location = "group:SupabaseManager.swift">
+   </FileRef>
+   <FileRef
+      location = "group:AuthService.swift">
+   </FileRef>
+   <FileRef
+      location = "group:BeatService.swift">
+   </FileRef>
+   <FileRef
+      location = "group:SupabaseConfig 2.swift">
+   </FileRef>
+   <FileRef
+      location = "group:SupabaseClient.swift">
+   </FileRef>
 </Workspace>

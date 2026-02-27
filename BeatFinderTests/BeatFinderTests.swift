@@ -2,7 +2,7 @@
 //  BeatFinderTests.swift
 //  BeatFinderTests
 //
-//  Created by Tracie Constantin on 11/2/25.
+//  Created by Tracie Constantin on 12/30/25.
 //
 
 import Testing
