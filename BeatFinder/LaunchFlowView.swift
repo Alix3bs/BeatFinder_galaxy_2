@@ -1,136 +1,101 @@
 import SwiftUI
 
 struct LaunchFlowView: View {
-    @State private var phase: SplashPhase = .start
-    @State private var showHome = false
+    var onFinished: (() -> Void)? = nil
 
-    enum SplashPhase {
-        case start
-        case logoAppear
-        case logoExpand
-        case textFlyIn
-        case stamp
-        case splitZoom
-    }
+    @State private var logoOpacity = 0.0
+    @State private var logoScale: CGFloat = 0.82
+    @State private var wordOpacity = 0.0
+    @State private var wordOffset: CGFloat = 14
+    @State private var glowScale: CGFloat = 0.7
+    @State private var glowOpacity = 0.0
+    @State private var contentOpacity = 1.0
+    @State private var contentScale: CGFloat = 1.0
+    @State private var hasFinished = false
 
     var body: some View {
-        if showHome {
-            ContentView()
-        } else {
-            splashAnimation
-        }
-    }
-
-    private var splashAnimation: some View {
         ZStack {
-            // Background Layer
-            if phase == .start || phase == .logoAppear {
-                Color.white.ignoresSafeArea()
-            } else {
-                // Background changes / selectively reveals galaxy
-                ZStack {
-                    AnimatedGalaxyCapsule().ignoresSafeArea()
-                    Color.black.opacity(phase == .splitZoom ? 1 : 0.4).ignoresSafeArea()
-                }
+            LinearGradient(
+                colors: [
+                    Color(red: 0.02, green: 0.03, blue: 0.05),
+                    Color.black
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            RadialGradient(
+                colors: [
+                    Color(red: 0.29, green: 0.55, blue: 0.96).opacity(0.36),
+                    Color(red: 0.12, green: 0.18, blue: 0.32).opacity(0.18),
+                    .clear
+                ],
+                center: .center,
+                startRadius: 8,
+                endRadius: 260
+            )
+            .scaleEffect(glowScale)
+            .opacity(glowOpacity)
+            .blur(radius: 22)
+
+            VStack(spacing: 16) {
+                BeatFinderPlusBrandMark(
+                    width: 144,
+                    height: 88,
+                    strokeColor: .white.opacity(0.88),
+                    foregroundColor: .white.opacity(0.88),
+                    crownColor: Color(red: 0.62, green: 0.82, blue: 1.0),
+                    lineWidth: 3.2
+                )
+                .scaleEffect(logoScale)
+                .opacity(logoOpacity)
+                .shadow(color: Color.white.opacity(0.12), radius: 18, x: 0, y: 10)
+
+                Text("BeatFinder")
+                    .font(.custom("HelveticaNeue-Bold", size: 34))
+                    .foregroundStyle(.white.opacity(0.96))
+                    .opacity(wordOpacity)
+                    .offset(y: wordOffset)
             }
-
-            // Elements Layer
-            ZStack {
-                // Background Logo Expanding
-                if phase.rawValue >= SplashPhase.logoExpand.rawValue {
-                    Image(systemName: "waveform.circle.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 120, height: 120)
-                        .foregroundStyle(.blue.opacity(0.8))
-                        .scaleEffect(phase == .splitZoom ? 20 : (phase == .logoExpand ? 1.5 : 2))
-                        .opacity(phase == .splitZoom ? 0 : 0.6)
-                        .blur(radius: phase.rawValue >= SplashPhase.stamp.rawValue ? 10 : 0)
-                }
-
-                // Foreground Text
-                if phase.rawValue >= SplashPhase.textFlyIn.rawValue {
-                    Text("beatfinder")
-                        .font(.custom("HelveticaNeue-CondensedBlack", size: 48))
-                        .italic()
-                        .foregroundStyle(.white)
-                        .tracking(phase == .stamp ? 2 : 10)
-                        .scaleEffect(phase == .textFlyIn ? 3 : (phase == .stamp ? 1 : 1.2))
-                        .opacity(phase == .textFlyIn ? 0 : (phase == .splitZoom ? 0 : 1))
-                        .shadow(color: .blue, radius: phase == .stamp ? 20 : 0, x: 0, y: 0)
-                        // Split/Zoom effect
-                        .offset(y: phase == .splitZoom ? -200 : 0)
-                        .blur(radius: phase == .splitZoom ? 20 : 0)
-                }
-
-                // Initial Logo Appearance
-                if phase == .logoAppear {
-                    Image(systemName: "waveform.circle.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 80, height: 80)
-                        .foregroundStyle(.black)
-                        .transition(.scale.combined(with: .opacity))
-                }
-            }
+            .padding(.horizontal, 24)
+            .scaleEffect(contentScale)
+            .opacity(contentOpacity)
         }
         .onAppear {
-            runAnimationSequence()
+            runAnimation()
         }
     }
 
-    private func runAnimationSequence() {
-        // Total duration requirement: ~2.5s
-        
-        // 0.2s: White screen -> Logo appears
-        withAnimation(.easeOut(duration: 0.3)) {
-            phase = .logoAppear
+    private func runAnimation() {
+        hasFinished = false
+
+        withAnimation(.spring(response: 0.68, dampingFraction: 0.82)) {
+            glowOpacity = 1
+            glowScale = 1
+            logoOpacity = 1
+            logoScale = 1
         }
-        
-        // 0.5s: Logo Expands, Galaxy reveals behind it
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            withAnimation(.easeInOut(duration: 0.5)) {
-                phase = .logoExpand
-            }
-        }
-        
-        // 1.0s: Text flies into center
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
-                phase = .textFlyIn
-            }
-        }
-        
-        // 1.5s: Stamp
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
-            withAnimation(.interactiveSpring(response: 0.3, dampingFraction: 0.5)) {
-                phase = .stamp
-            }
-        }
-        
-        // 2.0s: Splits and Zoom into Entry/Home
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            withAnimation(.easeIn(duration: 0.5)) {
-                phase = .splitZoom
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+            withAnimation(.easeOut(duration: 0.34)) {
+                wordOpacity = 1
+                wordOffset = 0
             }
         }
 
-        // 2.5s: Complete and show home
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            showHome = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.18) {
+            withAnimation(.easeInOut(duration: 0.28)) {
+                glowScale = 1.08
+                contentScale = 1.02
+                contentOpacity = 0
+            }
         }
-    }
-}
 
-extension LaunchFlowView.SplashPhase {
-    var rawValue: Int {
-        switch self {
-        case .start: return 0
-        case .logoAppear: return 1
-        case .logoExpand: return 2
-        case .textFlyIn: return 3
-        case .stamp: return 4
-        case .splitZoom: return 5
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.46) {
+            guard !hasFinished else { return }
+            hasFinished = true
+            onFinished?()
         }
     }
 }

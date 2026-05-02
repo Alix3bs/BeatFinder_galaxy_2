@@ -10,24 +10,21 @@ struct ResultDetailView: View {
     @EnvironmentObject private var settings: SettingsStore
 
     var body: some View {
-        ZStack {
+        ScreenContainer(
+            spacing: 16,
+            topPadding: BeatLayout.sectionSpacingTight,
+            bottomPadding: 32,
+            maxWidthStyle: .standard,
+            includeTabBarClearance: true
+        ) {
             AnimatedGalaxyBackground()
-                .ignoresSafeArea()
-
-            Color.black.opacity(0.72).ignoresSafeArea()
-
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    topBar
-                    confidenceCard
-                    waveformCard
-                    metadataCard
-                    actions
-                }
-                .padding(BeatLayout.screenHorizontal)
-                .padding(.top, BeatLayout.sectionSpacingTight)
-                .padding(.bottom, 44)
-            }
+            Color.black.opacity(0.72)
+        } content: {
+            topBar
+            confidenceCard
+            waveformCard
+            metadataCard
+            actions
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)

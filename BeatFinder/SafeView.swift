@@ -1,156 +1,262 @@
+import Combine
+import Foundation
 import SwiftUI
 
-struct SafeView: View {
-    @Environment(\.tabBarClearance) private var tabBarClearance
-    
-    struct Transaction: Identifiable {
-        let id = UUID()
-        let name: String
-        let date: String
-        let amount: String
-        let isPositive: Bool
+@MainActor
+final class SafeViewModel: ObservableObject {
+    struct SavedBeat: Identifiable, Equatable {
+        let result: BeatResultModel
+        let descriptor: String
+        let note: String
+
+        var id: String { result.id }
+        var title: String { result.title }
+        var artist: String { result.artist }
     }
-    
-    let transactions: [Transaction] = [
-        .init(name: "Beat Sale - Summer Breeze", date: "Today, 2:45 PM", amount: "+$45.00", isPositive: true),
-        .init(name: "Withdrawal to Bank", date: "Yesterday", amount: "-$120.00", isPositive: false),
-        .init(name: "GO+ Subscription", date: "Oct 12", amount: "-$9.99", isPositive: false),
-        .init(name: "Beat Sale - Midnight", date: "Oct 10", amount: "+$25.00", isPositive: true)
+
+    @Published var beats: [SavedBeat] = [
+        SavedBeat(
+            result: BeatResultModel(
+                id: "safe-1",
+                title: "Hollow Point",
+                artist: "Velvet",
+                bpm: 128,
+                genre: "R&B",
+                releaseDate: Date(),
+                artworkName: "nest_music",
+                youtubeVideoID: "dQw4w9WgXcQ",
+                youtubeWatchURLString: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            ),
+            descriptor: "R&B • Saved this week",
+            note: "Main release"
+        ),
+        SavedBeat(
+            result: BeatResultModel(
+                id: "safe-2",
+                title: "Neon Echo",
+                artist: "Nova",
+                bpm: 142,
+                genre: "Trap",
+                releaseDate: Date(),
+                artworkName: "nest_music",
+                youtubeVideoID: "kJQP7kiw5Fk",
+                youtubeWatchURLString: "https://www.youtube.com/watch?v=kJQP7kiw5Fk"
+            ),
+            descriptor: "Trap • Quick access",
+            note: "Pinned"
+        ),
+        SavedBeat(
+            result: BeatResultModel(
+                id: "safe-3",
+                title: "Blue Ember",
+                artist: "Tray3",
+                bpm: 136,
+                genre: "Soul Trap",
+                releaseDate: Date(),
+                artworkName: "nest_music",
+                youtubeVideoID: "JGwWNGJdvx8",
+                youtubeWatchURLString: "https://www.youtube.com/watch?v=JGwWNGJdvx8"
+            ),
+            descriptor: "Soul Trap • Saved from Explore",
+            note: "Recent"
+        ),
+        SavedBeat(
+            result: BeatResultModel(
+                id: "safe-4",
+                title: "Midnight Loop",
+                artist: "Aero",
+                bpm: 146,
+                genre: "Drill",
+                releaseDate: Date(),
+                artworkName: "nest_music",
+                youtubeVideoID: "2Vv-BfVoq4g",
+                youtubeWatchURLString: "https://www.youtube.com/watch?v=2Vv-BfVoq4g"
+            ),
+            descriptor: "Drill • Saved from Upload",
+            note: "Match"
+        )
     ]
-    
+}
+
+struct SafeView: View {
+    @EnvironmentObject private var savedMatches: SavedMatchesStore
+    let scrollToTopToken: Int
+    @StateObject private var viewModel = SafeViewModel()
+    @State private var selectedBeat: SafeViewModel.SavedBeat?
+
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.black.ignoresSafeArea()
-                
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
-                        
-                        // Header
-                        HStack {
-                            Text("Safe")
-                                .font(.system(size: 34, weight: .bold))
-                                .foregroundStyle(.white)
-                            Spacer()
-                            
-                            Button {} label: {
-                                Image(systemName: "bell.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundStyle(.white)
-                                    .padding(10)
-                                    .background(Color.white.opacity(0.1))
-                                    .clipShape(Circle())
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 10)
-                        
-                        // Main Balance Glass Card
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Total Balance")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.7))
-                            
-                            Text("$2,450.00")
-                                .font(.system(size: 42, weight: .bold))
-                                .foregroundStyle(.white)
-                            
-                            // Mock Chart Line (Using Sparkline shape or just a styled path for demo)
-                            Path { path in
-                                path.move(to: CGPoint(x: 0, y: 40))
-                                path.addCurve(to: CGPoint(x: 50, y: 20), control1: CGPoint(x: 20, y: 40), control2: CGPoint(x: 30, y: 20))
-                                path.addCurve(to: CGPoint(x: 100, y: 25), control1: CGPoint(x: 70, y: 20), control2: CGPoint(x: 80, y: 25))
-                                path.addCurve(to: CGPoint(x: 150, y: 10), control1: CGPoint(x: 120, y: 25), control2: CGPoint(x: 130, y: 10))
-                                path.addCurve(to: CGPoint(x: 200, y: 30), control1: CGPoint(x: 170, y: 10), control2: CGPoint(x: 180, y: 30))
-                                path.addCurve(to: CGPoint(x: 250, y: 0), control1: CGPoint(x: 220, y: 30), control2: CGPoint(x: 230, y: 0))
-                                path.addCurve(to: CGPoint(x: 300, y: 15), control1: CGPoint(x: 270, y: 0), control2: CGPoint(x: 280, y: 15))
-                            }
-                            .stroke(
-                                LinearGradient(colors: [Color(red: 0.25, green: 0.6, blue: 1.0), .white], startPoint: .leading, endPoint: .trailing),
-                                style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
-                            )
-                            .frame(height: 50)
-                            .padding(.vertical, 10)
-                            
-                            HStack(spacing: 12) {
-                                Button {} label: {
-                                    Text("Withdraw")
-                                        .font(.system(size: 15, weight: .bold))
-                                        .foregroundStyle(.black)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
-                                        .background(Color.white)
-                                        .clipShape(Capsule())
-                                }
-                                
-                                Button {} label: {
-                                    Text("Add Funds")
-                                        .font(.system(size: 15, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 12)
-                                        .background(Color.white.opacity(0.15))
-                                        .clipShape(Capsule())
-                                }
-                            }
-                        }
-                        .padding(24)
-                        .liquidGlass(cornerRadius: 24, borderOpacity: 0.2)
-                        .padding(.horizontal, 20)
-                        
-                        // Recent Activity
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Recent Activity")
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 20)
-                                .padding(.top, 10)
-                            
-                            VStack(spacing: 12) {
-                                ForEach(transactions) { txn in
-                                    HStack(spacing: 16) {
-                                        // Icon
-                                        ZStack {
-                                            Circle()
-                                                .fill(Color.white.opacity(0.08))
-                                                .frame(width: 46, height: 46)
-                                            
-                                            Image(systemName: txn.isPositive ? "arrow.down.left" : "arrow.up.right")
-                                                .font(.system(size: 16, weight: .bold))
-                                                .foregroundStyle(txn.isPositive ? Color(red: 0.2, green: 0.8, blue: 0.4) : .white)
-                                        }
-                                        
-                                        // Details
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(txn.name)
-                                                .font(.system(size: 16, weight: .bold))
-                                                .foregroundStyle(.white)
-                                            Text(txn.date)
-                                                .font(.system(size: 13, weight: .semibold))
-                                                .foregroundStyle(.white.opacity(0.5))
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        // Amount
-                                        Text(txn.amount)
-                                            .font(.system(size: 16, weight: .bold))
-                                            .foregroundStyle(txn.isPositive ? Color(red: 0.2, green: 0.8, blue: 0.4) : .white)
-                                    }
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 8)
-                                }
-                            }
-                        }
-                        
-                        Spacer(minLength: tabBarClearance + 20)
-                    }
+        ScreenContainer(
+            spacing: 18,
+            topPadding: 12,
+            bottomPadding: 30,
+            maxWidthStyle: .standard,
+            includeTabBarClearance: true,
+            fillsAvailableHeight: false,
+            scrollToTopToken: scrollToTopToken
+        ) {
+            backgroundLayer
+        } content: {
+            header
+            headerStrip
+            cardsSection
+        }
+        .navigationTitle("")
+        .toolbar(.hidden, for: .navigationBar)
+        .fullScreenCover(item: $selectedBeat) { beat in
+            UploadResultView(model: beat.result, sourceContext: .explore)
+                .preferredColorScheme(.dark)
+        }
+    }
+
+    private var backgroundLayer: some View {
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+
+            Circle()
+                .fill(BeatColors.accentBlueGlow)
+                .frame(width: 320, height: 320)
+                .blur(radius: 96)
+                .offset(x: 120, y: 180)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Saved Beats")
+                .font(.system(size: 32, weight: .bold))
+                .foregroundStyle(BeatColors.textPrimary)
+
+            Text("where your beats are saved")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(BeatColors.textSecondary)
+        }
+    }
+
+    private var headerStrip: some View {
+        SectionCard(cornerRadius: 26, padding: 18, fill: BeatColors.surfacePrimary, strokeOpacity: 0.08) {
+            HStack(alignment: .center, spacing: 14) {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(BeatColors.surfaceSecondary)
+                    .frame(width: 72, height: 72)
+                    .overlay(
+                        Image(systemName: "bookmark.fill")
+                            .font(.system(size: 26, weight: .bold))
+                            .foregroundStyle(BeatColors.accentBlue)
+                    )
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Saved collection")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(BeatColors.textPrimary)
+
+                    Text("Keep your favorite beats close and reopen them anytime.")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(BeatColors.textSecondary)
                 }
+
+                Spacer()
             }
         }
     }
-}
 
-#Preview {
-    SafeView()
+    private var cardsSection: some View {
+        VStack(spacing: 16) {
+            ForEach(displayedBeats) { beat in
+                savedBeatCard(beat)
+            }
+        }
+    }
+
+    private func savedBeatCard(_ beat: SafeViewModel.SavedBeat) -> some View {
+        Button {
+            BeatHaptics.tap()
+            selectedBeat = beat
+        } label: {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(beat.title)
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundStyle(BeatColors.accentBlueText)
+
+                        Text(beat.artist)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(BeatColors.accentBlueText.opacity(0.82))
+                    }
+
+                    Spacer()
+
+                    Text(beat.note)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(BeatColors.accentBlueText.opacity(0.72))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.18))
+                        .clipShape(Capsule())
+                }
+
+                Text(beat.descriptor)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(BeatColors.accentBlueText.opacity(0.78))
+
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.18))
+                    .frame(height: 68)
+                    .overlay(
+                        HStack {
+                            Text("Open beat")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(BeatColors.accentBlueText)
+
+                            Spacer()
+
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(BeatColors.accentBlueText)
+                        }
+                        .padding(.horizontal, 18)
+                    )
+            }
+            .padding(20)
+            .background(BeatColors.accentBlue)
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(Color.white.opacity(0.10), lineWidth: 1)
+            )
+        }
+        .buttonStyle(BeatPressableButtonStyle(pressedScale: 0.985))
+    }
+
+    private var displayedBeats: [SafeViewModel.SavedBeat] {
+        let mapped = savedMatches.savedMatches.compactMap(mapSavedBeat)
+        return mapped.isEmpty ? viewModel.beats : mapped
+    }
+
+    private func mapSavedBeat(_ match: BeatSearchMatch) -> SafeViewModel.SavedBeat? {
+        let titleParts = match.title.components(separatedBy: " by ")
+        let title = titleParts.first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? match.title
+        let artist = titleParts.count > 1
+            ? titleParts.dropFirst().joined(separator: " by ").trimmingCharacters(in: .whitespacesAndNewlines)
+            : "BeatFinder"
+        let genre = (match.note?.components(separatedBy: "•").first ?? match.note ?? "Saved beat")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return SafeViewModel.SavedBeat(
+            result: BeatResultModel(
+                id: match.remoteMatchID?.uuidString ?? match.id.uuidString,
+                title: title,
+                artist: artist,
+                bpm: match.bpm ?? 120,
+                genre: genre.isEmpty ? "Saved beat" : genre,
+                releaseDate: Date(),
+                artworkName: "nest_music",
+                youtubeVideoID: nil,
+                youtubeWatchURLString: match.url
+            ),
+            descriptor: "\(genre.isEmpty ? "Saved beat" : genre) • Saved in BeatFinder",
+            note: match.platform.title
+        )
+    }
 }

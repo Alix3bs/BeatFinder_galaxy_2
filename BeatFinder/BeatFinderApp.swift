@@ -9,25 +9,26 @@ import SwiftUI
 
 @main
 struct BeatFinderApp: App {
-    @StateObject private var auth = AuthStore()
+    @StateObject private var appState = AppState()
     @StateObject private var savedMatches = SavedMatchesStore()
-    @StateObject private var subscriptions = SubscriptionManager()
     @StateObject private var likes = LikeService()
     @StateObject private var searchService = SearchService()
     @StateObject private var settings = SettingsStore()
+    @StateObject private var messagingStore = MessagingStore()
+    @StateObject private var lyricPadStore = LyricPadStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environmentObject(auth)
+                .environmentObject(appState)
+                .environmentObject(appState.authStore)
+                .environmentObject(appState.subscriptionManager)
                 .environmentObject(savedMatches)
-                .environmentObject(subscriptions)
                 .environmentObject(likes)
                 .environmentObject(searchService)
                 .environmentObject(settings)
-                .task {
-                    await subscriptions.loadProducts()
-                }
+                .environmentObject(messagingStore)
+                .environmentObject(lyricPadStore)
         }
     }
 }

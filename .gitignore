@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.beatfinder_state/
+.beatfinder_eval_state/
+backend/tests/generated_audio/
+backend/tests/generated_audio_eval/

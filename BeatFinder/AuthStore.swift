@@ -142,6 +142,19 @@ final class AuthStore: ObservableObject {
         await fetchProfile()
     }
 
+    func updatePassword(_ newPassword: String) async throws {
+        authError = nil
+
+        do {
+            _ = try await client.auth.update(
+                user: UserAttributes(password: newPassword)
+            )
+        } catch {
+            authError = error.localizedDescription
+            throw error
+        }
+    }
+
     // Upload avatar to Storage bucket "avatars"
     func uploadAvatar(image: UIImage) async throws {
         if sessionUserId == nil { await refreshSession() }
@@ -190,6 +203,19 @@ final class AuthStore: ObservableObject {
         }
         sessionUserId = nil
         profile = nil
+    }
+
+    func currentEmail() async -> String? {
+        do {
+            let session = try await client.auth.session
+            let email = session.user.email?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let email, !email.isEmpty {
+                return email
+            }
+            return nil
+        } catch {
+            return nil
+        }
     }
 
     private func readMetadataUsername() async -> String? {

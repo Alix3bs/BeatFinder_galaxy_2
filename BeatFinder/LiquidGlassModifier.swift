@@ -6,21 +6,7 @@ struct LiquidGlassModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(.ultraThinMaterial)
-            .environment(\.colorScheme, .dark) // Force dark mode materials
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [.white.opacity(borderOpacity * 2), .white.opacity(0), .white.opacity(borderOpacity)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
-                    )
-            )
-            .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+            .liquidGlassSurface(cornerRadius: cornerRadius, strokeOpacity: borderOpacity, shadowOpacity: 0.24)
     }
 }
 

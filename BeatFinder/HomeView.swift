@@ -1,146 +1,255 @@
+import Foundation
 import SwiftUI
 
-struct HomeView: View {
-    @State private var selectedFilter: String = "For You"
-    @State private var selectedChip: String = "All"
-    
-    // Sample data
-    let categories = ["All", "Hip Hop", "R&B", "Trap", "Lo-Fi", "Pop"]
-    let producers = ["Nova", "Sage", "Rico", "Kai", "Velvet", "Rama"]
-    
-    // Dummy posts mimicking the ExploreMockData
-    let posts: [FeedBeat] = [
-        FeedBeat(id: UUID(), title: "Night Drive", artist: "Kai", genre: "Lo-Fi", bpm: 84, price: "Free", artworkName: nil),
-        FeedBeat(id: UUID(), title: "Blue Tape", artist: "Nova", genre: "Boom Bap", bpm: 90, price: "Free", artworkName: nil),
-        FeedBeat(id: UUID(), title: "Amber", artist: "Sage", genre: "R&B", bpm: 98, price: "Get", artworkName: nil)
+@MainActor
+final class HomeViewModel: ObservableObject {
+    struct CommunityMember: Identifiable {
+        let id = UUID()
+        let name: String
+        let accent: Color
+    }
+
+    struct FeedItem: Identifiable {
+        let id = UUID()
+        let title: String
+        let producer: String
+        let caption: String
+        let genre: String
+        let bpm: Int
+        let actionCount: String
+        let messageCount: String
+        let repostCount: String
+        let gradient: [Color]
+    }
+
+    @Published var communityMembers: [CommunityMember] = [
+        CommunityMember(name: "Nova", accent: Color(red: 0.62, green: 0.85, blue: 1.0)),
+        CommunityMember(name: "Sage", accent: Color(red: 0.58, green: 0.74, blue: 1.0)),
+        CommunityMember(name: "Velvet", accent: Color(red: 0.79, green: 0.62, blue: 1.0)),
+        CommunityMember(name: "Rico", accent: Color(red: 0.53, green: 0.83, blue: 0.96)),
+        CommunityMember(name: "Kai", accent: Color(red: 0.93, green: 0.72, blue: 0.48))
     ]
-    
+
+    @Published var feedItems: [FeedItem] = [
+        FeedItem(
+            title: "Neon Echo",
+            producer: "Nova",
+            caption: "Late-night drums and a clean topline pocket.",
+            genre: "Trap",
+            bpm: 142,
+            actionCount: "8.4K",
+            messageCount: "321",
+            repostCount: "87",
+            gradient: [Color(red: 0.14, green: 0.24, blue: 0.44), Color(red: 0.04, green: 0.07, blue: 0.16)]
+        ),
+        FeedItem(
+            title: "Blue Room",
+            producer: "Sage",
+            caption: "Soft pads up front, tight bounce in the pocket.",
+            genre: "R&B",
+            bpm: 98,
+            actionCount: "6.1K",
+            messageCount: "204",
+            repostCount: "51",
+            gradient: [Color(red: 0.17, green: 0.20, blue: 0.35), Color(red: 0.05, green: 0.07, blue: 0.13)]
+        ),
+        FeedItem(
+            title: "Skyline Fade",
+            producer: "Velvet",
+            caption: "Muted bass, glossy hats, and a clean hook space.",
+            genre: "Lo-Fi",
+            bpm: 86,
+            actionCount: "4.8K",
+            messageCount: "153",
+            repostCount: "39",
+            gradient: [Color(red: 0.21, green: 0.16, blue: 0.29), Color(red: 0.06, green: 0.05, blue: 0.1)]
+        )
+    ]
+}
+import SwiftUI
+
+struct HomeCommunityRow: View {
+    let members: [HomeViewModel.CommunityMember]
+
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Top Header area
-                VStack(spacing: 16) {
-                    HStack {
-                        Text("Community")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundStyle(.white)
-                        Spacer()
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.trailing, 4)
-                    }
-                    .padding(.horizontal, 16)
-                    
-                    // Avatar Row
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 16) {
-                            // "Add" avatar
-                            VStack(spacing: 6) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color(red: 0.15, green: 0.35, blue: 0.85)) // BLUE THEME
-                                        .frame(width: 64, height: 64)
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 24, weight: .bold))
-                                        .foregroundStyle(.white)
-                                }
-                                Text("Add")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(.white)
-                            }
-                            
-                            ForEach(producers, id: \.self) { producer in
-                                VStack(spacing: 6) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color.white.opacity(0.1))
-                                            .frame(width: 64, height: 64)
-                                        Text(String(producer.prefix(1)))
-                                            .font(.system(size: 24, weight: .bold))
-                                            .foregroundStyle(.white)
-                                    }
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color(red: 0.25, green: 0.6, blue: 1.0), lineWidth: producer == "Nova" ? 2 : 0) // BLUE RING
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Community")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    ForEach(members) { member in
+                        VStack(spacing: 8) {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [member.accent, member.accent.opacity(0.28)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
                                     )
-                                    
-                                    Text(producer)
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(.white.opacity(0.8))
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                    }
-                    
-                    // Filter Toggle (For You / Followed) + Category Chips
-                    VStack(spacing: 12) {
-                        HStack(spacing: 24) {
-                            ForEach(["For You", "Followed"], id: \.self) { filter in
-                                Button(action: { selectedFilter = filter }) {
-                                    VStack(spacing: 6) {
-                                        Text(filter)
-                                            .font(.system(size: 15, weight: selectedFilter == filter ? .bold : .semibold))
-                                            .foregroundStyle(selectedFilter == filter ? .white : .white.opacity(0.5))
-                                        
-                                        if selectedFilter == filter {
-                                            Capsule()
-                                                .fill(Color(red: 0.25, green: 0.6, blue: 1.0)) // BLUE THEME INDICATOR
-                                                .frame(width: 40, height: 3)
-                                        } else {
-                                            Color.clear.frame(height: 3)
-                                        }
-                                    }
-                                }
-                            }
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        
-                        // Chips
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                ForEach(categories, id: \.self) { category in
-                                    Button(action: { selectedChip = category }) {
-                                        Text(category)
-                                            .font(.system(size: 13, weight: .bold))
-                                            .foregroundStyle(selectedChip == category ? .black : .white)
-                                            .padding(.horizontal, 16)
-                                            .padding(.vertical, 8)
-                                            .background(
-                                                Capsule()
-                                                    .fill(selectedChip == category ? Color(red: 0.25, green: 0.6, blue: 1.0) : Color.white.opacity(0.1)) // BLUE THEME SELECTED
-                                            )
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 16)
+                                )
+                                .overlay(
+                                    Text(String(member.name.prefix(1)))
+                                        .font(.system(size: 20, weight: .bold))
+                                        .foregroundStyle(.white)
+                                )
+                                .frame(width: 64, height: 64)
+
+                            Text(member.name)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.72))
                         }
                     }
                 }
-                .padding(.top, 10)
-                .padding(.bottom, 8)
-                .background(Color.black)
-                .zIndex(1)
-                
-                // Feed
-                TabView {
-                    ForEach(posts) { post in
-                        BeatFeedCardView(beat: post)
-                            // Re-tinting the background slightly blue-dark
-                            .background(Color(red: 0.05, green: 0.1, blue: 0.2)) 
-                    }
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                .ignoresSafeArea()
+                .padding(.vertical, 4)
             }
         }
     }
 }
+import SwiftUI
 
-#Preview {
-    HomeView()
+struct HomeActionColumn: View {
+    let item: HomeViewModel.FeedItem
+
+    var body: some View {
+        VStack(spacing: 16) {
+            actionBubble(systemImage: "heart.fill", count: item.actionCount)
+            actionBubble(systemImage: "bubble.left.fill", count: item.messageCount)
+            actionBubble(systemImage: "arrow.2.squarepath", count: item.repostCount)
+        }
+    }
+
+    private func actionBubble(systemImage: String, count: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .background(Color.white.opacity(0.12))
+                .clipShape(Circle())
+
+            Text(count)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.7))
+        }
+    }
+}
+import SwiftUI
+
+struct HomeFeedCardView: View {
+    let item: HomeViewModel.FeedItem
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 16) {
+            ZStack(alignment: .bottomLeading) {
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: item.gradient,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(item.genre.uppercased())
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.68))
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(item.title)
+                            .font(.system(size: 30, weight: .bold))
+                            .foregroundStyle(.white)
+
+                        Text("by \(item.producer)")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.82))
+                    }
+
+                    Text(item.caption)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 8) {
+                        pill(title: "\(item.bpm) BPM")
+                        pill(title: item.genre)
+                    }
+                }
+                .padding(22)
+            }
+            .frame(height: 420)
+            .frame(maxWidth: .infinity)
+
+            HomeActionColumn(item: item)
+                .padding(.bottom, 20)
+        }
+    }
+
+    private func pill(title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.88))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.12))
+            .clipShape(Capsule())
+    }
+}
+import SwiftUI
+
+struct HomeView: View {
+    @StateObject private var viewModel = HomeViewModel()
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 22) {
+                    header
+                    HomeCommunityRow(members: viewModel.communityMembers)
+
+                    VStack(spacing: 18) {
+                        ForEach(viewModel.feedItems) { item in
+                            HomeFeedCardView(item: item)
+                        }
+                    }
+                }
+                .padding(.horizontal, BeatLayout.screenHorizontal)
+                .padding(.top, 16)
+                .padding(.bottom, 28)
+            }
+        }
+        .navigationTitle("")
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Home")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(.white)
+
+                Text("Community picks and recent finds")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.62))
+            }
+
+            Spacer()
+
+            Image(systemName: "dot.radiowaves.left.and.right")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.82))
+                .frame(width: 42, height: 42)
+                .background(Color.white.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
 }

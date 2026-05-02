@@ -1,0 +1,95 @@
+{
+  "fixtures": [
+    {
+      "slug": "late_nights",
+      "title": "SZA x Summer Walker Type Beat - Late Nights",
+      "producer_name": "Era Jay x Bani",
+      "hashtags": ["#phillytypebeat"],
+      "region_tags": ["philly"],
+      "genre_tags": ["rnb"],
+      "bpm": 92,
+      "root_hz": 220.0,
+      "pattern": "slow_swing",
+      "source_url": "https://example.com/beats/late-nights",
+      "source_platform": "fixture"
+    },
+    {
+      "slug": "afterglow",
+      "title": "SZA x Summer Walker Type Beat - Afterglow",
+      "producer_name": "Shadstackz x TSE Vic",
+      "hashtags": ["#phillytypebeat"],
+      "region_tags": ["philly"],
+      "genre_tags": ["rnb"],
+      "bpm": 96,
+      "root_hz": 246.94,
+      "pattern": "slow_swing",
+      "source_url": "https://example.com/beats/afterglow",
+      "source_platform": "fixture"
+    },
+    {
+      "slug": "midnight_rush",
+      "title": "New York Drill Type Beat - Midnight Rush",
+      "producer_name": "Shadstackz x TSE Vic",
+      "hashtags": ["#newyorkdrilltypebeat"],
+      "region_tags": ["new york"],
+      "genre_tags": ["drill"],
+      "bpm": 144,
+      "root_hz": 196.0,
+      "pattern": "drill",
+      "source_url": "https://example.com/beats/midnight-rush",
+      "source_platform": "fixture"
+    },
+    {
+      "slug": "cold_motion",
+      "title": "Milwaukee x Detroit Type Beat - Cold Motion",
+      "producer_name": "Era Jay x Bani",
+      "hashtags": ["#milwaukeedetroittypebeat"],
+      "region_tags": ["milwaukee", "detroit"],
+      "genre_tags": ["drill"],
+      "bpm": 154,
+      "root_hz": 174.61,
+      "pattern": "bounce",
+      "source_url": "https://example.com/beats/cold-motion",
+      "source_platform": "fixture"
+    },
+    {
+      "slug": "silk_room",
+      "title": "SZA Type Beat - Silk Room",
+      "producer_name": "Era Jay",
+      "hashtags": ["#phillytypebeat", "#rnbtypebeat"],
+      "region_tags": ["philly"],
+      "genre_tags": ["rnb"],
+      "bpm": 90,
+      "root_hz": 261.63,
+      "pattern": "slow_swing",
+      "source_url": "https://example.com/beats/silk-room",
+      "source_platform": "fixture"
+    },
+    {
+      "slug": "tunnel_vision",
+      "title": "Detroit Drill Type Beat - Tunnel Vision",
+      "producer_name": "TSE Vic",
+      "hashtags": ["#detroitdrilltypebeat"],
+      "region_tags": ["detroit"],
+      "genre_tags": ["drill"],
+      "bpm": 148,
+      "root_hz": 164.81,
+      "pattern": "drill",
+      "source_url": "https://example.com/beats/tunnel-vision",
+      "source_platform": "fixture"
+    },
+    {
+      "slug": "city_lights",
+      "title": "Summer Walker Type Beat - City Lights",
+      "producer_name": "Bani",
+      "hashtags": ["#phillytypebeat"],
+      "region_tags": ["philly"],
+      "genre_tags": ["rnb"],
+      "bpm": 92,
+      "root_hz": 233.08,
+      "pattern": "slow_swing",
+      "source_url": "https://example.com/beats/city-lights",
+      "source_platform": "fixture"
+    }
+  ]
+}

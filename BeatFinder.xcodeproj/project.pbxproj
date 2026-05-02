@@ -79,6 +79,7 @@
 		EE1BE85E2F340EFA00816C32 /* UserModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1BE81E2F340EFA00816C32 /* UserModel.swift */; };
 		EE1BE85F2F340EFA00816C32 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EE1BE7DE2F340EFA00816C32 /* Assets.xcassets */; };
 		EE90B5652F2F9F830007D2DD /* SoundmapDiscView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE90B5642F2F9F830007D2DD /* SoundmapDiscView.swift */; };
+		EEC18AD22F5DBF8200BB237E /* BeatFinder logo.png in Resources */ = {isa = PBXBuildFile; fileRef = EEC18AD12F5DBF8200BB237E /* BeatFinder logo.png */; };
 		EFAA00000000000000000001 /* AnimatedGalaxyBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA00000000000000000011 /* AnimatedGalaxyBackground.swift */; };
 		EFAA00000000000000000002 /* AuthGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA00000000000000000012 /* AuthGateView.swift */; };
 		EFAA00000000000000000003 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA00000000000000000013 /* AuthStore.swift */; };
@@ -192,6 +193,7 @@
 		EE1BE81D2F340EFA00816C32 /* UploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadView.swift; sourceTree = "<group>"; };
 		EE1BE81E2F340EFA00816C32 /* UserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserModel.swift; sourceTree = "<group>"; };
 		EE90B5642F2F9F830007D2DD /* SoundmapDiscView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundmapDiscView.swift; sourceTree = "<group>"; };
+		EEC18AD12F5DBF8200BB237E /* BeatFinder logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "BeatFinder logo.png"; sourceTree = "<group>"; };
 		EFAA00000000000000000011 /* AnimatedGalaxyBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedGalaxyBackground.swift; sourceTree = "<group>"; };
 		EFAA00000000000000000012 /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
 		EFAA00000000000000000013 /* AuthStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthStore.swift; sourceTree = "<group>"; };
@@ -348,12 +350,12 @@
 				EE1BE8102F340EFA00816C32 /* SafeView.swift */,
 				EFAA0000000000000000001A /* SavedMatchesStore.swift */,
 				EFAA0000000000000000001B /* SavedView.swift */,
-					EFAB00000000000000000014 /* SearchService.swift */,
-					EE1BE8112F340EFA00816C32 /* SearchView.swift */,
-					EE1BE8122F340EFA00816C32 /* SettingsView.swift */,
-					EFAD00000000000000000011 /* SettingsStore.swift */,
-					EE1BE8132F340EFA00816C32 /* ShipPlaceholderView.swift */,
-					EFAB00000000000000000013 /* LikeService.swift */,
+				EFAB00000000000000000014 /* SearchService.swift */,
+				EE1BE8112F340EFA00816C32 /* SearchView.swift */,
+				EE1BE8122F340EFA00816C32 /* SettingsView.swift */,
+				EFAD00000000000000000011 /* SettingsStore.swift */,
+				EE1BE8132F340EFA00816C32 /* ShipPlaceholderView.swift */,
+				EFAB00000000000000000013 /* LikeService.swift */,
 				EFAB00000000000000000011 /* SubscriptionManager.swift */,
 				EE1BE8142F340EFA00816C32 /* SpaceshipDesignSpec.md */,
 				EFAA0000000000000000001C /* SupabaseManager.swift */,
@@ -375,6 +377,7 @@
 		EEC7B18C2EB7A6E9006640F4 = {
 			isa = PBXGroup;
 			children = (
+				EEC18AD12F5DBF8200BB237E /* BeatFinder logo.png */,
 				EE13A7C62F01EDC000E1D892 /* safe_galaxy.gif2.gif */,
 				EE13A7C42F01EDB300E1D892 /* safe_galaxy.gif1.gif */,
 				EE13A7C22F01ECEC00E1D892 /* safe_galaxy.gif0.gif */,
@@ -530,6 +533,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EEC18AD22F5DBF8200BB237E /* BeatFinder logo.png in Resources */,
 				EE1BE85F2F340EFA00816C32 /* Assets.xcassets in Resources */,
 				EE13A87C2F04A6BF00E1D892 /* safe_galaxy.gif0.gif in Resources */,
 			);
@@ -620,12 +624,12 @@
 				EE1BE8512F340EFA00816C32 /* SafeView.swift in Sources */,
 				EFAA0000000000000000000A /* SavedMatchesStore.swift in Sources */,
 				EFAA0000000000000000000B /* SavedView.swift in Sources */,
-					EFAB00000000000000000004 /* SearchService.swift in Sources */,
-					EE1BE8522F340EFA00816C32 /* SearchView.swift in Sources */,
-					EE1BE8532F340EFA00816C32 /* SettingsView.swift in Sources */,
-					EFAD00000000000000000001 /* SettingsStore.swift in Sources */,
-					EE1BE8542F340EFA00816C32 /* ShipPlaceholderView.swift in Sources */,
-					EFAB00000000000000000003 /* LikeService.swift in Sources */,
+				EFAB00000000000000000004 /* SearchService.swift in Sources */,
+				EE1BE8522F340EFA00816C32 /* SearchView.swift in Sources */,
+				EE1BE8532F340EFA00816C32 /* SettingsView.swift in Sources */,
+				EFAD00000000000000000001 /* SettingsStore.swift in Sources */,
+				EE1BE8542F340EFA00816C32 /* ShipPlaceholderView.swift in Sources */,
+				EFAB00000000000000000003 /* LikeService.swift in Sources */,
 				EFAB00000000000000000001 /* SubscriptionManager.swift in Sources */,
 				EFAA0000000000000000000C /* SupabaseManager.swift in Sources */,
 				EFAB00000000000000000005 /* TextSearchView.swift in Sources */,
@@ -696,6 +700,8 @@
 				DEVELOPMENT_TEAM = DCQQ554C5F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "BeatFinder AI";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "BeatFinder records short snippets so we can match your beat.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -731,6 +737,8 @@
 				DEVELOPMENT_TEAM = DCQQ554C5F;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "BeatFinder AI";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "BeatFinder records short snippets so we can match your beat.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

@@ -1,0 +1,57 @@
+name: beatfinder-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Lint
+        run: python scripts/dev/lint.py
+
+      - name: Tests
+        run: python -m unittest discover -s backend/tests -p 'test_*.py' -v
+
+      - name: Evaluation Smoke
+        run: python scripts/eval/run_eval.py > /tmp/beatfinder-eval.json
+
+  supabase-primary-integration:
+    if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Run Supabase Primary Integration
+        env:
+          BEATFINDER_RUN_SUPABASE_INTEGRATION: "1"
+          BEATFINDER_SUPABASE_MODE: "primary"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: python -m unittest backend.tests.test_supabase_primary_integration -v
