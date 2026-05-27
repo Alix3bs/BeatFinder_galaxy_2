@@ -13,8 +13,8 @@ from urllib.request import Request, urlopen
 
 from backend.tests.fixture_builder import materialize_fixtures
 
-NODE_BIN = "/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
-PYTHON_BIN = "/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3"
+NODE_BIN = os.getenv("BEATFINDER_NODE_BIN", "node")
+PYTHON_BIN = os.getenv("BEATFINDER_PYTHON_BIN", "python3")
 
 
 class ApiSmokeTests(unittest.TestCase):

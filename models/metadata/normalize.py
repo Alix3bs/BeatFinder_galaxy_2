@@ -4,7 +4,6 @@ import re
 import string
 from collections.abc import Iterable
 
-COMBO_JOINERS = (" x ", " & ", ", ")
 REGION_TERMS = {
     "philly",
     "philadelphia",
@@ -47,6 +46,7 @@ SEGMENTATION_TERMS = sorted(SEGMENTATION_MAP, key=len, reverse=True)
 NON_WORD_RE = re.compile(r"[^a-z0-9#&x,+|/\- ]+")
 MULTISPACE_RE = re.compile(r"\s+")
 HASHTAG_RE = re.compile(r"#([a-z0-9_]+)")
+COMBO_SPLIT_RE = re.compile(r"\s+(?:x|&)\s+|\s*,\s*")
 
 
 def normalize_text(value: str) -> str:
@@ -54,7 +54,6 @@ def normalize_text(value: str) -> str:
     lowered = lowered.replace("_", " ")
     lowered = NON_WORD_RE.sub(" ", lowered)
     lowered = lowered.replace("typebeat", " type beat ")
-    lowered = lowered.replace("x", " x ")
     lowered = MULTISPACE_RE.sub(" ", lowered)
     return lowered.strip()
 
@@ -129,7 +128,7 @@ def split_combo_phrase(value: str) -> list[str]:
     normalized = clean_phrase(value)
     if not normalized:
         return []
-    segments = re.split(r"\s*(?:x|&|,)\s*", normalized)
+    segments = COMBO_SPLIT_RE.split(normalized)
     return dedupe_preserve_order(segments)
 
 

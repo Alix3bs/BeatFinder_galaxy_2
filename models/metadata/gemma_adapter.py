@@ -24,10 +24,10 @@ class GemmaReasoner:
     - parser/expansion: deterministic heuristics
     """
 
-    model_name: str = field(default_factory=lambda: os.getenv("BEATFINDER_GEMMA_MODEL", "gemma-3"))
+    model_name: str = field(default_factory=lambda: env_first("BEATFINDER_GEMMA_MODEL", "GEMMA_MODEL") or "gemma-3")
     provider: str = field(default_factory=lambda: os.getenv("BEATFINDER_GEMMA_PROVIDER", "local-fallback"))
-    endpoint: str | None = field(default_factory=lambda: env_or_none("BEATFINDER_GEMMA_ENDPOINT"))
-    api_token: str | None = field(default_factory=lambda: env_or_none("BEATFINDER_GEMMA_API_TOKEN"))
+    endpoint: str | None = field(default_factory=lambda: env_first("BEATFINDER_GEMMA_ENDPOINT", "GEMMA_ENDPOINT"))
+    api_token: str | None = field(default_factory=lambda: env_first("BEATFINDER_GEMMA_API_TOKEN", "GEMMA_API_KEY"))
     allow_fallback: bool = field(default_factory=lambda: env_bool("BEATFINDER_GEMMA_ALLOW_FALLBACK", True))
 
     def normalize_metadata(self, raw_text: str) -> dict[str, list[str] | str | None]:
@@ -121,9 +121,12 @@ def dedupe_literals(values: list[str]) -> list[str]:
     return output
 
 
-def env_or_none(name: str) -> str | None:
-    value = os.getenv(name, "").strip()
-    return value or None
+def env_first(*names: str) -> str | None:
+    for name in names:
+        value = os.getenv(name, "").strip()
+        if value:
+            return value
+    return None
 
 
 def env_bool(name: str, default: bool) -> bool:

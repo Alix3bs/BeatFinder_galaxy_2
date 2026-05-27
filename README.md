@@ -105,6 +105,7 @@ scripts/
 docs/
   architecture.md
   local-setup.md
+  production-readiness.md
   test-plan.md
   api.md
 worker/
@@ -116,8 +117,9 @@ worker/
 1. Configure the local verified runtime.
 
 ```bash
-export BEATFINDER_PYTHON_BIN=/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3
-export BEATFINDER_NODE_BIN=/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node
+cp .env.example .env
+export BEATFINDER_PYTHON_BIN=python3
+export BEATFINDER_NODE_BIN=node
 export BEATFINDER_STATE_DIR=.beatfinder_state
 export BEATFINDER_SUPABASE_MODE=local
 ```
@@ -151,6 +153,12 @@ See [docs/api.md](/Users/traytray/Downloads/BeatFinder_galaxy_%202/docs/api.md) 
 $BEATFINDER_PYTHON_BIN scripts/dev/lint.py
 $BEATFINDER_PYTHON_BIN -m unittest discover -s backend/tests -p 'test_*.py' -v
 $BEATFINDER_PYTHON_BIN scripts/eval/run_eval.py
+```
+
+Or run the local verification flow:
+
+```bash
+scripts/dev/verify_local.sh
 ```
 
 ## OpenClaw
@@ -200,6 +208,7 @@ The verified local build uses a deterministic metadata embedder so the system ca
 - The legacy `worker/` directory is documented for reference only and is not the authoritative retrieval path for this v1.
 
 See [KNOWN_ISSUES.md](/Users/traytray/Downloads/BeatFinder_galaxy_%202/KNOWN_ISSUES.md).
+See [docs/production-readiness.md](/Users/traytray/Downloads/BeatFinder_galaxy_%202/docs/production-readiness.md) for the remaining work before real users.
 
 ## Official References Used
 

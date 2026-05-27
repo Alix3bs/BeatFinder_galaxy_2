@@ -2,25 +2,28 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import os
+import tempfile
 from pathlib import Path
 
 
 def run(command: list[str], *, cwd: Path) -> None:
-    completed = subprocess.run(command, cwd=cwd, check=False)
+    env = {
+        **os.environ,
+        "PYTHONPYCACHEPREFIX": os.getenv(
+            "PYTHONPYCACHEPREFIX",
+            str(Path(tempfile.gettempdir()) / "beatfinder_pycache"),
+        ),
+    }
+    completed = subprocess.run(command, cwd=cwd, env=env, check=False)
     if completed.returncode != 0:
         raise SystemExit(completed.returncode)
 
 
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
-    bundled_python = Path(
-        "/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3"
-    )
-    bundled_node = Path(
-        "/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
-    )
-    python_executable = str(bundled_python if bundled_python.exists() else Path(sys.executable))
-    node_executable = str(bundled_node if bundled_node.exists() else "node")
+    python_executable = os.getenv("BEATFINDER_PYTHON_BIN") or str(Path(sys.executable))
+    node_executable = os.getenv("BEATFINDER_NODE_BIN") or "node"
 
     run([python_executable, "-m", "compileall", "backend", "models", "scripts"], cwd=repo_root)
     run([node_executable, "--experimental-strip-types", "--check", "backend/api/server.ts"], cwd=repo_root)

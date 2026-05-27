@@ -14,11 +14,37 @@ as $$
     end
 $$;
 
-drop index if exists idx_beat_embeddings_embedding_hnsw;
+do $$
+declare
+  embedding_type text;
+begin
+  select format_type(a.atttypid, a.atttypmod)
+  into embedding_type
+  from pg_attribute a
+  join pg_class c on c.oid = a.attrelid
+  join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relname = 'beat_embeddings'
+    and a.attname = 'embedding'
+    and not a.attisdropped;
 
-alter table if exists public.beat_embeddings
-  alter column embedding type vector(384)
-  using public.pad_vector_192_to_384(embedding);
+  if embedding_type = 'vector(192)' then
+    drop index if exists public.idx_beat_embeddings_embedding_hnsw;
+
+    alter table public.beat_embeddings
+      alter column embedding type vector(384)
+      using public.pad_vector_192_to_384(embedding);
+
+    create index if not exists idx_beat_embeddings_embedding_hnsw
+    on public.beat_embeddings using hnsw (embedding vector_cosine_ops);
+  elsif embedding_type = 'vector(384)' then
+    create index if not exists idx_beat_embeddings_embedding_hnsw
+    on public.beat_embeddings using hnsw (embedding vector_cosine_ops);
+  elsif embedding_type is not null then
+    raise exception 'Unexpected beat_embeddings.embedding type: %', embedding_type;
+  end if;
+end
+$$;
 
 drop function if exists public.jsonb_to_vector_192(jsonb);
 
@@ -34,9 +60,6 @@ as $$
     end
   from jsonb_array_elements_text(p_json) as e(value)
 $$;
-
-create index if not exists idx_beat_embeddings_embedding_hnsw
-on public.beat_embeddings using hnsw (embedding vector_cosine_ops);
 
 drop function if exists public.match_beat_embeddings(jsonb, text, integer);
 

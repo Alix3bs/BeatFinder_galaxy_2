@@ -6,10 +6,10 @@
 - Node 24
 - No external Python or Node dependencies are required for the verified offline path
 
-Recommended runtime paths in this Codex environment:
+Default local runtime commands:
 
-- Python: `/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3`
-- Node: `/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node`
+- Python: `python3`
+- Node: `node`
 
 ## Environment Variables
 
@@ -32,11 +32,9 @@ Optional Hugging Face values:
 
 Optional Gemma values:
 
-- `BEATFINDER_GEMMA_PROVIDER`
-- `BEATFINDER_GEMMA_MODEL`
-- `BEATFINDER_GEMMA_ENDPOINT`
-- `BEATFINDER_GEMMA_API_TOKEN`
-- `BEATFINDER_GEMMA_ALLOW_FALLBACK`
+- `GEMMA_ENDPOINT`
+- `GEMMA_API_KEY`
+- `GEMMA_MODEL`
 
 Optional Supabase values:
 
@@ -55,8 +53,8 @@ Mode behavior:
 1. Configure the offline verified mode.
 
 ```bash
-export BEATFINDER_PYTHON_BIN=/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3
-export BEATFINDER_NODE_BIN=/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node
+export BEATFINDER_PYTHON_BIN=python3
+export BEATFINDER_NODE_BIN=node
 export BEATFINDER_STATE_DIR=.beatfinder_state
 export BEATFINDER_SUPABASE_MODE=local
 ```
@@ -121,6 +119,12 @@ Run the evaluation harness:
 
 ```bash
 $BEATFINDER_PYTHON_BIN scripts/eval/run_eval.py
+```
+
+Or run the full local verification flow:
+
+```bash
+scripts/dev/verify_local.sh
 ```
 
 The script:

@@ -7,9 +7,7 @@ import { readRequestPayload } from "./request_parsers.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "..", "..");
-const pythonBin =
-  process.env.BEATFINDER_PYTHON_BIN ||
-  "/Users/traytray/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3";
+const pythonBin = process.env.BEATFINDER_PYTHON_BIN || "python3";
 const port = Number(process.env.PORT || "8787");
 const stateDir = process.env.BEATFINDER_STATE_DIR || resolve(repoRoot, ".beatfinder_state");
 

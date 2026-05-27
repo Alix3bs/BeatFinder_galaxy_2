@@ -41,7 +41,7 @@ create table if not exists public.beat_embeddings (
   id uuid primary key default gen_random_uuid(),
   beat_id uuid not null references public.beats(id) on delete cascade,
   model_name text not null,
-  embedding vector(192),
+  embedding vector(384),
   embedding_version text,
   created_at timestamptz not null default now()
 );
@@ -110,15 +110,15 @@ create index if not exists idx_queries_created_at on public.queries(created_at d
 create index if not exists idx_query_results_query_rank on public.query_results(query_id, rank);
 create index if not exists idx_feedback_events_query on public.feedback_events(query_id);
 
-create or replace function public.jsonb_to_vector_192(p_json jsonb)
-returns vector(192)
+create or replace function public.jsonb_to_vector_384(p_json jsonb)
+returns vector(384)
 language sql
 immutable
 as $$
   select
     case
       when p_json is null or jsonb_typeof(p_json) <> 'array' then null
-      else ('[' || string_agg(e.value, ',') || ']')::vector(192)
+      else ('[' || string_agg(e.value, ',') || ']')::vector(384)
     end
   from jsonb_array_elements_text(p_json) as e(value)
 $$;
@@ -139,7 +139,7 @@ security invoker
 set search_path = public
 as $$
   with q as (
-    select public.jsonb_to_vector_192(query_embedding) as embedding
+    select public.jsonb_to_vector_384(query_embedding) as embedding
   )
   select
     be.beat_id,
