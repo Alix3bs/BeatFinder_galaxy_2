@@ -95,8 +95,6 @@ models/
   audio/               WAV loading, features, signatures
   embedding/           local + Hugging Face embedding providers
   metadata/            normalization, parsing, Gemma-facing interface
-memory/
-  journal/             public-data paper-trading memory and review subsystem
 supabase/
   migrations/          pgvector-ready schema
   functions/           thin edge health function + shared CORS
@@ -148,24 +146,6 @@ curl -s -X POST http://127.0.0.1:8787/search/text \
 ```
 
 See [docs/api.md](/Users/traytray/Downloads/BeatFinder_galaxy_%202/docs/api.md) for JSON and multipart request shapes.
-
-## Memory Journal
-
-This repo also includes a contained `memory/journal` subsystem for public-data, paper-trading compatible research and trade review memory. It is separate from BeatFinder's audio retrieval hot path and does not place, route, or model live orders.
-
-It supports:
-
-- strongly linked memory items for signal, risk, trade, review, and feedback records
-- expanded trade journal fields, including planned/actual prices, invalidation, setup snapshot, market context, research notes, and linked signal/risk ids
-- structured post-trade reviews with PnL in R, plan adherence, MAE/MFE, quality scores, mistakes, strengths, lessons, and next actions
-- scoring/risk feedback events
-- asset-level and strategy-level memory profiles
-- weekly review aggregation
-- retrieval filters for symbol, strategy, type, tags, links, source type, importance, dates, archive, expiry, and query terms
-- archive/expiration behavior
-- research/summarization-ready fields such as summary, evidence, source metadata, source reliability, and public data sources
-
-The Supabase migration is `supabase/migrations/202604260001_memory_journal_v1.sql`. Example outputs live in `memory/journal/examples/`, and implementation notes live in `memory/journal/README.md`.
 
 ## Run Tests
 
