@@ -48,7 +48,7 @@ def main() -> int:
     python_executable = os.getenv("BEATFINDER_PYTHON_BIN") or str(Path(sys.executable))
     node_executable = resolve_node_executable()
 
-    run([python_executable, "-m", "compileall", "backend", "models", "scripts"], cwd=repo_root)
+    run([python_executable, "-m", "compileall", "backend", "memory", "models", "scripts"], cwd=repo_root)
     run([node_executable, "--experimental-strip-types", "--check", "backend/api/server.ts"], cwd=repo_root)
     run(
         [node_executable, "--experimental-strip-types", "--test", "backend/api/request_parsers.test.ts"],
