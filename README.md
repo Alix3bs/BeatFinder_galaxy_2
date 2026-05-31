@@ -85,6 +85,7 @@ Set the mode with `BEATFINDER_SUPABASE_MODE=local|mirror|primary`.
 ```text
 backend/
   api/                 TypeScript HTTP server + multipart parsing
+  discovery/           producer channel discovery + YouTube beat metadata backfill
   ingest/              beat ingestion service
   retrieval/           text/audio/hybrid candidate generation
   rerank/              explainable score fusion
@@ -105,6 +106,7 @@ scripts/
 docs/
   architecture.md
   local-setup.md
+  producer-discovery.md
   production-readiness.md
   test-plan.md
   api.md
