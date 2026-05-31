@@ -6,6 +6,7 @@ import re
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any, TypeVar
+from urllib.parse import urlsplit, urlunsplit
 
 from backend.core.types import new_id, utc_now_iso
 from models.metadata.normalize import clean_phrase, dedupe_preserve_order
@@ -298,10 +299,13 @@ class ProducerDiscoveryStore:
 
 
 def parse_youtube_channel_ref(channel_ref: str) -> dict[str, str]:
-    raw = channel_ref.strip()
+    raw = _strip_url_tracking(channel_ref.strip())
     match = YOUTUBE_CHANNEL_RE.search(raw)
     if match:
         channel_id = match.group(1).strip("@")
+        parsed_path = urlsplit(raw).path
+        if "/@" in parsed_path:
+            channel_id = channel_id.lower()
         return {
             "platform": "youtube",
             "channel_id": channel_id,
@@ -309,6 +313,8 @@ def parse_youtube_channel_ref(channel_ref: str) -> dict[str, str]:
             "producer_name": clean_phrase(channel_id.replace("-", " ").replace("_", " ")),
         }
     channel_id = raw.strip("@")
+    if not channel_id.startswith("UC"):
+        channel_id = channel_id.lower()
     channel_url = f"https://www.youtube.com/channel/{channel_id}" if channel_id.startswith("UC") else f"https://www.youtube.com/@{channel_id}"
     return {
         "platform": "youtube",
@@ -328,6 +334,13 @@ def dedupe_tags(values: list[str] | tuple[str, ...]) -> list[str]:
         seen.add(tag)
         output.append(tag)
     return output
+
+
+def _strip_url_tracking(value: str) -> str:
+    if "://" not in value:
+        return value
+    parsed = urlsplit(value)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", ""))
 
 
 def _from_dict(cls: type[T], row: dict[str, Any]) -> T:

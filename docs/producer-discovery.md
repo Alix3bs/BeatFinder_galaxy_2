@@ -6,6 +6,8 @@ BeatFinder's producer discovery layer indexes producer YouTube beat catalogs as 
 
 Known producer profiles are added through `ProducerDiscoveryStore.upsert_channel()` or `YouTubeBeatBackfill.ingest_producer_profile()`.
 
+The initial manual seed list lives at `data/seeds/producer_youtube_profiles.txt`. It stores one producer YouTube profile per line and is loaded with `load_producer_seed_file()`. The loader strips query and fragment tracking parameters, normalizes YouTube handles, dedupes repeated channel references, and creates local `ProducerChannel` records. It does not call YouTube or start a backfill.
+
 Accepted seed forms include:
 
 - YouTube channel URLs like `https://www.youtube.com/channel/UC...`
@@ -13,6 +15,8 @@ Accepted seed forms include:
 - Raw channel IDs or handles
 
 Each seed becomes a `ProducerChannel` with platform, channel id, channel URL, producer name, aliases, city/style tags, source, confidence, and scan timestamps.
+
+Later discovery expands beyond the manual list through hashtag seeds, artist-combo phrases, city/region combo searches, and related producer/channel signals produced by the backfill pipeline.
 
 ## Channel Backfill
 

@@ -8,6 +8,7 @@ from .producer_channels import (
     ProducerChannel,
     ProducerDiscoveryStore,
 )
+from .producer_seed_loader import ProducerSeedLoadResult, load_producer_seed_file, normalize_producer_profile_url
 from .youtube_discovery import (
     ChannelBackfillResult,
     YouTubeBeatBackfill,
@@ -23,7 +24,10 @@ __all__ = [
     "ProducerBeatVideo",
     "ProducerChannel",
     "ProducerDiscoveryStore",
+    "ProducerSeedLoadResult",
     "YouTubeBeatBackfill",
     "YouTubeVideoItem",
     "YouTubeVideoPage",
+    "load_producer_seed_file",
+    "normalize_producer_profile_url",
 ]
