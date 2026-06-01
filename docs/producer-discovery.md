@@ -73,13 +73,24 @@ It does not infer a scene without phrase evidence.
 
 ## Possible Sold Or Deleted Inference
 
-`infer_possible_sold_or_deleted()` runs only when another layer supplies a detected producer tag. It:
+`match_producer_tag()` normalizes detected producer tags and known producer/channel aliases before comparing them. It supports:
+
+- exact normalized alias matches, such as `beats by slimy`
+- compact alias matches, such as `baby on the track` -> `babyonthetrack`
+- loose joiner-insensitive matches, such as `prod by salishan` -> `prod.salishan`
+- conservative token overlap when there are enough meaningful non-generic words
+
+The matcher avoids treating common tag fragments like `prod by`, `beats by`, `the track`, or `producer tag` as enough evidence by themselves.
+
+`infer_sold_deleted_status()` runs only when another layer supplies a detected producer tag. It:
 
 - matches the tag against known producer aliases
-- searches indexed visible videos for a likely title match
-- records `possible_sold_or_deleted` when a channel matches but no visible upload appears to match
+- searches indexed visible videos for likely title, phrase, or strong nearest-audio candidate matches
+- returns `found_candidate` when an indexed public upload plausibly matches
+- returns `insufficient_evidence` when the producer-tag match is weak or no known producer channel matches
+- returns `possible_sold_or_deleted` when a known producer tag matches but no indexed visible upload appears to match
 
-The system must not say the beat is definitely sold or deleted. Stored possible reasons include:
+The system must not say the beat is definitely sold or deleted. The status is intentionally named `possible_sold_or_deleted` because producer tags can appear on beats that are unavailable for many different reasons. Possible reasons include:
 
 - `sold_and_deleted`
 - `unlisted`
@@ -89,6 +100,8 @@ The system must not say the beat is definitely sold or deleted. Stored possible 
 - `hosted_on_traktrain`
 - `not_yet_indexed`
 - `producer_tag_false_positive`
+
+`not_yet_indexed` remains in the reason list until the channel checkpoint says the channel was fully backfilled. Even then, BeatFinder still keeps uncertainty in the result because a beat can be renamed, moved to BeatStars or Traktrain, private, deleted, or misattributed by a false-positive producer tag.
 
 ## Storage
 

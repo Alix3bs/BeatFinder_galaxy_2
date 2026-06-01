@@ -9,6 +9,8 @@ from .producer_channels import (
     ProducerDiscoveryStore,
 )
 from .producer_seed_loader import ProducerSeedLoadResult, load_producer_seed_file, normalize_producer_profile_url
+from .producer_tag_matcher import ProducerTagMatch, match_producer_tag
+from .sold_deleted_inference import SoldDeletedInferenceResult, infer_sold_deleted_status
 from .mock_youtube_client import MockYouTubeChannelClient
 from .youtube_discovery import (
     ChannelBackfillResult,
@@ -27,9 +29,13 @@ __all__ = [
     "ProducerChannel",
     "ProducerDiscoveryStore",
     "ProducerSeedLoadResult",
+    "ProducerTagMatch",
+    "SoldDeletedInferenceResult",
     "YouTubeBeatBackfill",
     "YouTubeVideoItem",
     "YouTubeVideoPage",
+    "infer_sold_deleted_status",
     "load_producer_seed_file",
+    "match_producer_tag",
     "normalize_producer_profile_url",
 ]
