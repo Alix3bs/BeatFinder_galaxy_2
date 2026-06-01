@@ -8,6 +8,16 @@ Base URL:
 
 All POST routes accept JSON. Audio routes also accept `multipart/form-data`.
 
+For local discovery enrichment, seed fixture beats and producer channels into the same local state directory before starting the API:
+
+```bash
+source .venv/bin/activate
+export BEATFINDER_STATE_DIR=.beatfinder_state
+python scripts/ingest/load_fixtures.py
+python scripts/discovery/load_producer_seeds.py
+bash scripts/dev/start_local.sh
+```
+
 ## `GET /health`
 
 Response:
@@ -176,6 +186,8 @@ Each result includes:
 - `explanation`
 
 `discovery` is additive and safe for existing clients to ignore. It is populated from local/mock producer discovery data only; BeatFinder does not call live YouTube during search. If no detected producer tag is supplied, `discovery.discovery_status` is `not_applicable`.
+
+If `detected_producer_tag` is set but the response says the tag did not match a known producer alias, make sure the producer seed script above was run against the same `BEATFINDER_STATE_DIR` as the API.
 
 Example discovery block:
 

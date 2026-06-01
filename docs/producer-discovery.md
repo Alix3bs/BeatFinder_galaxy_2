@@ -8,6 +8,18 @@ Known producer profiles are added through `ProducerDiscoveryStore.upsert_channel
 
 The initial manual seed list lives at `data/seeds/producer_youtube_profiles.txt`. It stores one producer YouTube profile per line and is loaded with `load_producer_seed_file()`. The loader strips query and fragment tracking parameters, normalizes YouTube handles, dedupes repeated channel references, and creates local `ProducerChannel` records. It does not call YouTube or start a backfill.
 
+For local API testing, load the seed list into the same state directory used by the API before starting `scripts/dev/start_local.sh`:
+
+```bash
+source .venv/bin/activate
+export BEATFINDER_STATE_DIR=.beatfinder_state
+python scripts/ingest/load_fixtures.py
+python scripts/discovery/load_producer_seeds.py
+bash scripts/dev/start_local.sh
+```
+
+`scripts/discovery/load_producer_seeds.py` creates useful local aliases from YouTube handles so producer tags can match during search enrichment. For example, `@prod.salishan` adds `prod.salishan`, `prod salishan`, and `salishan`; `@beatsbyslimy` adds `beatsbyslimy`, `beats by slimy`, and `slimy`; `@babyonthetrack` adds `babyonthetrack` and `baby on the track`.
+
 Accepted seed forms include:
 
 - YouTube channel URLs like `https://www.youtube.com/channel/UC...`
@@ -108,6 +120,8 @@ The system must not say the beat is definitely sold or deleted. The status is in
 `enrich_search_discovery()` connects the local discovery index to ordinary BeatFinder search responses. It runs after the main hybrid retrieval/reranking step and adds a top-level optional `discovery` object to `/search/audio`, `/search/text`, and `/search/hybrid` responses.
 
 The enrichment layer accepts the detected producer tag, expanded query metadata, ranked BeatFinder candidates, and the local `ProducerDiscoveryStore`. It does not call live YouTube, download audio, or use external APIs.
+
+If a local API response says a tag such as `prod by salishan` did not match a known producer alias, first confirm that `python scripts/discovery/load_producer_seeds.py` was run with the same `BEATFINDER_STATE_DIR` used by the API process.
 
 The response can include:
 

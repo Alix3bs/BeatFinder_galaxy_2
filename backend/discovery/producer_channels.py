@@ -153,11 +153,11 @@ class ProducerDiscoveryStore:
             ),
             None,
         )
-        normalized_aliases = dedupe_preserve_order([*(aliases or []), producer_name or ""])
+        normalized_aliases = dedupe_aliases([*(aliases or []), producer_name or ""])
         if existing:
             channel = _from_dict(ProducerChannel, existing)
             channel.producer_name = clean_phrase(producer_name or channel.producer_name) or channel.producer_name
-            channel.aliases = dedupe_preserve_order([*channel.aliases, *normalized_aliases])
+            channel.aliases = dedupe_aliases([*channel.aliases, *normalized_aliases])
             channel.city_tags = dedupe_tags([*channel.city_tags, *(city_tags or [])])
             channel.style_tags = dedupe_tags([*channel.style_tags, *(style_tags or [])])
             channel.discovered_from = discovered_from or channel.discovered_from
@@ -333,6 +333,20 @@ def dedupe_tags(values: list[str] | tuple[str, ...]) -> list[str]:
             continue
         seen.add(tag)
         output.append(tag)
+    return output
+
+
+def dedupe_aliases(values: list[str] | tuple[str, ...]) -> list[str]:
+    seen: set[str] = set()
+    output: list[str] = []
+    for value in values:
+        literal = re.sub(r"\s+", " ", str(value).strip().lower())
+        cleaned = clean_phrase(literal)
+        for alias in (literal, cleaned):
+            if not alias or alias in seen:
+                continue
+            seen.add(alias)
+            output.append(alias)
     return output
 
 

@@ -101,6 +101,7 @@ supabase/
   functions/           thin edge health function + shared CORS
 scripts/
   dev/                 local start + lint
+  discovery/           local producer seed loading
   ingest/              fixture loading
   eval/                evaluation harness
 docs/
@@ -126,10 +127,11 @@ export BEATFINDER_STATE_DIR=.beatfinder_state
 export BEATFINDER_SUPABASE_MODE=local
 ```
 
-2. Seed fixture beats.
+2. Seed fixture beats and local producer discovery channels.
 
 ```bash
 $BEATFINDER_PYTHON_BIN scripts/ingest/load_fixtures.py
+$BEATFINDER_PYTHON_BIN scripts/discovery/load_producer_seeds.py
 ```
 
 3. Run the local API.

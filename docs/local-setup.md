@@ -59,10 +59,11 @@ export BEATFINDER_STATE_DIR=.beatfinder_state
 export BEATFINDER_SUPABASE_MODE=local
 ```
 
-2. Build the local fixture dataset.
+2. Build the local fixture beat dataset and producer discovery seed index.
 
 ```bash
 $BEATFINDER_PYTHON_BIN scripts/ingest/load_fixtures.py
+$BEATFINDER_PYTHON_BIN scripts/discovery/load_producer_seeds.py
 ```
 
 3. Start the API.
