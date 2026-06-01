@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+from backend.discovery.producer_channels import ProducerDiscoveryStore
 from backend.ingest.service import IngestService
 from backend.retrieval.service import RetrievalService
 from backend.storage.runtime import build_runtime_store
@@ -29,9 +30,10 @@ def main() -> int:
 
     payload = read_json_from_stdin()
     store = build_runtime_store(args.state_dir)
+    discovery_store = ProducerDiscoveryStore(args.state_dir or getattr(store, "root", None))
     reasoner = GemmaReasoner()
     ingest_service = IngestService(store, reasoner=reasoner)
-    retrieval_service = RetrievalService(store, reasoner=reasoner)
+    retrieval_service = RetrievalService(store, reasoner=reasoner, discovery_store=discovery_store)
 
     if args.command == "ingest":
         result = ingest_service.ingest_beat(payload)

@@ -10,6 +10,8 @@ from backend.core.types import (
     QueryRecord,
     QueryResultRecord,
 )
+from backend.discovery.producer_channels import ProducerDiscoveryStore
+from backend.discovery.search_enrichment import enrich_search_discovery
 from backend.rerank.scoring import build_metadata_breakdown, build_search_result, confidence_label, fuse_scores
 from backend.storage.base import BeatStore
 from models.audio.features import audio_features_to_embedding, extract_audio_features
@@ -19,10 +21,16 @@ from models.metadata.gemma_adapter import GemmaReasoner
 
 
 class RetrievalService:
-    def __init__(self, store: BeatStore, reasoner: GemmaReasoner | None = None) -> None:
+    def __init__(
+        self,
+        store: BeatStore,
+        reasoner: GemmaReasoner | None = None,
+        discovery_store: ProducerDiscoveryStore | None = None,
+    ) -> None:
         self.store = store
         self.reasoner = reasoner or GemmaReasoner()
         self.text_embedder = build_text_embedding_provider()
+        self.discovery_store = discovery_store
 
     def search_text(self, payload: dict[str, Any]) -> dict[str, Any]:
         query_text = str(payload.get("query") or payload.get("raw_text") or "").strip()
@@ -40,6 +48,7 @@ class RetrievalService:
             query_signature=None,
             query_bpm=None,
             top_n=int(payload.get("top_n", 5)),
+            detected_producer_tag=extract_detected_producer_tag(payload),
         )
 
     def search_audio(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -61,6 +70,7 @@ class RetrievalService:
             query_signature=query_signature,
             query_bpm=audio_features.tempo_bpm,
             top_n=int(payload.get("top_n", 5)),
+            detected_producer_tag=extract_detected_producer_tag(payload),
         )
 
     def search_hybrid(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -102,6 +112,7 @@ class RetrievalService:
             query_signature=query_signature,
             query_bpm=query_bpm,
             top_n=int(payload.get("top_n", 5)),
+            detected_producer_tag=extract_detected_producer_tag(payload),
         )
 
     def record_feedback(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -133,6 +144,7 @@ class RetrievalService:
         query_signature: dict[str, object] | None,
         query_bpm: float | None,
         top_n: int,
+        detected_producer_tag: str | None,
     ) -> dict[str, Any]:
         joined_beats, candidate_pool_sizes = self._load_candidate_beats(
             raw_text=raw_text,
@@ -146,6 +158,13 @@ class RetrievalService:
                 "results": [],
                 "confidence": "no_confident_exact_match",
                 "candidate_pool_sizes": candidate_pool_sizes,
+                "discovery": enrich_search_discovery(
+                    query_metadata=query_metadata,
+                    detected_producer_tag=detected_producer_tag,
+                    matched_candidates=[],
+                    producer_discovery_store=self.discovery_store,
+                    query_text=raw_text,
+                ).to_dict(),
             }
 
         embedding_candidates: list[dict[str, Any]] = []
@@ -266,17 +285,26 @@ class RetrievalService:
 
         self.store.save_query(query_record, query_result_records)
         overall_confidence = final_results[0].confidence_label if final_results else "no_confident_exact_match"
+        result_payloads = [result.to_dict() for result in final_results]
+        discovery = enrich_search_discovery(
+            query_metadata=query_metadata,
+            detected_producer_tag=detected_producer_tag,
+            matched_candidates=result_payloads,
+            producer_discovery_store=self.discovery_store,
+            query_text=raw_text,
+        ).to_dict()
         return {
             "query_id": query_record.id,
             "query_type": query_type,
             "confidence": overall_confidence,
-            "results": [result.to_dict() for result in final_results],
+            "results": result_payloads,
             "candidate_pool_sizes": {
                 "embedding": candidate_pool_sizes["embedding"],
                 "metadata": candidate_pool_sizes["metadata"],
                 "signature": len(ranked_signature),
                 "merged": candidate_pool_sizes["merged"],
             },
+            "discovery": discovery,
         }
 
     def _load_candidate_beats(
@@ -322,3 +350,11 @@ class RetrievalService:
             "signature": 0,
             "merged": len(merged_ids),
         }
+
+
+def extract_detected_producer_tag(payload: dict[str, Any]) -> str | None:
+    for key in ("detected_producer_tag", "producer_tag", "producer_tag_text"):
+        value = str(payload.get(key) or "").strip()
+        if value:
+            return value
+    return None

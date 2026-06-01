@@ -103,6 +103,32 @@ The system must not say the beat is definitely sold or deleted. The status is in
 
 `not_yet_indexed` remains in the reason list until the channel checkpoint says the channel was fully backfilled. Even then, BeatFinder still keeps uncertainty in the result because a beat can be renamed, moved to BeatStars or Traktrain, private, deleted, or misattributed by a false-positive producer tag.
 
+## Search Response Enrichment
+
+`enrich_search_discovery()` connects the local discovery index to ordinary BeatFinder search responses. It runs after the main hybrid retrieval/reranking step and adds a top-level optional `discovery` object to `/search/audio`, `/search/text`, and `/search/hybrid` responses.
+
+The enrichment layer accepts the detected producer tag, expanded query metadata, ranked BeatFinder candidates, and the local `ProducerDiscoveryStore`. It does not call live YouTube, download audio, or use external APIs.
+
+The response can include:
+
+- `detected_producer_tag`
+- `matched_producer_channel`
+- `producer_tag_confidence`
+- `youtube_video_match`
+- `discovery_status`
+- `possible_reasons`
+- `evidence`
+- `recommended_next_searches`
+
+`discovery_status` is one of:
+
+- `found_candidate` when an indexed producer YouTube video plausibly matches the query or top BeatFinder candidate.
+- `possible_sold_or_deleted` when a producer tag matches a known producer but no indexed visible video matches.
+- `insufficient_evidence` when the tag is weak, generic, or unmatched.
+- `not_applicable` when no detected producer tag was supplied.
+
+Recommended follow-up searches are generated from matched producer aliases, hashtags, artist combos, city/region combos, and type-beat phrases, such as `prod salishan type beat`, `philly type beat`, or `sza summer walker type beat`.
+
 ## Storage
 
 The verified v1 path stores discovery data in local JSON tables under the BeatFinder state directory. A separate Supabase migration, `202605310001_producer_discovery_v1.sql`, defines future production tables without changing the core beat retrieval tables.

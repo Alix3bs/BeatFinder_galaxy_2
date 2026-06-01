@@ -83,6 +83,7 @@ Request:
 ```json
 {
   "query": "sza x summer walker type beat",
+  "detected_producer_tag": "prod by salishan",
   "top_n": 5
 }
 ```
@@ -94,6 +95,7 @@ JSON request:
 ```json
 {
   "audio_path": "backend/tests/generated_audio/late_nights.wav",
+  "detected_producer_tag": "prod by salishan",
   "top_n": 5
 }
 ```
@@ -125,6 +127,7 @@ JSON request:
 {
   "query": "sza x summer walker type beat",
   "audio_path": "backend/tests/generated_audio/late_nights.wav",
+  "detected_producer_tag": "prod by salishan",
   "top_n": 5
 }
 ```
@@ -159,6 +162,7 @@ Every search endpoint returns:
 - `confidence`
 - `candidate_pool_sizes`
 - `results[]`
+- `discovery` optional producer discovery enrichment
 
 Each result includes:
 
@@ -170,3 +174,51 @@ Each result includes:
 - `metadata_score`
 - `score_breakdown`
 - `explanation`
+
+`discovery` is additive and safe for existing clients to ignore. It is populated from local/mock producer discovery data only; BeatFinder does not call live YouTube during search. If no detected producer tag is supplied, `discovery.discovery_status` is `not_applicable`.
+
+Example discovery block:
+
+```json
+{
+  "detected_producer_tag": "prod by salishan",
+  "matched_producer_channel": {
+    "id": "uuid",
+    "channel_id": "prod.salishan",
+    "channel_url": "https://youtube.com/@prod.salishan",
+    "producer_name": "prod.salishan",
+    "aliases": ["prod.salishan"]
+  },
+  "producer_tag_confidence": 0.9,
+  "youtube_video_match": null,
+  "discovery_status": "possible_sold_or_deleted",
+  "possible_reasons": [
+    "sold_and_deleted",
+    "unlisted",
+    "private",
+    "renamed",
+    "hosted_on_beatstars",
+    "hosted_on_traktrain",
+    "not_yet_indexed",
+    "producer_tag_false_positive"
+  ],
+  "evidence": [
+    "detected producer tag normalized to 'prod by salishan'",
+    "matched producer channel 'prod.salishan'",
+    "no visible matching beat upload found in indexed candidates",
+    "status is possible only, not certain"
+  ],
+  "recommended_next_searches": [
+    "prod salishan type beat",
+    "philly type beat",
+    "sza summer walker type beat"
+  ]
+}
+```
+
+Discovery status values:
+
+- `found_candidate`: the producer tag matched a known channel and an indexed YouTube beat video plausibly matches the query or top BeatFinder candidate.
+- `possible_sold_or_deleted`: the producer tag matched a known channel, but no matching indexed visible video was found. This is never a certainty claim.
+- `insufficient_evidence`: the detected producer tag is too weak, generic, or unmatched.
+- `not_applicable`: no detected producer tag was supplied.
