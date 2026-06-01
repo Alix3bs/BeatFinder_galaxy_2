@@ -29,7 +29,9 @@ Later discovery expands beyond the manual list through hashtag seeds, artist-com
 - stores public/unavailable visibility status when provided by the client
 - extracts metadata from title, description, and hashtags
 
-The module does not implement live YouTube scraping. A production adapter should use permitted APIs and respect rate limits, robots/terms, and copyright boundaries.
+The local test path uses `MockYouTubeChannelClient` and fixture data from `backend/tests/fixtures/mock_youtube_channel_videos.json`. That fixture simulates producer uploads such as `Burgermarty x I Luv Bani Type Beat - Slide`, `Philly x Dallas Type Beat - Motion`, and `Milwaukee x Detroit Type Beat - Fast Money` without touching YouTube.
+
+The module does not implement live YouTube scraping. A future live mode should use permitted YouTube APIs only when a YouTube API key is provided through environment configuration, should be disabled by default, and should respect rate limits, robots/terms, and copyright boundaries.
 
 ## Metadata Extraction
 
@@ -53,6 +55,8 @@ For each video, the backfill uses BeatFinder's existing metadata parser to extra
 - `burgermarty x iluvbani type beat` -> `burgermarty iluvbani type beat producers`
 
 These seeds are stored locally as `DiscoverySeed` records and can be processed later by an approved search/provider adapter.
+
+Seed producers from `data/seeds/producer_youtube_profiles.txt` provide the first channel graph. Mock backfill then proves how later discovery can expand from hashtags, artist combos, city/region combos, and eventually related producer-channel signals before any live API integration exists.
 
 ## City And Scene Classification
 

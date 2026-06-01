@@ -1,0 +1,60 @@
+{
+  "channels": [
+    {
+      "channel_id": "mockproducer",
+      "channel_url": "https://youtube.com/@mockproducer",
+      "producer_name": "Mock Producer",
+      "videos": [
+        {
+          "video_id": "mock-001",
+          "title": "Burgermarty x I Luv Bani Type Beat - Slide",
+          "description": "Newest drop. #phillytypebeat Buy: https://beatstars.com/mockproducer/slide",
+          "upload_date": "2026-05-31",
+          "visibility_status": "public"
+        },
+        {
+          "video_id": "mock-002",
+          "title": "Philly x Dallas Type Beat - Motion",
+          "description": "City combo beat #phillytypebeat",
+          "upload_date": "2026-05-30",
+          "visibility_status": "public"
+        },
+        {
+          "video_id": "mock-003",
+          "title": "Arkansas x Detroit Type Beat - Trenches",
+          "description": "Regional bounce #detroittypebeat",
+          "upload_date": "2026-05-29",
+          "visibility_status": "public"
+        },
+        {
+          "video_id": "mock-004",
+          "title": "SZA x Summer Walker Type Beat - Rain",
+          "description": "RNB type beat #rnbtypebeat",
+          "upload_date": "2026-05-28",
+          "visibility_status": "public"
+        },
+        {
+          "video_id": "mock-005",
+          "title": "Shadstackz x TSE Vic Type Beat - Scam Talk",
+          "description": "Producer combo inspired #phillytypebeat",
+          "upload_date": "2026-05-27",
+          "visibility_status": "public"
+        },
+        {
+          "video_id": "mock-006",
+          "title": "New York Drill Type Beat - Midnight Rush",
+          "description": "Drill scene metadata #newyorkdrilltypebeat",
+          "upload_date": "2026-05-26",
+          "visibility_status": "public"
+        },
+        {
+          "video_id": "mock-007",
+          "title": "Milwaukee x Detroit Type Beat - Fast Money",
+          "description": "Midwest city combo #milwaukeetypebeat",
+          "upload_date": "2026-05-25",
+          "visibility_status": "public"
+        }
+      ]
+    }
+  ]
+}

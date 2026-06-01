@@ -9,6 +9,7 @@ from .producer_channels import (
     ProducerDiscoveryStore,
 )
 from .producer_seed_loader import ProducerSeedLoadResult, load_producer_seed_file, normalize_producer_profile_url
+from .mock_youtube_client import MockYouTubeChannelClient
 from .youtube_discovery import (
     ChannelBackfillResult,
     YouTubeBeatBackfill,
@@ -20,6 +21,7 @@ __all__ = [
     "ChannelBackfillResult",
     "DiscoveryEdge",
     "DiscoverySeed",
+    "MockYouTubeChannelClient",
     "PossibleSoldOrDeletedBeat",
     "ProducerBeatVideo",
     "ProducerChannel",
