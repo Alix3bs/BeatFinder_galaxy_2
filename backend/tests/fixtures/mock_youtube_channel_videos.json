@@ -55,6 +55,27 @@
           "visibility_status": "public"
         }
       ]
+    },
+    {
+      "channel_id": "prod.salishan",
+      "channel_url": "https://youtube.com/@prod.salishan",
+      "producer_name": "prod.salishan",
+      "videos": [
+        {
+          "video_id": "salishan-001",
+          "title": "SZA x Summer Walker Type Beat - Late Nights",
+          "description": "Fixture-backed local API test video. #phillytypebeat",
+          "upload_date": "2026-05-31",
+          "visibility_status": "public"
+        },
+        {
+          "video_id": "salishan-002",
+          "title": "Philly Type Beat - Broad Street",
+          "description": "Older local discovery fixture. #phillytypebeat",
+          "upload_date": "2026-05-30",
+          "visibility_status": "public"
+        }
+      ]
     }
   ]
 }

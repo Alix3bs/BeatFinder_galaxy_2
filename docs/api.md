@@ -15,8 +15,20 @@ source .venv/bin/activate
 export BEATFINDER_STATE_DIR=.beatfinder_state
 python scripts/ingest/load_fixtures.py
 python scripts/discovery/load_producer_seeds.py
+python scripts/discovery/load_mock_youtube_backfill.py
 bash scripts/dev/start_local.sh
 ```
+
+Then verify producer discovery can return an indexed mock YouTube match:
+
+```bash
+curl -s -X POST http://127.0.0.1:8787/search/text \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"sza x summer walker type beat","detected_producer_tag":"prod by salishan","top_n":3}' \
+  | python -m json.tool
+```
+
+With the mock backfill loaded, the response should include `discovery.discovery_status = "found_candidate"` and a non-null `discovery.youtube_video_match` whose title includes `SZA x Summer Walker Type Beat`.
 
 ## `GET /health`
 

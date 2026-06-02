@@ -64,6 +64,7 @@ export BEATFINDER_SUPABASE_MODE=local
 ```bash
 $BEATFINDER_PYTHON_BIN scripts/ingest/load_fixtures.py
 $BEATFINDER_PYTHON_BIN scripts/discovery/load_producer_seeds.py
+$BEATFINDER_PYTHON_BIN scripts/discovery/load_mock_youtube_backfill.py
 ```
 
 3. Start the API.

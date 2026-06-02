@@ -15,10 +15,13 @@ source .venv/bin/activate
 export BEATFINDER_STATE_DIR=.beatfinder_state
 python scripts/ingest/load_fixtures.py
 python scripts/discovery/load_producer_seeds.py
+python scripts/discovery/load_mock_youtube_backfill.py
 bash scripts/dev/start_local.sh
 ```
 
 `scripts/discovery/load_producer_seeds.py` creates useful local aliases from YouTube handles so producer tags can match during search enrichment. For example, `@prod.salishan` adds `prod.salishan`, `prod salishan`, and `salishan`; `@beatsbyslimy` adds `beatsbyslimy`, `beats by slimy`, and `slimy`; `@babyonthetrack` adds `babyonthetrack` and `baby on the track`.
+
+`scripts/discovery/load_mock_youtube_backfill.py` then loads fixture-backed public beat videos into `ProducerDiscoveryStore` through `MockYouTubeChannelClient` and `YouTubeBeatBackfill`. It never calls live YouTube. The local fixture includes a `prod.salishan` video titled `SZA x Summer Walker Type Beat - Late Nights`, so an API query with `detected_producer_tag = "prod by salishan"` and `query = "sza x summer walker type beat"` can return `discovery_status = "found_candidate"` with a non-null `youtube_video_match`.
 
 Accepted seed forms include:
 
@@ -122,6 +125,8 @@ The system must not say the beat is definitely sold or deleted. The status is in
 The enrichment layer accepts the detected producer tag, expanded query metadata, ranked BeatFinder candidates, and the local `ProducerDiscoveryStore`. It does not call live YouTube, download audio, or use external APIs.
 
 If a local API response says a tag such as `prod by salishan` did not match a known producer alias, first confirm that `python scripts/discovery/load_producer_seeds.py` was run with the same `BEATFINDER_STATE_DIR` used by the API process.
+
+If the tag matches but `youtube_video_match` is null and evidence says `indexed visible video candidates checked: 0`, run `python scripts/discovery/load_mock_youtube_backfill.py` against the same `BEATFINDER_STATE_DIR` before restarting or querying the local API.
 
 The response can include:
 
