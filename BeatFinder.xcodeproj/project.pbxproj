@@ -79,6 +79,10 @@
 		EE1BE85E2F340EFA00816C32 /* UserModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1BE81E2F340EFA00816C32 /* UserModel.swift */; };
 		EE1BE85F2F340EFA00816C32 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EE1BE7DE2F340EFA00816C32 /* Assets.xcassets */; };
 		EE90B5652F2F9F830007D2DD /* SoundmapDiscView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE90B5642F2F9F830007D2DD /* SoundmapDiscView.swift */; };
+		5EAE79583752C4966F6639FB /* BeatFinderAPIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1EF954681860E5BAC0D6F4 /* BeatFinderAPIModels.swift */; };
+		A17F52B964B501D53F48E7E1 /* BeatFinderAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F25A78D5301FF0AEDC0D92 /* BeatFinderAPIClient.swift */; };
+		B27CBFFDB26A08565DB391C9 /* BeatFinderBackendTestViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01CAE9F99B7832FEE6DEAC2D /* BeatFinderBackendTestViewModel.swift */; };
+		85F0D76BDC7ED999CE951D8D /* BeatFinderBackendTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09CF617691BBC49A2579A3BA /* BeatFinderBackendTestView.swift */; };
 		EEC18AD22F5DBF8200BB237E /* BeatFinder logo.png in Resources */ = {isa = PBXBuildFile; fileRef = EEC18AD12F5DBF8200BB237E /* BeatFinder logo.png */; };
 		EFAA00000000000000000001 /* AnimatedGalaxyBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA00000000000000000011 /* AnimatedGalaxyBackground.swift */; };
 		EFAA00000000000000000002 /* AuthGateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA00000000000000000012 /* AuthGateView.swift */; };
@@ -193,6 +197,10 @@
 		EE1BE81D2F340EFA00816C32 /* UploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadView.swift; sourceTree = "<group>"; };
 		EE1BE81E2F340EFA00816C32 /* UserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserModel.swift; sourceTree = "<group>"; };
 		EE90B5642F2F9F830007D2DD /* SoundmapDiscView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundmapDiscView.swift; sourceTree = "<group>"; };
+		6E1EF954681860E5BAC0D6F4 /* BeatFinderAPIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatFinderAPIModels.swift; sourceTree = "<group>"; };
+		60F25A78D5301FF0AEDC0D92 /* BeatFinderAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatFinderAPIClient.swift; sourceTree = "<group>"; };
+		01CAE9F99B7832FEE6DEAC2D /* BeatFinderBackendTestViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatFinderBackendTestViewModel.swift; sourceTree = "<group>"; };
+		09CF617691BBC49A2579A3BA /* BeatFinderBackendTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatFinderBackendTestView.swift; sourceTree = "<group>"; };
 		EEC18AD12F5DBF8200BB237E /* BeatFinder logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "BeatFinder logo.png"; sourceTree = "<group>"; };
 		EFAA00000000000000000011 /* AnimatedGalaxyBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedGalaxyBackground.swift; sourceTree = "<group>"; };
 		EFAA00000000000000000012 /* AuthGateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateView.swift; sourceTree = "<group>"; };
@@ -296,6 +304,10 @@
 				EE1BE7E22F340EFA00816C32 /* BeatDiscView.swift */,
 				EE1BE7E32F340EFA00816C32 /* BeatFeedCardView.swift */,
 				EE1BE7E42F340EFA00816C32 /* BeatFinderApp.swift */,
+				60F25A78D5301FF0AEDC0D92 /* BeatFinderAPIClient.swift */,
+				6E1EF954681860E5BAC0D6F4 /* BeatFinderAPIModels.swift */,
+				09CF617691BBC49A2579A3BA /* BeatFinderBackendTestView.swift */,
+				01CAE9F99B7832FEE6DEAC2D /* BeatFinderBackendTestViewModel.swift */,
 				EE1BE7E52F340EFA00816C32 /* BeatPlayerView.swift */,
 				EFAA00000000000000000014 /* BeatResultModel+FeedBeat.swift */,
 				EFAA00000000000000000015 /* BeatResultModel+Identifiable.swift */,
@@ -570,6 +582,10 @@
 				EE1BE8242F340EFA00816C32 /* BeatDiscView.swift in Sources */,
 				EE1BE8252F340EFA00816C32 /* BeatFeedCardView.swift in Sources */,
 				EE1BE8262F340EFA00816C32 /* BeatFinderApp.swift in Sources */,
+				A17F52B964B501D53F48E7E1 /* BeatFinderAPIClient.swift in Sources */,
+				5EAE79583752C4966F6639FB /* BeatFinderAPIModels.swift in Sources */,
+				85F0D76BDC7ED999CE951D8D /* BeatFinderBackendTestView.swift in Sources */,
+				B27CBFFDB26A08565DB391C9 /* BeatFinderBackendTestViewModel.swift in Sources */,
 				EE1BE8272F340EFA00816C32 /* BeatPlayerView.swift in Sources */,
 				EFAA00000000000000000004 /* BeatResultModel+FeedBeat.swift in Sources */,
 				EFAA00000000000000000005 /* BeatResultModel+Identifiable.swift in Sources */,

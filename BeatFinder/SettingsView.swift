@@ -62,7 +62,13 @@ struct SettingsView: View {
             SettingsRowModel(title: "Privacy Policy", systemImage: "doc.text.magnifyingglass", action: .destination(.privacyPolicy))
         ]),
         SettingsSectionModel(rows: [
-            SettingsRowModel(title: "Join BeatFinder AI Testers", systemImage: "testtube.2", action: .destination(.bandlabTesters))
+            SettingsRowModel(title: "Join BeatFinder AI Testers", systemImage: "testtube.2", action: .destination(.bandlabTesters)),
+            SettingsRowModel(
+                title: "Backend API Test",
+                systemImage: "antenna.radiowaves.left.and.right",
+                accentColor: BeatColors.accentBlue,
+                action: .destination(.backendApiTest)
+            )
         ]),
         SettingsSectionModel(
             rows: [
@@ -291,6 +297,8 @@ struct SettingsView: View {
             )
         case .bandlabTesters:
             BandLabTestersSettingsView()
+        case .backendApiTest:
+            BeatFinderBackendTestView()
         }
     }
 
@@ -371,6 +379,7 @@ enum SettingsDestination: Hashable {
     case termsOfUse
     case privacyPolicy
     case bandlabTesters
+    case backendApiTest
 }
 
 private struct SettingsToastBanner: View {
