@@ -18,9 +18,10 @@ final class BeatFinderBackendTestViewModel: ObservableObject {
 
     private let client: BeatFinderBackendAPIClientProtocol
 
-    init(client: BeatFinderBackendAPIClientProtocol = BeatFinderAPIClient()) {
-        self.client = client
-        self.baseURL = client.baseURL
+    init(client: BeatFinderBackendAPIClientProtocol? = nil) {
+        let resolvedClient = client ?? BeatFinderAPIClient()
+        self.client = resolvedClient
+        self.baseURL = resolvedClient.baseURL
     }
 
     var isLoading: Bool {
