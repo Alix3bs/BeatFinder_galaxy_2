@@ -75,6 +75,12 @@ The text search request uses:
 
 The screen displays the top beat title, confidence, detected producer tag, matched producer channel, producer tag confidence, discovery status, YouTube video match title, possible reasons, and recommended next searches.
 
+## CI Coverage
+
+GitHub Actions now runs backend lint/unit/eval checks, typechecks the Swift API client contract, and attempts an iOS simulator build on a macOS runner. This is the preferred cloud verification path when local Mac storage makes Xcode unreliable.
+
+See `docs/ci.md` for the workflow details and the Actions link.
+
 ## Notes
 
 `POST /search/audio` and `POST /search/hybrid` are represented in `BeatFinderAPIClient` with JSON-ready request structs for later app wiring. Multipart audio upload can be added later without changing the response model contract.

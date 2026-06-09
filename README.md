@@ -106,6 +106,7 @@ scripts/
   eval/                evaluation harness
 docs/
   architecture.md
+  ci.md
   ios-api-integration.md
   local-setup.md
   producer-discovery.md
