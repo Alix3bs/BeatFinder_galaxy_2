@@ -2,13 +2,15 @@
 
 BeatFinder uses GitHub Actions to verify the backend and iOS project in the cloud, so local Mac storage limits do not block every build check.
 
-## Workflow
+## Main Workflow
 
-The dedicated workflow is:
+BeatFinder has one main maintained CI workflow:
 
 ```text
 .github/workflows/beatfinder-ci.yml
 ```
+
+The older duplicate `.github/workflows/ci.yml` was removed so the repository does not run two competing workflows with different dependency setup.
 
 It runs on:
 
@@ -16,11 +18,11 @@ It runs on:
 - pull requests targeting `beatfinder-system-v1`
 - manual `workflow_dispatch`
 
-The workflow uses `macos-latest` because the iOS simulator build requires Xcode. If GitHub changes the available simulator set, the workflow prints `xcrun simctl list devices available` and selects the first available iPhone simulator, preferring `iPhone 16`, then `iPhone 15`, then `iPhone 14`.
+The workflow uses `macos-latest` because the iOS simulator build requires Xcode. If GitHub changes the available simulator set, the workflow prints `xcrun simctl list devices available`, reads the simulator list as JSON, and selects an available iPhone simulator by UDID. It prefers `iPhone 16`, then `iPhone 15`, then `iPhone 14`, and otherwise falls back to the first available iPhone simulator.
 
 ## Backend Checks
 
-The backend job installs Python and Node, exports local runtime paths, then runs:
+The backend job installs Python dependencies from `requirements.txt`, installs Node for the TypeScript API checks, exports local runtime paths, forces `BEATFINDER_SUPABASE_MODE=local`, then runs:
 
 ```bash
 python3 scripts/dev/lint.py
@@ -50,10 +52,11 @@ xcodebuild -version
 xcodebuild -list -project BeatFinder.xcodeproj
 plutil -lint BeatFinder.xcodeproj/project.pbxproj
 swiftc -typecheck BeatFinder/BeatFinderAPIModels.swift BeatFinder/BeatFinderAPIClient.swift BeatFinder/BeatFinderBackendTestViewModel.swift
-xcodebuild -project BeatFinder.xcodeproj -scheme BeatFinder -destination "platform=iOS Simulator,name=<selected iPhone>" -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+xcrun simctl list devices available
+xcodebuild -project BeatFinder.xcodeproj -scheme BeatFinder -destination "platform=iOS Simulator,id=<selected simulator UDID>" -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
 ```
 
-The simulator build disables signing so CI does not need physical-device certificates or production signing settings.
+The simulator build disables signing so CI does not need physical-device certificates or production signing settings. If `xcodebuild` fails, the workflow prints the exact command, selected simulator, and the last 200 build-log lines so the failure is actionable.
 
 ## What CI Does Not Yet Cover
 
@@ -72,3 +75,5 @@ After pushing to GitHub, open the repository Actions tab and choose `BeatFinder 
 ```text
 https://github.com/Alix3bs/BeatFinder_galaxy_2/actions
 ```
+
+For the next run after a CI change, check the newest `BeatFinder CI` run on branch `beatfinder-system-v1`.

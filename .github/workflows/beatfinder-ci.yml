@@ -47,13 +47,22 @@ jobs:
           echo "BEATFINDER_NODE_BIN=$(command -v node)" >> "$GITHUB_ENV"
 
       - name: Backend lint
-        run: python3 scripts/dev/lint.py
+        run: |
+          set -euo pipefail
+          echo "Running: python3 scripts/dev/lint.py"
+          python3 scripts/dev/lint.py
 
       - name: Backend unit tests
-        run: python3 -m unittest discover -s backend/tests -p 'test_*.py' -v
+        run: |
+          set -euo pipefail
+          echo "Running: python3 -m unittest discover -s backend/tests -p 'test_*.py' -v"
+          python3 -m unittest discover -s backend/tests -p 'test_*.py' -v
 
       - name: Backend fixture evaluation
-        run: python3 scripts/eval/run_eval.py
+        run: |
+          set -euo pipefail
+          echo "Running: python3 scripts/eval/run_eval.py"
+          python3 scripts/eval/run_eval.py
 
       - name: Local API smoke test
         run: |
@@ -125,13 +134,21 @@ jobs:
           xcodebuild -version
 
       - name: List Xcode schemes
-        run: xcodebuild -list -project BeatFinder.xcodeproj
+        run: |
+          set -euo pipefail
+          echo "Running: xcodebuild -list -project BeatFinder.xcodeproj"
+          xcodebuild -list -project BeatFinder.xcodeproj
 
       - name: Project file lint
-        run: plutil -lint BeatFinder.xcodeproj/project.pbxproj
+        run: |
+          set -euo pipefail
+          echo "Running: plutil -lint BeatFinder.xcodeproj/project.pbxproj"
+          plutil -lint BeatFinder.xcodeproj/project.pbxproj
 
       - name: Swift API contract typecheck
         run: |
+          set -euo pipefail
+          echo "Running Swift API contract typecheck"
           swiftc \
             -module-cache-path "$RUNNER_TEMP/beatfinder-swift-module-cache" \
             -typecheck \
@@ -144,38 +161,65 @@ jobs:
         run: |
           set -euo pipefail
           xcrun simctl list devices available
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/available-simulators.json"
 
-          simulator_name=""
-          for preferred in "iPhone 16" "iPhone 15" "iPhone 14"; do
-            if xcrun simctl list devices available | grep -q "$preferred ("; then
-              simulator_name="$preferred"
-              break
-            fi
-          done
+          python3 - "$RUNNER_TEMP/available-simulators.json" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import sys
 
-          if [ -z "$simulator_name" ]; then
-            simulator_name="$(
-              xcrun simctl list devices available |
-              awk -F '[()]' '/iPhone/ && /\((Booted|Shutdown)\)/ { gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1; exit }'
-            )"
-          fi
+          simulator_json_path = sys.argv[1]
+          github_output_path = sys.argv[2]
+          preferred_names = ["iPhone 16", "iPhone 15", "iPhone 14"]
 
-          if [ -z "$simulator_name" ]; then
-            echo "No available iPhone simulator found."
-            exit 1
-          fi
+          with open(simulator_json_path, "r", encoding="utf-8") as handle:
+              payload = json.load(handle)
 
-          echo "Selected simulator: $simulator_name"
-          echo "name=$simulator_name" >> "$GITHUB_OUTPUT"
+          devices = []
+          for runtime_devices in payload.get("devices", {}).values():
+              for device in runtime_devices:
+                  if device.get("isAvailable") and device.get("name", "").startswith("iPhone"):
+                      devices.append(device)
+
+          selected = None
+          for preferred_name in preferred_names:
+              selected = next((device for device in devices if device.get("name") == preferred_name), None)
+              if selected:
+                  break
+
+          if selected is None and devices:
+              selected = devices[0]
+
+          if selected is None:
+              raise SystemExit("No available iPhone simulator found.")
+
+          name = selected["name"]
+          udid = selected["udid"]
+          print(f"Selected simulator: {name} ({udid})")
+          with open(github_output_path, "a", encoding="utf-8") as handle:
+              handle.write(f"name={name}\n")
+              handle.write(f"udid={udid}\n")
+          PY
 
       - name: Build BeatFinder for iOS simulator
         run: |
-          xcodebuild \
+          set -euo pipefail
+          destination="platform=iOS Simulator,id=${{ steps.simulator.outputs.udid }}"
+
+          echo "Selected simulator: ${{ steps.simulator.outputs.name }} (${{ steps.simulator.outputs.udid }})"
+          echo "Running xcodebuild with destination: $destination"
+          echo "Command:"
+          echo "xcodebuild -project BeatFinder.xcodeproj -scheme BeatFinder -destination \"$destination\" -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=\"\" build"
+
+          if ! xcodebuild \
             -project BeatFinder.xcodeproj \
             -scheme BeatFinder \
-            -destination "platform=iOS Simulator,name=${{ steps.simulator.outputs.name }}" \
+            -destination "$destination" \
             -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            build
+            build 2>&1 | tee "$RUNNER_TEMP/beatfinder-xcodebuild.log"; then
+            echo "::error::BeatFinder simulator build failed. Showing last 200 log lines."
+            tail -200 "$RUNNER_TEMP/beatfinder-xcodebuild.log"
+            exit 1
+          fi
