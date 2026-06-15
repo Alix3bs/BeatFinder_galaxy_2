@@ -18,7 +18,7 @@ It runs on:
 - pull requests targeting `beatfinder-system-v1`
 - manual `workflow_dispatch`
 
-The workflow uses `macos-latest` because the iOS simulator build requires Xcode. If GitHub changes the available simulator set, the workflow prints `xcrun simctl list devices available`, reads the simulator list as JSON, and selects an available iPhone simulator by UDID. It prefers `iPhone 16`, then `iPhone 15`, then `iPhone 14`, and otherwise falls back to the first available iPhone simulator.
+The workflow uses `macos-latest` because the iOS simulator build requires Xcode. The iOS job prints available simulator devices for diagnostics, but the main compile check uses the generic iOS Simulator destination so it does not depend on a specific iPhone name or UDID being available on GitHub-hosted runners.
 
 ## Backend Checks
 
@@ -43,6 +43,8 @@ It also performs a local-only API smoke test:
 
 This smoke test does not call live YouTube, Hugging Face, Supabase, or any external beat source.
 
+The backend job has been stable in recent CI runs; if it fails, start with dependency installation, Node setup, or the local API smoke-test log.
+
 ## iOS Checks
 
 The iOS job runs:
@@ -53,14 +55,14 @@ xcodebuild -list -project BeatFinder.xcodeproj
 plutil -lint BeatFinder.xcodeproj/project.pbxproj
 swiftc -typecheck BeatFinder/BeatFinderAPIModels.swift BeatFinder/BeatFinderAPIClient.swift BeatFinder/BeatFinderBackendTestViewModel.swift
 xcrun simctl list devices available
-xcodebuild -project BeatFinder.xcodeproj -scheme BeatFinder -destination "platform=iOS Simulator,id=<selected simulator UDID>" -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+xcodebuild -project BeatFinder.xcodeproj -scheme BeatFinder -destination "generic/platform=iOS Simulator" -sdk iphonesimulator -derivedDataPath "$RUNNER_TEMP/BeatFinderDerivedData" -resultBundlePath "$RUNNER_TEMP/BeatFinderBuild.xcresult" -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
 ```
 
-The simulator build disables signing so CI does not need physical-device certificates or production signing settings. If `xcodebuild` fails, the workflow prints the exact command, selected simulator, and the last 200 build-log lines so the failure is actionable.
+The simulator build disables signing so CI does not need physical-device certificates or production signing settings. If `xcodebuild` fails, the workflow saves the full build log, uploads the log and result bundle as artifacts, prints the last 300 log lines, and highlights common failure patterns such as `error:`, `BUILD FAILED`, missing destinations, missing modules, provisioning, and signing.
 
 ## What CI Does Not Yet Cover
 
-GitHub Actions currently checks compile/build behavior and backend retrieval behavior. Full interactive UI testing still requires either:
+GitHub Actions currently checks compile/build behavior and backend retrieval behavior. Full interactive simulator behavior still requires either:
 
 - local Xcode and Simulator
 - future XCUITest coverage in CI
