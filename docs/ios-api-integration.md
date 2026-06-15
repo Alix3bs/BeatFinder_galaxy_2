@@ -10,6 +10,7 @@ BeatFinder iOS now has a local backend contract layer for the hybrid retrieval A
 - `MatchedProducerChannel`
 - `YouTubeVideoMatch`
 - `BeatFinderBackendTestViewModel`
+- `BeatSearchViewModel`
 
 The existing app catalog model is already named `Beat`, so the backend payload beat is namespaced as `BeatFinderBackendAPI.Beat`.
 
@@ -56,7 +57,33 @@ discovery.discovery_status = found_candidate
 discovery.youtube_video_match.title includes SZA x Summer Walker Type Beat
 ```
 
-## Test From The App
+## Use The Real Search UI
+
+The main `SearchView` now calls the local BeatFinder backend through `BeatSearchViewModel` and `BeatFinderAPIClient`.
+
+For local text testing:
+
+1. Start the backend with the fixture, producer seed, and mock YouTube backfill commands above.
+2. Open the app in the iPhone Simulator.
+3. Go to the Search tab.
+4. Enter `sza x summer walker type beat` in the main query field.
+5. Enter `prod by salishan` in the optional detected producer tag field.
+6. Tap `Find Beat`.
+
+Expected local result:
+
+```text
+discovery_status = found_candidate
+matched producer channel = prod.salishan
+youtube video match title includes SZA x Summer Walker Type Beat
+recommended next searches includes prod salishan type beat
+```
+
+The result card shows the top beat title, confidence, producer tag, matched producer channel, producer tag confidence, discovery status, YouTube video match title, possible sold/deleted reasons when applicable, and recommended next searches.
+
+Audio upload and microphone search also route through `POST /search/audio` using a local base64 payload. They do not call live YouTube or download copyrighted audio.
+
+## Test From The Debug Screen
 
 Open Settings, then choose `Backend API Test`. The debug screen calls:
 
@@ -83,6 +110,6 @@ See `docs/ci.md` for the workflow details and the Actions link.
 
 ## Notes
 
-`POST /search/audio` and `POST /search/hybrid` are represented in `BeatFinderAPIClient` with JSON-ready request structs for later app wiring. Multipart audio upload can be added later without changing the response model contract.
+`POST /search/audio` is wired from the real upload/record Search UI with JSON base64 payloads. `POST /search/hybrid` is represented in `BeatFinderAPIClient` with a JSON-ready request struct for later app wiring. Multipart audio upload can be added later without changing the response model contract.
 
 This local flow uses fixture-backed beats and mock YouTube backfill only. It does not download copyrighted audio, call live YouTube, call Hugging Face, or require Supabase live credentials.

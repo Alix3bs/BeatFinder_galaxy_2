@@ -23,6 +23,27 @@ enum BeatPlatform: String, Codable, CaseIterable, Hashable {
         }
     }
 
+    init(rawPlatform: String?, sourceURL: String?) {
+        let explicit = BeatPlatform(rawPlatform: rawPlatform)
+        guard explicit == .unknown else {
+            self = explicit
+            return
+        }
+
+        let normalizedURL = (sourceURL ?? "").lowercased()
+        if normalizedURL.contains("youtube.com") || normalizedURL.contains("youtu.be") {
+            self = .youtube
+        } else if normalizedURL.contains("soundcloud.com") {
+            self = .soundcloud
+        } else if normalizedURL.contains("spotify.com") {
+            self = .spotify
+        } else if normalizedURL.contains("music.apple.com") {
+            self = .appleMusic
+        } else {
+            self = .unknown
+        }
+    }
+
     var title: String {
         switch self {
         case .youtube: return "YouTube"
@@ -59,8 +80,20 @@ enum BeatMatchVerdict: String, Codable, Hashable {
 }
 
 enum BeatSearchSource: String, Codable, Hashable {
+    case backendAPI = "backend_api"
     case edgeFunction
     case mockFallback
+
+    var badgeTitle: String {
+        switch self {
+        case .backendAPI:
+            return "API"
+        case .edgeFunction:
+            return "LIVE"
+        case .mockFallback:
+            return "MVP"
+        }
+    }
 }
 
 enum BeatSearchResultState: String, Codable, Hashable {
@@ -143,4 +176,129 @@ struct BeatSearchResponse: Codable {
     let likelyCustom: Bool
     let summary: String
     let matches: [BeatSearchMatch]
+    let backendQueryID: String?
+    let backendConfidence: String?
+    let discovery: DiscoveryEnrichment?
+
+    init(
+        query: String,
+        source: BeatSearchSource,
+        resultState: BeatSearchResultState,
+        likelyCustom: Bool,
+        summary: String,
+        matches: [BeatSearchMatch],
+        backendQueryID: String? = nil,
+        backendConfidence: String? = nil,
+        discovery: DiscoveryEnrichment? = nil
+    ) {
+        self.query = query
+        self.source = source
+        self.resultState = resultState
+        self.likelyCustom = likelyCustom
+        self.summary = summary
+        self.matches = matches
+        self.backendQueryID = backendQueryID
+        self.backendConfidence = backendConfidence
+        self.discovery = discovery
+    }
+}
+
+extension BeatSearchResponse {
+    static func backendAPI(query: String, response: SearchResponse) -> BeatSearchResponse {
+        let matches = response.results.map { result in
+            let beat = result.beat
+            let url = beat.sourceURL ?? response.discovery?.youtubeVideoMatch?.videoURL ?? ""
+            let similarity = result.rerankScore ?? result.signatureScore ?? result.embeddingScore ?? result.metadataScore ?? 0
+
+            return BeatSearchMatch(
+                id: UUID(uuidString: beat.id ?? "") ?? UUID(),
+                remoteMatchID: UUID(uuidString: beat.id ?? ""),
+                platform: BeatPlatform(rawPlatform: beat.sourcePlatform, sourceURL: url),
+                url: url,
+                title: beat.displayTitle,
+                similarity: similarity,
+                bpm: beat.bpm.map { Int($0.rounded()) },
+                key: beat.musicalKey,
+                verdict: BeatMatchVerdict.backendVerdict(
+                    confidenceLabel: result.confidenceLabel ?? response.confidence,
+                    score: similarity
+                ),
+                note: result.explanation ?? beat.producerName
+            )
+        }
+
+        let resultState = BeatSearchResultState.backendState(
+            confidence: response.confidence,
+            matches: matches,
+            discovery: response.discovery
+        )
+
+        return BeatSearchResponse(
+            query: query,
+            source: .backendAPI,
+            resultState: resultState,
+            likelyCustom: resultState == .notFound,
+            summary: backendSummary(for: resultState, discovery: response.discovery),
+            matches: matches,
+            backendQueryID: response.queryID,
+            backendConfidence: response.confidence,
+            discovery: response.discovery
+        )
+    }
+
+    private static func backendSummary(
+        for resultState: BeatSearchResultState,
+        discovery: DiscoveryEnrichment?
+    ) -> String {
+        switch discovery?.discoveryStatus {
+        case "found_candidate":
+            return "Possible match found through indexed producer discovery."
+        case "possible_sold_or_deleted":
+            return "Producer found, but no matching visible indexed video was found."
+        case "insufficient_evidence":
+            return "Producer evidence is weak. Review candidates before calling this a match."
+        default:
+            switch resultState {
+            case .exactMatch:
+                return "Likely exact match found by the BeatFinder backend."
+            case .closeMatches:
+                return "Strong candidates found. Review the ranked results."
+            case .notFound:
+                return "No confident exact match found in the current backend index."
+            }
+        }
+    }
+}
+
+private extension BeatMatchVerdict {
+    static func backendVerdict(confidenceLabel: String?, score: Double) -> BeatMatchVerdict {
+        let normalized = (confidenceLabel ?? "").lowercased()
+        if normalized.contains("exact") || score >= 0.9 {
+            return .exact
+        }
+        if normalized.contains("candidate") || score >= 0.7 {
+            return .similar
+        }
+        return .lowConfidence
+    }
+}
+
+private extension BeatSearchResultState {
+    static func backendState(
+        confidence: String?,
+        matches: [BeatSearchMatch],
+        discovery: DiscoveryEnrichment?
+    ) -> BeatSearchResultState {
+        let normalized = (confidence ?? "").lowercased()
+        if normalized.contains("exact") || matches.first?.verdict == .exact {
+            return .exactMatch
+        }
+        if discovery?.discoveryStatus == "found_candidate" {
+            return .closeMatches
+        }
+        if matches.contains(where: { $0.verdict == .similar }) {
+            return .closeMatches
+        }
+        return matches.isEmpty ? .notFound : .closeMatches
+    }
 }

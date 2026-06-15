@@ -112,6 +112,34 @@ private extension SearchView {
             .background(Color.white.opacity(0.10))
             .clipShape(RoundedRectangle(cornerRadius: BeatLayout.controlCornerRadius, style: .continuous))
 
+            HStack(spacing: 10) {
+                Image(systemName: "waveform.and.magnifyingglass")
+                    .foregroundStyle(.white.opacity(0.65))
+
+                TextField("Detected producer tag (optional), e.g. prod by salishan", text: $viewModel.detectedProducerTag)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .foregroundStyle(.white)
+                    .submitLabel(.search)
+                    .onSubmit {
+                        viewModel.search(forceWeb: false, userId: auth.sessionUserId)
+                    }
+
+                if !viewModel.detectedProducerTag.isEmpty {
+                    Button {
+                        viewModel.detectedProducerTag = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.white.opacity(0.45))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .background(Color.white.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: BeatLayout.controlCornerRadius, style: .continuous))
+
             HStack(spacing: 8) {
                 ForEach(BeatSearchViewModel.QueryInputMode.allCases) { mode in
                     Button {
@@ -242,13 +270,13 @@ private extension SearchView {
         if let response = viewModel.response {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
-                    Text(response.source == .edgeFunction ? "LIVE" : "MVP")
+                    Text(response.source.badgeTitle)
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(response.source == .edgeFunction ? Color.green : Color.orange)
+                        .foregroundStyle(sourceTint(response.source))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(
-                            (response.source == .edgeFunction ? Color.green : Color.orange).opacity(0.15)
+                            sourceTint(response.source).opacity(0.15)
                         )
                         .clipShape(Capsule())
 
@@ -273,6 +301,10 @@ private extension SearchView {
     var resultsSection: some View {
         ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 10) {
+                if let response = viewModel.response, response.discovery != nil {
+                    discoveryCard(response)
+                }
+
                 if filteredMatches.isEmpty, viewModel.response != nil, !viewModel.isSearching {
                     Text(viewModel.response?.resultState == .notFound
                         ? "Not found in index."
@@ -303,6 +335,96 @@ private extension SearchView {
                 }
             }
             .padding(.bottom, 36)
+        }
+    }
+
+    func discoveryCard(_ response: BeatSearchResponse) -> some View {
+        let discovery = response.discovery
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: discoveryIconName(discovery?.discoveryStatus))
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(discoveryTint(discovery?.discoveryStatus))
+                    .frame(width: 34, height: 34)
+                    .background(discoveryTint(discovery?.discoveryStatus).opacity(0.16))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(discoveryHeadline(discovery?.discoveryStatus))
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.white)
+
+                    Text(discoverySubheadline(response))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.70))
+                        .multilineTextAlignment(.leading)
+                }
+
+                Spacer(minLength: 8)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                discoveryField("Top beat", value: response.matches.first?.title ?? "No beat result yet")
+                discoveryField("Confidence", value: response.backendConfidence ?? response.matches.first?.confidencePercentText ?? "Unknown")
+                discoveryField("Producer tag detected", value: discovery?.detectedProducerTag ?? "None")
+                discoveryField("Matched producer channel", value: matchedProducerChannelText(discovery))
+                discoveryField("Producer tag confidence", value: producerTagConfidenceText(discovery))
+                discoveryField("Discovery status", value: readableDiscoveryStatus(discovery?.discoveryStatus))
+
+                if let title = discovery?.youtubeVideoMatch?.title, !title.isEmpty {
+                    discoveryField("YouTube video match", value: title)
+                }
+            }
+
+            if discovery?.discoveryStatus == "possible_sold_or_deleted", let reasons = discovery?.possibleReasons, !reasons.isEmpty {
+                discoveryChipGroup(title: "Possible reasons", values: reasons, prettifyValues: true)
+            }
+
+            if let searches = discovery?.recommendedNextSearches, !searches.isEmpty {
+                discoveryChipGroup(title: "Recommended next searches", values: searches)
+            }
+        }
+        .padding(14)
+        .background(Color.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(discoveryTint(discovery?.discoveryStatus).opacity(0.24), lineWidth: 1)
+        )
+    }
+
+    func discoveryField(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white.opacity(0.48))
+                .textCase(.uppercase)
+
+            Text(value)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.88))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
+        }
+    }
+
+    func discoveryChipGroup(title: String, values: [String], prettifyValues: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white.opacity(0.48))
+                .textCase(.uppercase)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 118), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(values, id: \.self) { value in
+                    Text(prettifyValues ? readableDiscoveryStatus(value) : value)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.86))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(Color.white.opacity(0.08)))
+                }
+            }
         }
     }
 
@@ -517,6 +639,15 @@ private extension SearchView {
         }
     }
 
+    func sourceTint(_ source: BeatSearchSource) -> Color {
+        switch source {
+        case .backendAPI, .edgeFunction:
+            return .green
+        case .mockFallback:
+            return .orange
+        }
+    }
+
     func resultStateBadge(_ state: BeatSearchResultState) -> some View {
         let tint = resultStateTint(state)
         return Text(state.title.uppercased())
@@ -526,6 +657,81 @@ private extension SearchView {
             .padding(.vertical, 4)
             .background(tint.opacity(0.15))
             .clipShape(Capsule())
+    }
+
+    func discoveryHeadline(_ status: String?) -> String {
+        switch status {
+        case "found_candidate":
+            return "Possible Match Found"
+        case "possible_sold_or_deleted":
+            return "Producer found, but beat may be sold/deleted"
+        case "insufficient_evidence":
+            return "Producer evidence is weak"
+        default:
+            return "Producer discovery"
+        }
+    }
+
+    func discoverySubheadline(_ response: BeatSearchResponse) -> String {
+        if let title = response.discovery?.youtubeVideoMatch?.title, !title.isEmpty {
+            return title
+        }
+        if let channel = matchedProducerChannelText(response.discovery).nilIfPlaceholder {
+            return "Matched \(channel). Review candidates before calling this exact."
+        }
+        return response.summary
+    }
+
+    func discoveryIconName(_ status: String?) -> String {
+        switch status {
+        case "found_candidate":
+            return "checkmark.seal.fill"
+        case "possible_sold_or_deleted":
+            return "exclamationmark.triangle.fill"
+        case "insufficient_evidence":
+            return "questionmark.diamond.fill"
+        default:
+            return "magnifyingglass.circle.fill"
+        }
+    }
+
+    func discoveryTint(_ status: String?) -> Color {
+        switch status {
+        case "found_candidate":
+            return .green
+        case "possible_sold_or_deleted":
+            return .yellow
+        case "insufficient_evidence":
+            return .orange
+        default:
+            return .white.opacity(0.72)
+        }
+    }
+
+    func matchedProducerChannelText(_ discovery: DiscoveryEnrichment?) -> String {
+        let channel = discovery?.matchedProducerChannel
+        return channel?.channelID ?? channel?.producerName ?? "None"
+    }
+
+    func producerTagConfidenceText(_ discovery: DiscoveryEnrichment?) -> String {
+        guard let confidence = discovery?.producerTagConfidence else {
+            return "Unknown"
+        }
+        return "\(Int((confidence * 100).rounded()))%"
+    }
+
+    func readableDiscoveryStatus(_ value: String?) -> String {
+        let raw = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !raw.isEmpty else { return "Not applicable" }
+        return raw
+            .replacingOccurrences(of: "_", with: " ")
+            .capitalized
+    }
+}
+
+private extension String {
+    var nilIfPlaceholder: String? {
+        self == "None" ? nil : self
     }
 }
 

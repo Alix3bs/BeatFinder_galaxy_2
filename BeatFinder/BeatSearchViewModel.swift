@@ -15,6 +15,7 @@ final class BeatSearchViewModel: ObservableObject {
     }
 
     @Published var query: String = ""
+    @Published var detectedProducerTag: String = ""
     @Published var inputMode: QueryInputMode = .text
     @Published private(set) var isSearching = false
     @Published private(set) var isPreparingSnippet = false
@@ -23,10 +24,15 @@ final class BeatSearchViewModel: ObservableObject {
     @Published private(set) var preparedSnippetLabel: String?
     @Published var errorText: String?
 
-    private let searchService: BeatSearchService
+    private let apiClient: BeatFinderBackendAPIClientProtocol
+    private let topN: Int
 
-    init(searchService: BeatSearchService? = nil) {
-        self.searchService = searchService ?? .shared
+    init(
+        apiClient: BeatFinderBackendAPIClientProtocol? = nil,
+        topN: Int = 3
+    ) {
+        self.apiClient = apiClient ?? BeatFinderAPIClient()
+        self.topN = topN
     }
 
     func search(forceWeb: Bool, userId: UUID?) {
@@ -46,36 +52,27 @@ final class BeatSearchViewModel: ObservableObject {
 
     func ingestSnippetAndSearch(fileURL: URL, mode: QueryInputMode, userId: UUID?) async {
         guard mode == .upload || mode == .record else { return }
-        guard let userId else {
-            errorText = "Sign in to upload a snippet."
-            return
-        }
 
         errorText = nil
         isPreparingSnippet = true
         defer { isPreparingSnippet = false }
 
-        do {
-            let snippetURL = try await searchService.uploadSnippet(fileURL: fileURL, userId: userId)
-            preparedSnippetLabel = fileURL.lastPathComponent
-            inputMode = mode
-            query = snippetURL
-            await executeSearch(query: snippetURL, mode: mode, forceWeb: false, userId: userId)
-        } catch {
-            errorText = error.localizedDescription
-        }
+        preparedSnippetLabel = fileURL.lastPathComponent
+        inputMode = mode
+        query = fileURL.lastPathComponent
+        await executeSearch(query: fileURL.path, mode: mode, forceWeb: false, userId: userId, audioFileURL: fileURL)
     }
 }
 
 private extension BeatSearchViewModel {
-    func executeSearch(query: String, mode: QueryInputMode, forceWeb: Bool, userId: UUID?) async {
+    func executeSearch(
+        query: String,
+        mode: QueryInputMode,
+        forceWeb: Bool,
+        userId: UUID?,
+        audioFileURL: URL? = nil
+    ) async {
         errorText = nil
-        guard let userId else {
-            response = nil
-            matches = []
-            errorText = "Sign in to search indexed beats."
-            return
-        }
         if mode == .text || mode == .link {
             preparedSnippetLabel = nil
         }
@@ -88,16 +85,30 @@ private extension BeatSearchViewModel {
 
             switch mode {
             case .text:
-                result = try await searchService.searchText(query: query, forceWeb: forceWeb)
+                let backendResponse = try await apiClient.searchText(
+                    query: query,
+                    detectedProducerTag: normalizedProducerTag,
+                    topN: topN
+                )
+                result = BeatSearchResponse.backendAPI(query: query, response: backendResponse)
                 queryType = forceWeb ? "text_web" : "text"
             case .link:
-                result = try await searchService.matchAudio(snippetURL: nil, sourceURL: query)
+                let backendResponse = try await apiClient.searchText(
+                    query: query,
+                    detectedProducerTag: normalizedProducerTag,
+                    topN: topN
+                )
+                result = BeatSearchResponse.backendAPI(query: query, response: backendResponse)
                 queryType = "link"
             case .upload:
-                result = try await searchService.matchAudio(snippetURL: query, sourceURL: nil)
+                let request = try makeAudioSearchRequest(fileURL: audioFileURL, fallbackPath: query)
+                let backendResponse = try await apiClient.searchAudio(request)
+                result = BeatSearchResponse.backendAPI(query: preparedSnippetLabel ?? query, response: backendResponse)
                 queryType = "upload_snippet"
             case .record:
-                result = try await searchService.matchAudio(snippetURL: query, sourceURL: nil)
+                let request = try makeAudioSearchRequest(fileURL: audioFileURL, fallbackPath: query)
+                let backendResponse = try await apiClient.searchAudio(request)
+                result = BeatSearchResponse.backendAPI(query: preparedSnippetLabel ?? query, response: backendResponse)
                 queryType = "record_snippet"
             }
 
@@ -152,6 +163,71 @@ private extension BeatSearchViewModel {
         } catch {
             // Non-fatal: search UI still works if optional search logging table isn't available.
             return matches
+        }
+    }
+
+    var normalizedProducerTag: String? {
+        let trimmed = detectedProducerTag.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    func makeAudioSearchRequest(fileURL: URL?, fallbackPath: String) throws -> BeatFinderAudioSearchRequest {
+        if let fileURL {
+            let data = try readFileData(fileURL)
+            let ext = normalizedAudioExtension(from: fileURL)
+            return BeatFinderAudioSearchRequest(
+                audioPath: nil,
+                audioBase64: data.base64EncodedString(),
+                audioFileName: fileURL.lastPathComponent,
+                audioMimeType: mimeType(forExtension: ext),
+                detectedProducerTag: normalizedProducerTag,
+                topN: topN
+            )
+        }
+
+        return BeatFinderAudioSearchRequest(
+            audioPath: fallbackPath,
+            detectedProducerTag: normalizedProducerTag,
+            topN: topN
+        )
+    }
+
+    func readFileData(_ url: URL) throws -> Data {
+        let started = url.startAccessingSecurityScopedResource()
+        defer {
+            if started {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        do {
+            return try Data(contentsOf: url)
+        } catch {
+            throw BeatSearchError.snippetReadFailed
+        }
+    }
+
+    func normalizedAudioExtension(from url: URL) -> String {
+        let ext = url.pathExtension.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return ext.isEmpty ? "m4a" : ext
+    }
+
+    func mimeType(forExtension ext: String) -> String {
+        switch ext {
+        case "wav":
+            return "audio/wav"
+        case "mp3":
+            return "audio/mpeg"
+        case "aac":
+            return "audio/aac"
+        case "caf":
+            return "audio/x-caf"
+        case "aif", "aiff":
+            return "audio/aiff"
+        case "m4a":
+            return "audio/mp4"
+        default:
+            return "audio/m4a"
         }
     }
 }
