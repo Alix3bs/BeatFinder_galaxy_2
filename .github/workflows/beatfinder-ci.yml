@@ -19,9 +19,7 @@ jobs:
     runs-on: macos-latest
     env:
       BEATFINDER_SUPABASE_MODE: local
-      BEATFINDER_STATE_DIR: ${{ runner.temp }}/beatfinder_state
       PORT: "8787"
-      PYTHONPYCACHEPREFIX: ${{ runner.temp }}/beatfinder_pycache
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,6 +43,8 @@ jobs:
         run: |
           echo "BEATFINDER_PYTHON_BIN=$(command -v python3)" >> "$GITHUB_ENV"
           echo "BEATFINDER_NODE_BIN=$(command -v node)" >> "$GITHUB_ENV"
+          echo "BEATFINDER_STATE_DIR=$RUNNER_TEMP/beatfinder_state" >> "$GITHUB_ENV"
+          echo "PYTHONPYCACHEPREFIX=$RUNNER_TEMP/beatfinder_pycache" >> "$GITHUB_ENV"
 
       - name: Backend lint
         run: |
