@@ -555,7 +555,7 @@ final class AudioSnippetRecorder: NSObject, ObservableObject, AVAudioRecorderDel
         elapsedSeconds = 0
 
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
         try session.setActive(true)
 
         let outputURL = FileManager.default.temporaryDirectory
