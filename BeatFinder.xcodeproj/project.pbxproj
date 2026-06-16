@@ -94,6 +94,7 @@
 		EFAA00000000000000000008 /* BeatSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA00000000000000000018 /* BeatSearchViewModel.swift */; };
 		EFAA00000000000000000009 /* ResultDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA00000000000000000019 /* ResultDetailView.swift */; };
 		EFAA0000000000000000000A /* SavedMatchesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA0000000000000000001A /* SavedMatchesStore.swift */; };
+		EFAA0000000000000000001E /* SavedBeatStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA0000000000000000002E /* SavedBeatStore.swift */; };
 		EFAA0000000000000000000B /* SavedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA0000000000000000001B /* SavedView.swift */; };
 		EFAA0000000000000000000C /* SupabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA0000000000000000001C /* SupabaseManager.swift */; };
 		EFAA0000000000000000000D /* GalaxyEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAA0000000000000000001D /* GalaxyEntryView.swift */; };
@@ -212,6 +213,7 @@
 		EFAA00000000000000000018 /* BeatSearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatSearchViewModel.swift; sourceTree = "<group>"; };
 		EFAA00000000000000000019 /* ResultDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultDetailView.swift; sourceTree = "<group>"; };
 		EFAA0000000000000000001A /* SavedMatchesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedMatchesStore.swift; sourceTree = "<group>"; };
+		EFAA0000000000000000002E /* SavedBeatStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedBeatStore.swift; sourceTree = "<group>"; };
 		EFAA0000000000000000001B /* SavedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedView.swift; sourceTree = "<group>"; };
 		EFAA0000000000000000001C /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
 		EFAA0000000000000000001D /* GalaxyEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalaxyEntryView.swift; sourceTree = "<group>"; };
@@ -361,6 +363,7 @@
 				EE1BE80F2F340EFA00816C32 /* SafeGameScene.swift */,
 				EE1BE8102F340EFA00816C32 /* SafeView.swift */,
 				EFAA0000000000000000001A /* SavedMatchesStore.swift */,
+				EFAA0000000000000000002E /* SavedBeatStore.swift */,
 				EFAA0000000000000000001B /* SavedView.swift */,
 				EFAB00000000000000000014 /* SearchService.swift */,
 				EE1BE8112F340EFA00816C32 /* SearchView.swift */,
@@ -639,6 +642,7 @@
 				EE1BE8502F340EFA00816C32 /* SafeGameScene.swift in Sources */,
 				EE1BE8512F340EFA00816C32 /* SafeView.swift in Sources */,
 				EFAA0000000000000000000A /* SavedMatchesStore.swift in Sources */,
+				EFAA0000000000000000001E /* SavedBeatStore.swift in Sources */,
 				EFAA0000000000000000000B /* SavedView.swift in Sources */,
 				EFAB00000000000000000004 /* SearchService.swift in Sources */,
 				EE1BE8522F340EFA00816C32 /* SearchView.swift in Sources */,

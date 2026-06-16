@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 
 struct SearchView: View {
     @EnvironmentObject private var auth: AuthStore
-    @EnvironmentObject private var saved: SavedMatchesStore
+    @EnvironmentObject private var savedBeatStore: SavedBeatStore
     @EnvironmentObject private var settings: SettingsStore
     @StateObject private var viewModel = BeatSearchViewModel()
     @StateObject private var recorder = AudioSnippetRecorder()
@@ -14,6 +14,7 @@ struct SearchView: View {
     @State private var showInputInfo = false
     @State private var inputInfoText = ""
     @State private var showSnippetImporter = false
+    @State private var recentlySavedSafeKeys: Set<String> = []
 
     var body: some View {
         ZStack {
@@ -456,6 +457,13 @@ private extension SearchView {
     }
 
     func resultRow(_ match: BeatSearchMatch) -> some View {
+        let savedResult = BeatResultModel.fromSearchMatch(match, response: viewModel.response)
+        let isSaved = savedBeatStore.isSaved(savedResult)
+        let savedKey = SavedBeatStore.primaryDedupeKey(for: savedResult)
+        let saveTitle = isSaved
+            ? (recentlySavedSafeKeys.contains(savedKey) ? "Saved to Safe" : "Already in Safe")
+            : "Save to Safe"
+
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: match.platform.iconName)
                 .font(.system(size: 18, weight: .bold))
@@ -502,14 +510,28 @@ private extension SearchView {
                 }
 
                 Button {
-                    saved.toggle(match, userId: auth.sessionUserId)
+                    if isSaved {
+                        BeatHaptics.tap()
+                    } else {
+                        _ = savedBeatStore.save(savedResult)
+                        recentlySavedSafeKeys.insert(savedKey)
+                        BeatHaptics.success()
+                    }
                 } label: {
-                    Image(systemName: saved.isSaved(match) ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: BeatLayout.iconButtonSize, height: BeatLayout.iconButtonSize)
-                        .background(Color.white.opacity(0.10))
-                        .clipShape(Circle())
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 6) {
+                            Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                            Text(saveTitle)
+                        }
+
+                        Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                    }
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, isSaved ? 10 : 11)
+                    .frame(minWidth: BeatLayout.iconButtonSize, minHeight: BeatLayout.iconButtonSize)
+                    .background(Color.white.opacity(isSaved ? 0.18 : 0.10))
+                    .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
@@ -857,6 +879,7 @@ private enum RecorderError: LocalizedError {
     NavigationStack {
         SearchView()
             .environmentObject(AuthStore())
-            .environmentObject(SavedMatchesStore())
+            .environmentObject(SavedBeatStore())
+            .environmentObject(SettingsStore())
     }
 }

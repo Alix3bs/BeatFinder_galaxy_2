@@ -124,6 +124,35 @@ extension BeatResultModel {
         )
     }
 
+    static func fromSearchMatch(
+        _ match: BeatSearchMatch,
+        response: BeatSearchResponse?
+    ) -> BeatResultModel {
+        let discovery = response?.discovery
+        let channel = discovery?.matchedProducerChannel
+        let watchURLString = match.url.isEmpty ? discovery?.youtubeVideoMatch?.videoURL : match.url
+        let producer = channel?.producerName ?? channel?.channelID ?? "BeatFinder"
+
+        return BeatResultModel(
+            id: match.remoteMatchID?.uuidString ?? match.id.uuidString,
+            title: match.title,
+            artist: producer,
+            bpm: match.bpm ?? 0,
+            genre: match.note ?? match.platform.title,
+            releaseDate: Date(),
+            artworkName: "nest_music",
+            youtubeVideoID: videoID(from: watchURLString) ?? discovery?.youtubeVideoMatch?.videoID,
+            youtubeWatchURLString: watchURLString,
+            confidenceLabel: response?.backendConfidence ?? match.confidencePercentText,
+            matchedProducerChannelName: channel?.channelID ?? channel?.producerName,
+            producerTagConfidence: discovery?.producerTagConfidence,
+            discoveryStatus: discovery?.discoveryStatus,
+            youtubeVideoMatchTitle: discovery?.youtubeVideoMatch?.title,
+            possibleReasons: discovery?.possibleReasons,
+            recommendedNextSearches: discovery?.recommendedNextSearches
+        )
+    }
+
     var youtubeThumbnailURL: URL? {
         if let youtubeVideoID, !youtubeVideoID.isEmpty {
             return URL(string: "https://i.ytimg.com/vi/\(youtubeVideoID)/hqdefault.jpg")

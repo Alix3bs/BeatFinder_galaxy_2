@@ -124,6 +124,27 @@ After a backend audio or hybrid response, the Upload screen and result sheet can
 - possible sold/deleted reasons
 - recommended next searches
 
+## Save Results To Safe
+
+Search and Upload results can now be saved locally into the Safe tab.
+
+Search result cards show:
+
+```text
+Save to Safe
+Saved to Safe
+Already in Safe
+```
+
+Upload/detail result sheets use the same local Safe store and save the full `BeatResultModel`, not just a plain URL bookmark. The saved payload preserves backend discovery fields such as `discovery_status`, matched producer channel, confidence, possible reasons, recommended next searches, and YouTube video match title.
+
+Safe is local-first in this v1 app wiring:
+
+- Saved results persist on device through `UserDefaults`.
+- Duplicate saves are blocked by beat id, YouTube video id, or title/producer fallback.
+- Safe cards show the beat title, producer/channel, discovery status, YouTube match title when present, confidence, saved date, and a remove action.
+- Supabase live credentials are not required for this local save flow.
+
 ## Test From The Debug Screen
 
 Open Settings, then choose `Backend API Test`. The debug screen calls:

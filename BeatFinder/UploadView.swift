@@ -1295,12 +1295,12 @@ struct UploadResultView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var savedMatches: SavedMatchesStore
+    @EnvironmentObject private var savedBeatStore: SavedBeatStore
     @StateObject private var viewModel: UploadResultViewModel
     @State private var isCreatorPresented = false
     @State private var isPreviewPlaying = false
     @State private var isLiked = false
+    @State private var didSaveToSafe = false
     let sourceContext: BeatDetailContext
     private let onClose: (() -> Void)?
     private let onAnalyzeAnother: (() -> Void)?
@@ -1731,19 +1731,6 @@ struct UploadResultView: View {
         }
     }
 
-    private var savedMatch: BeatSearchMatch {
-        BeatSearchMatch(
-            platform: .youtube,
-            url: viewModel.watchURL?.absoluteString ?? "https://www.youtube.com/results?search_query=\(model.title)",
-            title: "\(model.title) by \(model.artist)",
-            similarity: 1,
-            bpm: model.bpm,
-            key: nil,
-            verdict: .exact,
-            note: model.genre
-        )
-    }
-
     private var creatorProfile: ProfileUser {
         let creatorHandle = model.artist
             .lowercased()
@@ -1798,18 +1785,22 @@ struct UploadResultView: View {
     }
 
     private var saveButton: some View {
-        let isSaved = savedMatches.isSaved(savedMatch)
+        let isSaved = savedBeatStore.isSaved(model)
+        let title = isSaved
+            ? (didSaveToSafe ? "Saved to Safe" : "Already in Safe")
+            : "Save to Safe"
 
         return Button {
-            savedMatches.toggle(savedMatch, userId: appState.session.userID)
             if isSaved {
                 BeatHaptics.tap()
             } else {
+                _ = savedBeatStore.save(model)
+                didSaveToSafe = true
                 BeatHaptics.success()
             }
         } label: {
             actionTile(
-                title: sourceContext == .upload ? (isSaved ? "Saved Result" : "Save Result") : (isSaved ? "Saved Beat" : "Save Beat"),
+                title: title,
                 systemImage: isSaved ? "bookmark.fill" : "bookmark"
             )
         }

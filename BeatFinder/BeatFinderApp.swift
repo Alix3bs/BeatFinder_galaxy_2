@@ -11,6 +11,7 @@ import SwiftUI
 struct BeatFinderApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var savedMatches = SavedMatchesStore()
+    @StateObject private var savedBeatStore = SavedBeatStore()
     @StateObject private var likes = LikeService()
     @StateObject private var searchService = SearchService()
     @StateObject private var settings = SettingsStore()
@@ -24,6 +25,7 @@ struct BeatFinderApp: App {
                 .environmentObject(appState.authStore)
                 .environmentObject(appState.subscriptionManager)
                 .environmentObject(savedMatches)
+                .environmentObject(savedBeatStore)
                 .environmentObject(likes)
                 .environmentObject(searchService)
                 .environmentObject(settings)
