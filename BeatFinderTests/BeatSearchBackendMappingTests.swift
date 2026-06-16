@@ -58,6 +58,20 @@ struct BeatSearchBackendMappingTests {
         #expect(mapped.matches.first?.verdict == .exact)
         #expect(mapped.discovery?.discoveryStatus == "found_candidate")
         #expect(mapped.discovery?.youtubeVideoMatch?.title == "SZA x Summer Walker Type Beat - Late Nights")
+
+        let uploadResult = BeatResultModel.fromBackendSearch(
+            response: response,
+            mappedSearch: mapped,
+            fallbackTitle: "uploaded-audio.m4a"
+        )
+
+        #expect(uploadResult.title == "SZA x Summer Walker Type Beat - Late Nights")
+        #expect(uploadResult.artist == "prod salishan")
+        #expect(uploadResult.confidenceLabel == "likely_exact_match")
+        #expect(uploadResult.discoveryStatus == "found_candidate")
+        #expect(uploadResult.matchedProducerChannelName == "prod.salishan")
+        #expect(uploadResult.youtubeVideoMatchTitle == "SZA x Summer Walker Type Beat - Late Nights")
+        #expect(uploadResult.recommendedNextSearches == ["prod salishan type beat", "philly type beat"])
     }
 
     @Test func preservesPossibleSoldDeletedDiscoveryWithoutOverclaimingExactMatch() throws {
@@ -94,6 +108,18 @@ struct BeatSearchBackendMappingTests {
         #expect(mapped.matches.isEmpty)
         #expect(mapped.summary == "Producer found, but no matching visible indexed video was found.")
         #expect(mapped.discovery?.possibleReasons.contains("not_yet_indexed") == true)
+
+        let uploadResult = BeatResultModel.fromBackendSearch(
+            response: response,
+            mappedSearch: mapped,
+            fallbackTitle: "uploaded-audio.m4a"
+        )
+
+        #expect(uploadResult.title == "No visible indexed beat found")
+        #expect(uploadResult.artist == "prod salishan")
+        #expect(uploadResult.discoveryStatus == "possible_sold_or_deleted")
+        #expect(uploadResult.possibleReasons?.contains("not_yet_indexed") == true)
+        #expect(uploadResult.hasBackendDiscoveryDetails)
     }
 
     private func decodeSearchResponse(_ json: String) throws -> SearchResponse {

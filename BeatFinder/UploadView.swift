@@ -127,6 +127,8 @@ private enum UploadProcessingError: LocalizedError, Equatable {
     case unsupportedFile
     case failedExtraction
     case invalidLink
+    case backendUnavailable
+    case endpointUnavailable
     case noMatchFound
     case unreadableMedia
     case failedToReadFile
@@ -140,6 +142,10 @@ private enum UploadProcessingError: LocalizedError, Equatable {
             return "Failed extraction."
         case .invalidLink:
             return "Invalid link."
+        case .backendUnavailable:
+            return "Backend unavailable. Start local BeatFinder backend and try again."
+        case .endpointUnavailable:
+            return "Audio/hybrid search is not available in this backend build yet. Start the latest local backend or use text search."
         case .noMatchFound:
             return "No match found."
         case .unreadableMedia:
@@ -159,6 +165,10 @@ private enum UploadProcessingError: LocalizedError, Equatable {
             return "Failed extraction"
         case .invalidLink:
             return "Invalid link"
+        case .backendUnavailable:
+            return "Backend unavailable"
+        case .endpointUnavailable:
+            return "Audio search unavailable"
         case .noMatchFound:
             return "No match found"
         case .unreadableMedia, .failedToReadFile, .unknown:
@@ -196,33 +206,73 @@ private enum PreparedUploadInput {
             return url.absoluteString.lowercased()
         }
     }
+
+    var queryLabel: String {
+        switch self {
+        case .audioFile(_, let metadata):
+            return metadata.displayName
+        case .link(let url):
+            return url.absoluteString
+        }
+    }
+}
+
+private struct UploadAnalysisResult {
+    let beatResult: BeatResultModel
+    let searchResponse: BeatSearchResponse
 }
 
 private protocol UploadAnalysisServicing {
     func analyze(
         source: SelectedUploadSource,
+        detectedProducerTag: String?,
         onStageChange: @escaping (UploadPipelineStage) -> Void
-    ) async throws -> BeatResultModel
+    ) async throws -> UploadAnalysisResult
 }
 
 private struct UploadAnalysisService: UploadAnalysisServicing {
-    private let matcher = PlaceholderBeatMatcher()
+    private let apiClient: BeatFinderBackendAPIClientProtocol
+    private let topN: Int
+
+    init(
+        apiClient: BeatFinderBackendAPIClientProtocol? = nil,
+        topN: Int = 3
+    ) {
+        self.apiClient = apiClient ?? BeatFinderAPIClient()
+        self.topN = topN
+    }
 
     func analyze(
         source: SelectedUploadSource,
+        detectedProducerTag: String?,
         onStageChange: @escaping (UploadPipelineStage) -> Void
-    ) async throws -> BeatResultModel {
+    ) async throws -> UploadAnalysisResult {
         let preparedInput = try await prepareInput(from: source, onStageChange: onStageChange)
 
         try await updateStage(.analyzing, onStageChange: onStageChange)
-        let analysisSeed = try buildAnalysisSeed(from: preparedInput)
+        let normalizedTag = normalizedProducerTag(detectedProducerTag)
 
         try await updateStage(.matching, onStageChange: onStageChange)
-        guard let result = try await matcher.match(seed: analysisSeed) else {
+        let backendResponse = try await searchBackend(
+            input: preparedInput,
+            detectedProducerTag: normalizedTag
+        )
+        let mappedSearch = BeatSearchResponse.backendAPI(
+            query: preparedInput.queryLabel,
+            response: backendResponse
+        )
+
+        guard shouldShowResult(for: mappedSearch) else {
             throw UploadProcessingError.noMatchFound
         }
 
-        return result
+        let result = BeatResultModel.fromBackendSearch(
+            response: backendResponse,
+            mappedSearch: mappedSearch,
+            fallbackTitle: preparedInput.queryLabel
+        )
+
+        return UploadAnalysisResult(beatResult: result, searchResponse: mappedSearch)
     }
 
     private func prepareInput(
@@ -353,78 +403,99 @@ private struct UploadAnalysisService: UploadAnalysisServicing {
         )
     }
 
-    private func buildAnalysisSeed(from input: PreparedUploadInput) throws -> String {
+    private func searchBackend(
+        input: PreparedUploadInput,
+        detectedProducerTag: String?
+    ) async throws -> SearchResponse {
         switch input {
         case .link(let url):
-            return url.absoluteString.lowercased()
+            let request = BeatFinderHybridSearchRequest(
+                query: url.absoluteString,
+                detectedProducerTag: detectedProducerTag,
+                topN: topN
+            )
+            return try await mapBackendErrors {
+                try await apiClient.searchHybrid(request)
+            }
 
         case .audioFile(let url, let metadata):
-            let fileHandle: FileHandle
+            let data: Data
             do {
-                fileHandle = try FileHandle(forReadingFrom: url)
+                data = try Data(contentsOf: url)
             } catch {
                 throw UploadProcessingError.unreadableMedia
             }
 
-            defer {
-                try? fileHandle.close()
+            let request = BeatFinderAudioSearchRequest(
+                audioBase64: data.base64EncodedString(),
+                audioFileName: metadata.displayName,
+                audioMimeType: metadata.contentType?.preferredMIMEType ?? mimeType(forExtension: url.pathExtension),
+                detectedProducerTag: detectedProducerTag,
+                topN: topN
+            )
+            return try await mapBackendErrors {
+                try await apiClient.searchAudio(request)
             }
-
-            let sampleData = try fileHandle.read(upToCount: 4_096) ?? Data()
-            let sampleDigest = sampleData.prefix(128).map { String(format: "%02x", $0) }.joined()
-            return [metadata.fingerprintSeed, input.fingerprintSeed, sampleDigest].joined(separator: "|")
         }
     }
-}
 
-private struct PlaceholderBeatMatcher {
-    // Placeholder matcher until the real backend ranking service is wired in.
-    private let catalog: [BeatResultModel] = [
-        BeatResultModel(
-            id: "placeholder-1",
-            title: "Neon Echo",
-            artist: "Nova",
-            bpm: 142,
-            genre: "Trap",
-            releaseDate: Date(),
-            artworkName: "nest_music",
-            youtubeVideoID: "dQw4w9WgXcQ",
-            youtubeWatchURLString: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-        ),
-        BeatResultModel(
-            id: "placeholder-2",
-            title: "Velvet Signal",
-            artist: "Velvet",
-            bpm: 128,
-            genre: "R&B",
-            releaseDate: Date().addingTimeInterval(-86_400 * 14),
-            artworkName: "nest_music",
-            youtubeVideoID: "kJQP7kiw5Fk",
-            youtubeWatchURLString: "https://www.youtube.com/watch?v=kJQP7kiw5Fk"
-        ),
-        BeatResultModel(
-            id: "placeholder-3",
-            title: "Blue Ember",
-            artist: "Tray3",
-            bpm: 136,
-            genre: "Soul Trap",
-            releaseDate: Date().addingTimeInterval(-86_400 * 30),
-            artworkName: "nest_music",
-            youtubeVideoID: "JGwWNGJdvx8",
-            youtubeWatchURLString: "https://www.youtube.com/watch?v=JGwWNGJdvx8"
-        )
-    ]
+    private func mapBackendErrors(_ operation: () async throws -> SearchResponse) async throws -> SearchResponse {
+        do {
+            return try await operation()
+        } catch let error as BeatFinderAPIError {
+            switch error {
+            case .httpStatus(404), .httpStatus(405), .httpStatus(501):
+                throw UploadProcessingError.endpointUnavailable
+            default:
+                throw UploadProcessingError.unknown(error.localizedDescription)
+            }
+        } catch let error as URLError {
+            switch error.code {
+            case .cannotConnectToHost, .cannotFindHost, .networkConnectionLost, .notConnectedToInternet, .timedOut:
+                throw UploadProcessingError.backendUnavailable
+            default:
+                throw UploadProcessingError.unknown(error.localizedDescription)
+            }
+        } catch {
+            throw UploadProcessingError.unknown(error.localizedDescription)
+        }
+    }
 
-    func match(seed: String) async throws -> BeatResultModel? {
-        try await Task.sleep(for: .milliseconds(620))
-
-        let normalizedSeed = seed.lowercased()
-        if normalizedSeed.contains("nomatch") || normalizedSeed.contains("unknown") || normalizedSeed.contains("unmatched") {
-            return nil
+    private func shouldShowResult(for response: BeatSearchResponse) -> Bool {
+        if !response.matches.isEmpty {
+            return true
         }
 
-        let index = (normalizedSeed.hashValue & Int.max) % catalog.count
-        return catalog[index]
+        switch response.discovery?.discoveryStatus {
+        case "found_candidate", "possible_sold_or_deleted":
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func normalizedProducerTag(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func mimeType(forExtension ext: String) -> String {
+        switch ext.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "wav":
+            return "audio/wav"
+        case "mp3":
+            return "audio/mpeg"
+        case "aac":
+            return "audio/aac"
+        case "caf":
+            return "audio/x-caf"
+        case "aif", "aiff":
+            return "audio/aiff"
+        case "m4a":
+            return "audio/mp4"
+        default:
+            return "audio/m4a"
+        }
     }
 }
 
@@ -442,6 +513,8 @@ private final class UploadViewModel: ObservableObject {
 
     @Published private(set) var state: State = .idle
     @Published private(set) var persistedMatchedResult: BeatResultModel?
+    @Published private(set) var backendSearchResponse: BeatSearchResponse?
+    @Published var detectedProducerTag: String = ""
 
     private let analysisService: UploadAnalysisServicing
     private var analysisTask: Task<Void, Never>?
@@ -530,7 +603,10 @@ private final class UploadViewModel: ObservableObject {
             return "Analyzing"
         case .matching:
             return "Finding closest match"
-        case .success:
+        case .success(_, let result):
+            if result.discoveryStatus == "possible_sold_or_deleted" {
+                return "Producer found"
+            }
             return "Match found"
         case .failure(_, let error):
             return error.failureTitle
@@ -546,10 +622,13 @@ private final class UploadViewModel: ObservableObject {
         case .preparing(_, let stage):
             return stage.detail
         case .analyzing:
-            return "Building a placeholder fingerprint until the production matcher backend is connected."
+            return "Encoding the selected audio for the local BeatFinder backend."
         case .matching:
-            return "The placeholder matcher is ranking the closest result through the shared analysis service."
+            return "Calling the backend audio/hybrid search and ranking the strongest candidates."
         case .success(let source, let result):
+            if result.discoveryStatus == "possible_sold_or_deleted" {
+                return "\(source.option.rawValue) matched the producer, but no visible indexed beat was confirmed."
+            }
             return "\(source.option.rawValue) matched to \(result.title) by \(result.artist)."
         case .failure(_, let error):
             return error.errorDescription ?? "The upload could not be processed."
@@ -607,13 +686,13 @@ private final class UploadViewModel: ObservableObject {
             UploadProgressItem(
                 id: "analyzing",
                 title: "Analyzing",
-                detail: "Reading duration, bytes, and a placeholder fingerprint signature.",
+                detail: "Reading duration, bytes, and preparing a backend-safe audio payload.",
                 state: progressState(for: .analyzing, source: source, failureStage: failureStage)
             ),
             UploadProgressItem(
                 id: "matching",
                 title: "Finding closest match",
-                detail: "Running the shared analysis interface against the placeholder matcher.",
+                detail: "Calling BeatFinder backend audio/hybrid search.",
                 state: progressState(for: .matching, source: source, failureStage: failureStage)
             )
         ]
@@ -622,25 +701,33 @@ private final class UploadViewModel: ObservableObject {
     func beginProcessing(source: SelectedUploadSource) {
         analysisTask?.cancel()
         lastStage = nil
+        backendSearchResponse = nil
         state = .sourceSelected(source)
+        let currentProducerTag = detectedProducerTag
 
         analysisTask = Task { [weak self] in
             guard let self else { return }
 
             do {
                 try await Task.sleep(for: .milliseconds(180))
-                let result = try await analysisService.analyze(source: source) { [weak self] stage in
+                let result = try await analysisService.analyze(
+                    source: source,
+                    detectedProducerTag: currentProducerTag
+                ) { [weak self] stage in
                     self?.apply(stage, for: source)
                 }
                 guard !Task.isCancelled else { return }
-                self.persistMatchedResult(result)
-                self.state = .success(source, result)
+                self.backendSearchResponse = result.searchResponse
+                self.persistMatchedResult(result.beatResult)
+                self.state = .success(source, result.beatResult)
             } catch is CancellationError {
                 guard !Task.isCancelled else { return }
                 self.reset()
             } catch let error as UploadProcessingError {
+                self.backendSearchResponse = nil
                 self.state = .failure(source, error)
             } catch {
+                self.backendSearchResponse = nil
                 self.state = .failure(source, .unknown(error.localizedDescription))
             }
         }
@@ -648,12 +735,14 @@ private final class UploadViewModel: ObservableObject {
 
     func presentFailure(_ error: UploadProcessingError, source: SelectedUploadSource? = nil) {
         analysisTask?.cancel()
+        backendSearchResponse = nil
         state = .failure(source ?? activeSource, error)
     }
 
     func reset() {
         analysisTask?.cancel()
         lastStage = nil
+        backendSearchResponse = nil
         state = .idle
     }
 
@@ -1248,6 +1337,7 @@ struct UploadResultView: View {
                             progressSection
                             transportControls
                             metadataRow
+                            backendDiscoverySection
                             watchButton
                             actionGrid
                         }
@@ -1520,6 +1610,125 @@ struct UploadResultView: View {
             .padding(.vertical, 8)
             .background(Color.white.opacity(0.08))
             .clipShape(Capsule())
+    }
+
+    @ViewBuilder
+    private var backendDiscoverySection: some View {
+        if model.hasBackendDiscoveryDetails {
+            SectionCard(cornerRadius: 24, padding: 16, fill: Color.white.opacity(0.05), strokeOpacity: 0.08) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        Image(systemName: resultDiscoveryIcon)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(resultDiscoveryTint)
+                            .frame(width: 32, height: 32)
+                            .background(resultDiscoveryTint.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(resultDiscoveryHeadline)
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(.white)
+
+                            Text("Backend audio/hybrid search result")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.64))
+                        }
+                    }
+
+                    resultDiscoveryField("Confidence", value: model.confidenceLabel?.readableUploadToken ?? "Unknown")
+                    resultDiscoveryField("Matched producer channel", value: model.matchedProducerChannelName ?? "None")
+                    resultDiscoveryField("Producer tag confidence", value: model.producerTagConfidence.map { "\(Int(($0 * 100).rounded()))%" } ?? "Unknown")
+                    resultDiscoveryField("Discovery status", value: model.discoveryStatus?.readableUploadToken ?? "Not applicable")
+
+                    if let title = model.youtubeVideoMatchTitle, !title.isEmpty {
+                        resultDiscoveryField("YouTube video match", value: title)
+                    }
+
+                    if model.discoveryStatus == "possible_sold_or_deleted", let reasons = model.possibleReasons, !reasons.isEmpty {
+                        resultDiscoveryChips(title: "Possible reasons", values: reasons, prettifyValues: true)
+                    }
+
+                    if let searches = model.recommendedNextSearches, !searches.isEmpty {
+                        resultDiscoveryChips(title: "Recommended next searches", values: searches)
+                    }
+                }
+            }
+        }
+    }
+
+    private var resultDiscoveryHeadline: String {
+        switch model.discoveryStatus {
+        case "found_candidate":
+            return "Possible Match Found"
+        case "possible_sold_or_deleted":
+            return "Producer found, but beat may be sold/deleted"
+        case "insufficient_evidence":
+            return "Producer evidence is weak"
+        default:
+            return "Backend search details"
+        }
+    }
+
+    private var resultDiscoveryIcon: String {
+        switch model.discoveryStatus {
+        case "found_candidate":
+            return "checkmark.seal.fill"
+        case "possible_sold_or_deleted":
+            return "exclamationmark.triangle.fill"
+        case "insufficient_evidence":
+            return "questionmark.diamond.fill"
+        default:
+            return "waveform.path.ecg"
+        }
+    }
+
+    private var resultDiscoveryTint: Color {
+        switch model.discoveryStatus {
+        case "found_candidate":
+            return Color(red: 0.58, green: 0.86, blue: 0.68)
+        case "possible_sold_or_deleted":
+            return .yellow.opacity(0.9)
+        case "insufficient_evidence":
+            return .orange.opacity(0.9)
+        default:
+            return BeatColors.uploadAccentBlue
+        }
+    }
+
+    private func resultDiscoveryField(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white.opacity(0.48))
+                .textCase(.uppercase)
+
+            Text(value)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.88))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
+        }
+    }
+
+    private func resultDiscoveryChips(title: String, values: [String], prettifyValues: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white.opacity(0.48))
+                .textCase(.uppercase)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 118), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(values, id: \.self) { value in
+                    Text(prettifyValues ? value.readableUploadToken : value)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.86))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(Color.white.opacity(0.08)))
+                }
+            }
+        }
     }
 
     private var savedMatch: BeatSearchMatch {
@@ -1986,6 +2195,8 @@ struct UploadView: View {
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.white.opacity(0.74))
 
+            producerTagField
+
             if let source = viewModel.activeSource {
                 Text(source.sourceSummary)
                     .font(.system(size: 13, weight: .semibold))
@@ -2003,6 +2214,121 @@ struct UploadView: View {
                     ForEach(viewModel.progressItems) { item in
                         UploadProgressRowView(item: item)
                     }
+                }
+            }
+
+            if let response = viewModel.backendSearchResponse {
+                uploadBackendResultCard(response)
+            }
+        }
+    }
+
+    private var producerTagField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "waveform.and.magnifyingglass")
+                .foregroundStyle(BeatColors.uploadAccentBlue)
+
+            TextField("Detected producer tag (optional)", text: $viewModel.detectedProducerTag)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .foregroundStyle(.white)
+                .disabled(viewModel.isProcessing)
+
+            if !viewModel.detectedProducerTag.isEmpty {
+                Button {
+                    viewModel.detectedProducerTag = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isProcessing)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .background(Color.white.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private func uploadBackendResultCard(_ response: BeatSearchResponse) -> some View {
+        let discovery = response.discovery
+        return SectionCard(cornerRadius: 24, padding: 16, fill: Color.white.opacity(0.05), strokeOpacity: 0.08) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: uploadDiscoveryIcon(discovery?.discoveryStatus))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(uploadDiscoveryTint(discovery?.discoveryStatus))
+                        .frame(width: 32, height: 32)
+                        .background(uploadDiscoveryTint(discovery?.discoveryStatus).opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(uploadDiscoveryHeadline(discovery?.discoveryStatus))
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
+
+                        Text(response.summary)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.64))
+                    }
+                }
+
+                uploadDiscoveryField("Top beat", value: response.matches.first?.title ?? "No visible indexed beat found")
+                uploadDiscoveryField("Confidence", value: response.backendConfidence ?? response.matches.first?.confidencePercentText ?? "Unknown")
+                uploadDiscoveryField("Matched producer channel", value: matchedProducerChannelText(discovery))
+                uploadDiscoveryField("Producer tag confidence", value: producerTagConfidenceText(discovery))
+                uploadDiscoveryField("Discovery status", value: readableBackendToken(discovery?.discoveryStatus))
+
+                if let title = discovery?.youtubeVideoMatch?.title, !title.isEmpty {
+                    uploadDiscoveryField("YouTube video match", value: title)
+                }
+
+                if discovery?.discoveryStatus == "possible_sold_or_deleted", let reasons = discovery?.possibleReasons, !reasons.isEmpty {
+                    uploadDiscoveryChips(title: "Possible reasons", values: reasons, prettifyValues: true)
+                }
+
+                if let searches = discovery?.recommendedNextSearches, !searches.isEmpty {
+                    uploadDiscoveryChips(title: "Recommended next searches", values: searches)
+                }
+            }
+        }
+    }
+
+    private func uploadDiscoveryField(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white.opacity(0.48))
+                .textCase(.uppercase)
+
+            Text(value)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.88))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
+        }
+    }
+
+    private func uploadDiscoveryChips(title: String, values: [String], prettifyValues: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white.opacity(0.48))
+                .textCase(.uppercase)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 118), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(values, id: \.self) { value in
+                    Text(prettifyValues ? readableBackendToken(value) : value)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.86))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(Color.white.opacity(0.08)))
                 }
             }
         }
@@ -2073,6 +2399,8 @@ struct UploadView: View {
 
     private var heroStatusColor: Color {
         switch viewModel.state {
+        case .success(_, let result) where result.discoveryStatus == "possible_sold_or_deleted":
+            return .yellow.opacity(0.9)
         case .success:
             return Color(red: 0.58, green: 0.86, blue: 0.68)
         case .failure:
@@ -2080,6 +2408,63 @@ struct UploadView: View {
         default:
             return BeatColors.uploadAccentBlue
         }
+    }
+
+    private func uploadDiscoveryHeadline(_ status: String?) -> String {
+        switch status {
+        case "found_candidate":
+            return "Possible Match Found"
+        case "possible_sold_or_deleted":
+            return "Producer found, but beat may be sold/deleted"
+        case "insufficient_evidence":
+            return "Producer evidence is weak"
+        default:
+            return "Backend audio search"
+        }
+    }
+
+    private func uploadDiscoveryIcon(_ status: String?) -> String {
+        switch status {
+        case "found_candidate":
+            return "checkmark.seal.fill"
+        case "possible_sold_or_deleted":
+            return "exclamationmark.triangle.fill"
+        case "insufficient_evidence":
+            return "questionmark.diamond.fill"
+        default:
+            return "waveform.path.ecg"
+        }
+    }
+
+    private func uploadDiscoveryTint(_ status: String?) -> Color {
+        switch status {
+        case "found_candidate":
+            return Color(red: 0.58, green: 0.86, blue: 0.68)
+        case "possible_sold_or_deleted":
+            return .yellow.opacity(0.9)
+        case "insufficient_evidence":
+            return .orange.opacity(0.9)
+        default:
+            return BeatColors.uploadAccentBlue
+        }
+    }
+
+    private func matchedProducerChannelText(_ discovery: DiscoveryEnrichment?) -> String {
+        let channel = discovery?.matchedProducerChannel
+        return channel?.channelID ?? channel?.producerName ?? "None"
+    }
+
+    private func producerTagConfidenceText(_ discovery: DiscoveryEnrichment?) -> String {
+        guard let confidence = discovery?.producerTagConfidence else {
+            return "Unknown"
+        }
+        return "\(Int((confidence * 100).rounded()))%"
+    }
+
+    private func readableBackendToken(_ value: String?) -> String {
+        let raw = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !raw.isEmpty else { return "Not applicable" }
+        return raw.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     private func openSource(_ option: UploadSourceOption) {
@@ -2166,6 +2551,12 @@ struct UploadView: View {
     private func isUserCancellation(_ error: Error) -> Bool {
         let nsError = error as NSError
         return nsError.domain == NSCocoaErrorDomain && nsError.code == NSUserCancelledError
+    }
+}
+
+private extension String {
+    var readableUploadToken: String {
+        replacingOccurrences(of: "_", with: " ").capitalized
     }
 }
 

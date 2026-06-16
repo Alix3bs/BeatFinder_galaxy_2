@@ -1,7 +1,5 @@
 import Foundation
 import Combine
-import Supabase
-import PostgREST
 
 @MainActor
 final class BeatSearchViewModel: ObservableObject {
@@ -112,57 +110,14 @@ private extension BeatSearchViewModel {
                 queryType = "record_snippet"
             }
 
-            let persistedMatches = await persistSearch(
-                query: result.query,
-                queryType: queryType,
-                userId: userId,
-                matches: result.matches
-            ) ?? result.matches
-
-            response = BeatSearchResponse(
-                query: result.query,
-                source: result.source,
-                resultState: result.resultState,
-                likelyCustom: result.likelyCustom,
-                summary: result.summary,
-                matches: persistedMatches
-            )
-            matches = persistedMatches
+            _ = queryType
+            _ = userId
+            response = result
+            matches = result.matches
         } catch {
             response = nil
             matches = []
             errorText = error.localizedDescription
-        }
-    }
-
-    func persistSearch(
-        query: String,
-        queryType: String,
-        userId: UUID?,
-        matches: [BeatSearchMatch]
-    ) async -> [BeatSearchMatch]? {
-        guard let userId else { return matches }
-
-        do {
-            let searchInsert = SearchInsertRow(
-                user_id: userId.uuidString,
-                query_type: queryType,
-                query_text: query
-            )
-
-            let inserted: [InsertedSearchID] = try await SupabaseManager.client
-                .from("searches")
-                .insert(searchInsert)
-                .select("id")
-                .limit(1)
-                .execute()
-                .value
-
-            guard inserted.first?.id != nil else { return matches }
-            return matches
-        } catch {
-            // Non-fatal: search UI still works if optional search logging table isn't available.
-            return matches
         }
     }
 
@@ -203,7 +158,7 @@ private extension BeatSearchViewModel {
         do {
             return try Data(contentsOf: url)
         } catch {
-            throw BeatSearchError.snippetReadFailed
+            throw BeatSearchViewModelError.snippetReadFailed
         }
     }
 
@@ -232,12 +187,13 @@ private extension BeatSearchViewModel {
     }
 }
 
-private struct SearchInsertRow: Encodable {
-    let user_id: String
-    let query_type: String
-    let query_text: String
-}
+private enum BeatSearchViewModelError: LocalizedError {
+    case snippetReadFailed
 
-private struct InsertedSearchID: Decodable {
-    let id: UUID
+    var errorDescription: String? {
+        switch self {
+        case .snippetReadFailed:
+            return "Unable to read the selected snippet file."
+        }
+    }
 }

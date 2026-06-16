@@ -83,6 +83,47 @@ The result card shows the top beat title, confidence, producer tag, matched prod
 
 Audio upload and microphone search also route through `POST /search/audio` using a local base64 payload. They do not call live YouTube or download copyrighted audio.
 
+## Use The Upload UI
+
+The main Upload tab now uses the same backend API contract instead of the old placeholder matcher.
+
+Supported local flows:
+
+- Files audio/video import: the app copies the selected file into a temporary working file, extracts audio from videos when needed, base64-encodes the audio, then calls `POST /search/audio`.
+- Link import: the app validates the URL and calls `POST /search/hybrid` with the URL as a query hint.
+- Optional producer tag: the Upload screen includes a detected producer tag field. For local fixture testing, use `prod by salishan`.
+
+Current backend contract:
+
+```json
+{
+  "audio_base64": "<base64 audio bytes>",
+  "audio_file_name": "snippet.m4a",
+  "audio_mime_type": "audio/mp4",
+  "detected_producer_tag": "prod by salishan",
+  "top_n": 3
+}
+```
+
+If the backend is not running, the app shows:
+
+```text
+Backend unavailable. Start local BeatFinder backend and try again.
+```
+
+If the audio/hybrid endpoint is missing from the running backend build, the app shows a clean dev message and keeps the UI stable.
+
+After a backend audio or hybrid response, the Upload screen and result sheet can show:
+
+- top beat title
+- confidence
+- matched producer channel
+- producer tag confidence
+- discovery status
+- YouTube video match title
+- possible sold/deleted reasons
+- recommended next searches
+
 ## Test From The Debug Screen
 
 Open Settings, then choose `Backend API Test`. The debug screen calls:
@@ -110,6 +151,6 @@ See `docs/ci.md` for the workflow details and the Actions link.
 
 ## Notes
 
-`POST /search/audio` is wired from the real upload/record Search UI with JSON base64 payloads. `POST /search/hybrid` is represented in `BeatFinderAPIClient` with a JSON-ready request struct for later app wiring. Multipart audio upload can be added later without changing the response model contract.
+`POST /search/audio` is wired from the real upload/record Search UI and the Upload tab with JSON base64 payloads. `POST /search/hybrid` is wired from the Upload tab link flow with a JSON request. Multipart audio upload can be added later without changing the response model contract.
 
 This local flow uses fixture-backed beats and mock YouTube backfill only. It does not download copyrighted audio, call live YouTube, call Hugging Face, or require Supabase live credentials.
