@@ -464,7 +464,7 @@ private extension SearchView {
             ? (recentlySavedSafeKeys.contains(savedKey) ? "Saved to Safe" : "Already in Safe")
             : "Save to Safe"
 
-        HStack(alignment: .top, spacing: 12) {
+        return HStack(alignment: .top, spacing: 12) {
             Image(systemName: match.platform.iconName)
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(.white)
