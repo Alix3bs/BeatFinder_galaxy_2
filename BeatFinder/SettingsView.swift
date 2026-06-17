@@ -64,7 +64,7 @@ struct SettingsView: View {
         SettingsSectionModel(rows: [
             SettingsRowModel(title: "Join BeatFinder AI Testers", systemImage: "testtube.2", action: .destination(.bandlabTesters)),
             SettingsRowModel(
-                title: "Backend API Test",
+                title: "Backend API Settings",
                 systemImage: "antenna.radiowaves.left.and.right",
                 accentColor: BeatColors.accentBlue,
                 action: .destination(.backendApiTest)

@@ -11,6 +11,7 @@ BeatFinder iOS now has a local backend contract layer for the hybrid retrieval A
 - `YouTubeVideoMatch`
 - `BeatFinderBackendTestViewModel`
 - `BeatSearchViewModel`
+- `BeatFinderBackendConfiguration`
 
 The existing app catalog model is already named `Beat`, so the backend payload beat is namespaced as `BeatFinderBackendAPI.Beat`.
 
@@ -33,7 +34,40 @@ The default iOS dev base URL is:
 http://127.0.0.1:8787
 ```
 
-The iPhone Simulator can use `127.0.0.1` for a Mac-hosted local server. A physical iPhone usually needs the Mac LAN IP instead, for example `http://192.168.1.25:8787`, and the Mac firewall must allow the connection.
+The iPhone Simulator can use `127.0.0.1` for a Mac-hosted local server. A physical iPhone cannot use `127.0.0.1` to reach your Mac because that address points back to the phone itself. Use the Mac LAN IP instead, for example `http://192.168.1.25:8787`, and allow the connection through the Mac firewall.
+
+For TestFlight or production, deploy the backend and replace the placeholder:
+
+```text
+https://YOUR-BEATFINDER-BACKEND.example.com
+```
+
+No real hosted backend URL, Supabase secret, Hugging Face token, or private credential is committed.
+
+## Configure The Backend URL In The App
+
+Open Settings, then choose `Backend API Settings`.
+
+Available modes:
+
+- `Local Simulator`: `http://127.0.0.1:8787`
+- `LAN iPhone`: `http://YOUR_MAC_IP:8787`
+- `Production`: `https://YOUR-BEATFINDER-BACKEND.example.com`
+- `Custom`: any full `http` or `https` backend URL
+
+Use `Test Backend Connection` to call:
+
+```text
+GET /health
+```
+
+If the backend cannot be reached, Search and Upload show:
+
+```text
+Backend unavailable. Check your BeatFinder backend URL in Settings.
+```
+
+See `docs/backend-deployment-readiness.md` for the production hosting checklist.
 
 ## Test From Terminal
 
@@ -108,7 +142,7 @@ Current backend contract:
 If the backend is not running, the app shows:
 
 ```text
-Backend unavailable. Start local BeatFinder backend and try again.
+Backend unavailable. Check your BeatFinder backend URL in Settings.
 ```
 
 If the audio/hybrid endpoint is missing from the running backend build, the app shows a clean dev message and keeps the UI stable.
@@ -147,7 +181,7 @@ Safe is local-first in this v1 app wiring:
 
 ## Test From The Debug Screen
 
-Open Settings, then choose `Backend API Test`. The debug screen calls:
+Open Settings, then choose `Backend API Settings`. The debug screen calls:
 
 - `GET /health`
 - `POST /search/text`

@@ -32,6 +32,145 @@ enum BeatFinderAPIError: LocalizedError, Equatable {
     }
 }
 
+enum BeatFinderBackendConfigurationError: LocalizedError, Equatable {
+    case invalidBackendURL(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidBackendURL:
+            return "Backend unavailable. Check your BeatFinder backend URL in Settings."
+        }
+    }
+}
+
+enum BeatFinderBackendURLPreset: String, CaseIterable, Identifiable, Equatable {
+    case local
+    case lan
+    case production
+    case custom
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .local:
+            return "Local Simulator"
+        case .lan:
+            return "LAN iPhone"
+        case .production:
+            return "Production"
+        case .custom:
+            return "Custom"
+        }
+    }
+
+    var urlString: String {
+        switch self {
+        case .local:
+            return BeatFinderBackendConfiguration.localDevelopmentURLString
+        case .lan:
+            return BeatFinderBackendConfiguration.lanDevelopmentURLPlaceholder
+        case .production:
+            return BeatFinderBackendConfiguration.productionURLPlaceholder
+        case .custom:
+            return ""
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .local:
+            return "Use this for iPhone Simulator with a backend running on this Mac."
+        case .lan:
+            return "Replace YOUR_MAC_IP with your Mac LAN address for a physical iPhone."
+        case .production:
+            return "Replace the placeholder after deploying a hosted BeatFinder backend."
+        case .custom:
+            return "Enter a full http or https backend URL."
+        }
+    }
+}
+
+struct BeatFinderBackendConfiguration: Equatable {
+    static let localDevelopmentURLString = "http://127.0.0.1:8787"
+    static let lanDevelopmentURLPlaceholder = "http://YOUR_MAC_IP:8787"
+    static let productionURLPlaceholder = "https://YOUR-BEATFINDER-BACKEND.example.com"
+    static let backendUnavailableMessage = "Backend unavailable. Check your BeatFinder backend URL in Settings."
+
+    var preset: BeatFinderBackendURLPreset
+    var customURLString: String
+
+    init(
+        preset: BeatFinderBackendURLPreset = .local,
+        customURLString: String = ""
+    ) {
+        self.preset = preset
+        self.customURLString = customURLString
+    }
+
+    var displayURLString: String {
+        switch preset {
+        case .custom:
+            return customURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        case .local, .lan, .production:
+            return preset.urlString
+        }
+    }
+
+    var resolvedBaseURL: URL? {
+        Self.validBackendURL(from: displayURLString)
+    }
+
+    var isValid: Bool {
+        resolvedBaseURL != nil
+    }
+
+    func makeClient() throws -> BeatFinderAPIClient {
+        guard let url = resolvedBaseURL else {
+            throw BeatFinderBackendConfigurationError.invalidBackendURL(displayURLString)
+        }
+        return BeatFinderAPIClient(baseURL: url)
+    }
+
+    static func validBackendURL(from rawValue: String) -> URL? {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard
+            let components = URLComponents(string: trimmed),
+            let scheme = components.scheme?.lowercased(),
+            ["http", "https"].contains(scheme),
+            components.host?.isEmpty == false,
+            let url = components.url
+        else {
+            return nil
+        }
+        return url
+    }
+}
+
+enum BeatFinderBackendSettings {
+    static let presetKey = "beatfinder.backend.urlPreset"
+    static let customURLKey = "beatfinder.backend.customURL"
+
+    static func load(defaults: UserDefaults = .standard) -> BeatFinderBackendConfiguration {
+        let rawPreset = defaults.string(forKey: presetKey)
+        let preset = rawPreset.flatMap(BeatFinderBackendURLPreset.init(rawValue:)) ?? .local
+        let customURL = defaults.string(forKey: customURLKey) ?? ""
+        return BeatFinderBackendConfiguration(preset: preset, customURLString: customURL)
+    }
+
+    static func save(
+        _ configuration: BeatFinderBackendConfiguration,
+        defaults: UserDefaults = .standard
+    ) {
+        defaults.set(configuration.preset.rawValue, forKey: presetKey)
+        defaults.set(configuration.customURLString, forKey: customURLKey)
+    }
+
+    static func makeConfiguredClient(defaults: UserDefaults = .standard) throws -> BeatFinderAPIClient {
+        try load(defaults: defaults).makeClient()
+    }
+}
+
 struct BeatFinderTextSearchRequest: Encodable, Equatable {
     let query: String
     let detectedProducerTag: String?
@@ -117,7 +256,7 @@ struct BeatFinderHybridSearchRequest: Encodable, Equatable {
 }
 
 final class BeatFinderAPIClient: BeatFinderBackendAPIClientProtocol {
-    static let localDevelopmentBaseURL = URL(string: "http://127.0.0.1:8787")!
+    static let localDevelopmentBaseURL = URL(string: BeatFinderBackendConfiguration.localDevelopmentURLString)!
 
     let baseURL: URL
 

@@ -143,7 +143,7 @@ private enum UploadProcessingError: LocalizedError, Equatable {
         case .invalidLink:
             return "Invalid link."
         case .backendUnavailable:
-            return "Backend unavailable. Start local BeatFinder backend and try again."
+            return BeatFinderBackendConfiguration.backendUnavailableMessage
         case .endpointUnavailable:
             return "Audio/hybrid search is not available in this backend build yet. Start the latest local backend or use text search."
         case .noMatchFound:
@@ -231,14 +231,20 @@ private protocol UploadAnalysisServicing {
 }
 
 private struct UploadAnalysisService: UploadAnalysisServicing {
-    private let apiClient: BeatFinderBackendAPIClientProtocol
+    private let apiClientFactory: () throws -> BeatFinderBackendAPIClientProtocol
     private let topN: Int
 
     init(
         apiClient: BeatFinderBackendAPIClientProtocol? = nil,
         topN: Int = 3
     ) {
-        self.apiClient = apiClient ?? BeatFinderAPIClient()
+        if let apiClient {
+            self.apiClientFactory = { apiClient }
+        } else {
+            self.apiClientFactory = {
+                try BeatFinderBackendSettings.makeConfiguredClient()
+            }
+        }
         self.topN = topN
     }
 
@@ -407,6 +413,13 @@ private struct UploadAnalysisService: UploadAnalysisServicing {
         input: PreparedUploadInput,
         detectedProducerTag: String?
     ) async throws -> SearchResponse {
+        let apiClient: BeatFinderBackendAPIClientProtocol
+        do {
+            apiClient = try apiClientFactory()
+        } catch is BeatFinderBackendConfigurationError {
+            throw UploadProcessingError.backendUnavailable
+        }
+
         switch input {
         case .link(let url):
             let request = BeatFinderHybridSearchRequest(
@@ -442,6 +455,8 @@ private struct UploadAnalysisService: UploadAnalysisServicing {
     private func mapBackendErrors(_ operation: () async throws -> SearchResponse) async throws -> SearchResponse {
         do {
             return try await operation()
+        } catch is BeatFinderBackendConfigurationError {
+            throw UploadProcessingError.backendUnavailable
         } catch let error as BeatFinderAPIError {
             switch error {
             case .httpStatus(404), .httpStatus(405), .httpStatus(501):

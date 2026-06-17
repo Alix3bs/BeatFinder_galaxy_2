@@ -22,14 +22,20 @@ final class BeatSearchViewModel: ObservableObject {
     @Published private(set) var preparedSnippetLabel: String?
     @Published var errorText: String?
 
-    private let apiClient: BeatFinderBackendAPIClientProtocol
+    private let apiClientFactory: () throws -> BeatFinderBackendAPIClientProtocol
     private let topN: Int
 
     init(
         apiClient: BeatFinderBackendAPIClientProtocol? = nil,
         topN: Int = 3
     ) {
-        self.apiClient = apiClient ?? BeatFinderAPIClient()
+        if let apiClient {
+            self.apiClientFactory = { apiClient }
+        } else {
+            self.apiClientFactory = {
+                try BeatFinderBackendSettings.makeConfiguredClient()
+            }
+        }
         self.topN = topN
     }
 
@@ -78,6 +84,7 @@ private extension BeatSearchViewModel {
         defer { isSearching = false }
 
         do {
+            let apiClient = try apiClientFactory()
             let result: BeatSearchResponse
             let queryType: String
 
@@ -117,8 +124,25 @@ private extension BeatSearchViewModel {
         } catch {
             response = nil
             matches = []
-            errorText = error.localizedDescription
+            errorText = userFacingSearchError(error)
         }
+    }
+
+    func userFacingSearchError(_ error: Error) -> String {
+        if error is BeatFinderBackendConfigurationError {
+            return BeatFinderBackendConfiguration.backendUnavailableMessage
+        }
+
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .cannotConnectToHost, .cannotFindHost, .networkConnectionLost, .notConnectedToInternet, .timedOut:
+                return BeatFinderBackendConfiguration.backendUnavailableMessage
+            default:
+                break
+            }
+        }
+
+        return error.localizedDescription
     }
 
     var normalizedProducerTag: String? {

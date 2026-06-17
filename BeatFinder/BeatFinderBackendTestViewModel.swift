@@ -13,15 +13,31 @@ final class BeatFinderBackendTestViewModel: ObservableObject {
     @Published private(set) var state: LoadState = .idle
     @Published private(set) var health: HealthResponse?
     @Published private(set) var searchResponse: SearchResponse?
+    @Published var selectedPreset: BeatFinderBackendURLPreset {
+        didSet {
+            guard selectedPreset != oldValue else { return }
+            saveConfiguration()
+        }
+    }
+    @Published var customURLString: String {
+        didSet {
+            guard customURLString != oldValue else { return }
+            saveConfiguration()
+        }
+    }
 
-    let baseURL: URL
+    private let clientOverride: BeatFinderBackendAPIClientProtocol?
+    private let defaults: UserDefaults
 
-    private let client: BeatFinderBackendAPIClientProtocol
-
-    init(client: BeatFinderBackendAPIClientProtocol? = nil) {
-        let resolvedClient = client ?? BeatFinderAPIClient()
-        self.client = resolvedClient
-        self.baseURL = resolvedClient.baseURL
+    init(
+        client: BeatFinderBackendAPIClientProtocol? = nil,
+        defaults: UserDefaults = .standard
+    ) {
+        let configuration = BeatFinderBackendSettings.load(defaults: defaults)
+        self.clientOverride = client
+        self.defaults = defaults
+        self.selectedPreset = configuration.preset
+        self.customURLString = configuration.customURLString
     }
 
     var isLoading: Bool {
@@ -75,11 +91,51 @@ final class BeatFinderBackendTestViewModel: ObservableObject {
         searchResponse?.discovery?.recommendedNextSearches ?? []
     }
 
+    var activeConfiguration: BeatFinderBackendConfiguration {
+        BeatFinderBackendConfiguration(
+            preset: selectedPreset,
+            customURLString: customURLString
+        )
+    }
+
+    var baseURL: URL? {
+        activeConfiguration.resolvedBaseURL
+    }
+
+    var baseURLText: String {
+        let value = activeConfiguration.displayURLString
+        return value.isEmpty ? "No backend URL configured" : value
+    }
+
+    var isURLValid: Bool {
+        activeConfiguration.isValid
+    }
+
+    func selectPreset(_ preset: BeatFinderBackendURLPreset) {
+        selectedPreset = preset
+    }
+
+    func testBackendConnection() async {
+        guard !isLoading else { return }
+
+        state = .loading
+        searchResponse = nil
+
+        do {
+            health = try await configuredClient().health()
+            state = .success
+        } catch {
+            health = nil
+            state = .failure(userFacingError(error))
+        }
+    }
+
     func runLocalSmokeTest() async {
         guard !isLoading else { return }
 
         state = .loading
         do {
+            let client = try configuredClient()
             health = try await client.health()
             searchResponse = try await client.searchText(
                 query: "sza x summer walker type beat",
@@ -88,7 +144,37 @@ final class BeatFinderBackendTestViewModel: ObservableObject {
             )
             state = .success
         } catch {
-            state = .failure(error.localizedDescription)
+            health = nil
+            searchResponse = nil
+            state = .failure(userFacingError(error))
         }
+    }
+
+    private func saveConfiguration() {
+        BeatFinderBackendSettings.save(activeConfiguration, defaults: defaults)
+    }
+
+    private func configuredClient() throws -> BeatFinderBackendAPIClientProtocol {
+        if let clientOverride {
+            return clientOverride
+        }
+        return try activeConfiguration.makeClient()
+    }
+
+    private func userFacingError(_ error: Error) -> String {
+        if error is BeatFinderBackendConfigurationError {
+            return BeatFinderBackendConfiguration.backendUnavailableMessage
+        }
+
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .cannotConnectToHost, .cannotFindHost, .networkConnectionLost, .notConnectedToInternet, .timedOut:
+                return BeatFinderBackendConfiguration.backendUnavailableMessage
+            default:
+                break
+            }
+        }
+
+        return error.localizedDescription
     }
 }
