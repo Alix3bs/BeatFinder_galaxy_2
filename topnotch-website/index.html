@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOPNOTCH — Exotic Rentals, Chauffeur, Villas & Yachts</title>
+<meta name="description" content="TOPNOTCH exotic car rentals, chauffeur services, villas and yacht charters. Delivered to your door.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,14 H90 V36 H62 C61,60 63,74 76,88 H24 C37,74 39,60 38,36 H10 Z" fill="%23ff6a00"/></svg>'>
+</head>
+<body>
+
+<!-- ================= NAV — floating black glass island ================= -->
+<nav class="nav-island" id="navIsland">
+  <a class="brand" href="index.html">
+    <svg class="t-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="tChrome" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ffffff"/><stop offset="48%" stop-color="#d9dde3"/>
+          <stop offset="55%" stop-color="#9ea3ab"/><stop offset="100%" stop-color="#f0f2f5"/>
+        </linearGradient>
+      </defs>
+      <path d="M10,14 H90 V36 H62 C61,60 63,74 76,88 H24 C37,74 39,60 38,36 H10 Z" fill="url(#tChrome)"/>
+    </svg>
+    <span class="brand-name">TOPNOTCH</span>
+  </a>
+  <div class="nav-links">
+    <a href="#fleet">Fleet</a>
+    <a href="#services">Services</a>
+    <a href="#about">Experience</a>
+    <a href="vip.html" class="vip-link">VIP ✦</a>
+  </div>
+  <div class="nav-cta">
+    <a class="btn btn-ghost btn-sm" href="#" aria-label="Instagram">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.5"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+    </a>
+    <a class="btn btn-primary btn-sm" href="#fleet">Book Now</a>
+    <button class="nav-burger" id="navBurger" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#fleet">Fleet</a>
+  <a href="#services">Services</a>
+  <a href="#about">Experience</a>
+  <a href="vip.html" style="color:var(--orange)">VIP Plan ✦</a>
+</div>
+
+<!-- ================= HERO — scroll from exterior into the interior ================= -->
+<header class="hero" id="hero">
+  <div class="hero-sticky">
+
+    <!-- SCENE 1 · EXTERIOR (swap for a video/photo of the real car later) -->
+    <div class="hero-scene" id="sceneExterior">
+      <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="hx-bg" cx="50%" cy="20%" r="90%">
+            <stop offset="0%" stop-color="#262626"/><stop offset="50%" stop-color="#101010"/><stop offset="100%" stop-color="#060606"/>
+          </radialGradient>
+          <linearGradient id="hx-chrome" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fafafa"/><stop offset="45%" stop-color="#c9ced5"/>
+            <stop offset="55%" stop-color="#8d929a"/><stop offset="100%" stop-color="#e7e9ed"/>
+          </linearGradient>
+          <radialGradient id="hx-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ff6a00" stop-opacity=".5"/><stop offset="100%" stop-color="#ff6a00" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="1440" height="900" fill="url(#hx-bg)"/>
+        <ellipse cx="720" cy="120" rx="640" ry="180" fill="rgba(255,255,255,.035)"/>
+        <rect y="660" width="1440" height="240" fill="#070707"/>
+        <line x1="120" y1="660" x2="1320" y2="660" stroke="rgba(255,255,255,.07)"/>
+        <ellipse cx="720" cy="682" rx="560" ry="34" fill="url(#hx-glow)"/>
+
+        <!-- supercar silhouette -->
+        <defs>
+          <linearGradient id="hx-body" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#3a3e46"/><stop offset="40%" stop-color="#1d2026"/>
+            <stop offset="100%" stop-color="#0b0c0f"/>
+          </linearGradient>
+        </defs>
+        <g>
+          <path d="M180,640 C196,586 290,566 390,558 C462,478 576,434 716,430 C856,426 966,458 1040,520 C1148,532 1224,566 1244,606 C1260,630 1252,642 1228,646 L180,646 Z" fill="url(#hx-body)"/>
+          <path d="M446,554 C506,490 606,458 716,456 C810,454 886,474 944,516 L898,554 Z" fill="#05080d"/>
+          <path d="M446,554 C506,490 606,458 716,456 L716,468 C616,470 528,498 470,554 Z" fill="rgba(255,255,255,.10)"/>
+          <path d="M188,628 L1246,628 L1228,646 L180,646 Z" fill="#ff6a00" opacity=".9"/>
+          <path d="M390,558 C462,478 576,434 716,430 C856,426 966,458 1040,520" stroke="rgba(255,255,255,.35)" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <path d="M180,640 C196,586 290,566 390,558" stroke="rgba(255,255,255,.18)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M1040,520 C1148,532 1224,566 1244,606" stroke="rgba(255,255,255,.16)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <ellipse cx="408" cy="640" rx="92" ry="86" fill="#070707"/>
+          <ellipse cx="1046" cy="640" rx="92" ry="86" fill="#070707"/>
+          <g>
+            <circle cx="408" cy="638" r="76" fill="#0a0a0a" stroke="#1e1e1e" stroke-width="5"/>
+            <circle cx="408" cy="638" r="47" fill="url(#hx-chrome)"/>
+            <circle cx="408" cy="638" r="15" fill="#111"/>
+            <g stroke="#111" stroke-width="7">
+              <line x1="366" y1="638" x2="450" y2="638"/><line x1="408" y1="596" x2="408" y2="680"/>
+              <line x1="378" y1="608" x2="438" y2="668"/><line x1="378" y1="668" x2="438" y2="608"/>
+            </g>
+          </g>
+          <g>
+            <circle cx="1046" cy="638" r="76" fill="#0a0a0a" stroke="#1e1e1e" stroke-width="5"/>
+            <circle cx="1046" cy="638" r="47" fill="url(#hx-chrome)"/>
+            <circle cx="1046" cy="638" r="15" fill="#111"/>
+            <g stroke="#111" stroke-width="7">
+              <line x1="1004" y1="638" x2="1088" y2="638"/><line x1="1046" y1="596" x2="1046" y2="680"/>
+              <line x1="1016" y1="608" x2="1076" y2="668"/><line x1="1016" y1="668" x2="1076" y2="608"/>
+            </g>
+          </g>
+          <rect x="1206" y="574" width="40" height="14" rx="7" fill="#ff6a00"/>
+          <rect x="186" y="592" width="34" height="10" rx="5" fill="#fff" opacity=".25"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- SCENE 2 · INTERIOR (cockpit) -->
+    <div class="hero-scene" id="sceneInterior" style="opacity:0">
+      <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="hi-bg" cx="50%" cy="30%" r="90%">
+            <stop offset="0%" stop-color="#1c1c1e"/><stop offset="60%" stop-color="#0c0c0d"/><stop offset="100%" stop-color="#050505"/>
+          </radialGradient>
+          <linearGradient id="hi-dash" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1a1a1c"/><stop offset="100%" stop-color="#0a0a0b"/>
+          </linearGradient>
+          <linearGradient id="hi-chrome" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#f4f4f4"/><stop offset="55%" stop-color="#8d929a"/><stop offset="100%" stop-color="#d9dde3"/>
+          </linearGradient>
+        </defs>
+        <rect width="1440" height="900" fill="url(#hi-bg)"/>
+        <!-- windshield night view -->
+        <path d="M120,80 L1320,80 L1180,330 L260,330 Z" fill="#08090c"/>
+        <path d="M120,80 L1320,80 L1180,330 L260,330 Z" fill="url(#hi-bg)" opacity=".25"/>
+        <circle cx="520" cy="180" r="3" fill="#fff" opacity=".5"/><circle cx="700" cy="140" r="2" fill="#fff" opacity=".4"/>
+        <circle cx="880" cy="200" r="2.6" fill="#fff" opacity=".45"/><circle cx="1020" cy="150" r="2" fill="#fff" opacity=".35"/>
+        <circle cx="400" cy="230" r="2" fill="#ffb15c" opacity=".6"/><circle cx="980" cy="250" r="2.4" fill="#ffb15c" opacity=".5"/>
+        <path d="M260,330 L1180,330 L1160,318 L280,318 Z" fill="#ff6a00" opacity=".14"/>
+        <!-- A pillars -->
+        <path d="M120,80 L260,330 L200,900 L60,900 L100,80 Z" fill="#0a0a0b"/>
+        <path d="M1320,80 L1180,330 L1240,900 L1380,900 L1340,80 Z" fill="#0a0a0b"/>
+        <!-- dash -->
+        <path d="M200,900 L260,330 C420,378 1020,378 1180,330 L1240,900 Z" fill="url(#hi-dash)"/>
+        <path d="M260,344 C430,390 1010,390 1180,344" stroke="#ff6a00" stroke-width="3" fill="none" opacity=".8"/>
+        <path d="M260,352 C430,398 1010,398 1180,352" stroke="#ff6a00" stroke-width="7" fill="none" opacity=".14"/>
+        <!-- center screen -->
+        <rect x="620" y="430" width="200" height="120" rx="14" fill="#050505" stroke="#2a2a2a"/>
+        <rect x="636" y="448" width="168" height="10" rx="5" fill="#ff6a00" opacity=".85"/>
+        <rect x="636" y="470" width="120" height="8" rx="4" fill="#3a3a3a"/>
+        <rect x="636" y="488" width="140" height="8" rx="4" fill="#2c2c2c"/>
+        <rect x="636" y="514" width="70" height="20" rx="10" fill="#ff6a00" opacity=".9"/>
+        <!-- cluster -->
+        <g>
+          <rect x="330" y="418" width="240" height="110" rx="16" fill="#050505" stroke="#242424"/>
+          <path d="M370,510 A66,66 0 0 1 490,472" stroke="#ff6a00" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <path d="M370,510 A66,66 0 0 0 512,505" stroke="#2c2c2c" stroke-width="7" fill="none" stroke-linecap="round"/>
+          <text x="448" y="502" text-anchor="middle" font-family="Manrope, sans-serif" font-weight="800" font-size="30" fill="#f2f2f2">186</text>
+          <text x="448" y="520" text-anchor="middle" font-family="Manrope, sans-serif" font-weight="700" font-size="11" fill="#8a8a8a" letter-spacing="3">MPH</text>
+        </g>
+        <!-- steering wheel -->
+        <g>
+          <circle cx="450" cy="700" r="180" fill="none" stroke="#101011" stroke-width="42"/>
+          <circle cx="450" cy="700" r="180" fill="none" stroke="#1d1d1f" stroke-width="34"/>
+          <circle cx="450" cy="700" r="180" fill="none" stroke="url(#hi-chrome)" stroke-width="3" opacity=".5"/>
+          <path d="M285,660 L400,688 M615,660 L500,688 M450,865 L450,760" stroke="#141415" stroke-width="34" stroke-linecap="round"/>
+          <circle cx="450" cy="712" r="52" fill="#0c0c0d" stroke="#242426"/>
+          <path d="M428,700 H472 V712 H458 C458,724 459,730 465,737 H435 C441,730 442,724 442,712 H428 Z" fill="#ff6a00"/>
+          <path d="M300,632 A180,180 0 0 1 430,522" stroke="#ff6a00" stroke-width="4" fill="none" opacity=".55" stroke-linecap="round"/>
+        </g>
+        <!-- passenger + console -->
+        <path d="M900,900 L920,560 C980,540 1060,540 1120,560 L1150,900 Z" fill="#0d0d0e"/>
+        <path d="M920,560 C980,540 1060,540 1120,560" stroke="#ff6a00" stroke-width="2.5" opacity=".5" fill="none"/>
+        <path d="M690,900 L700,600 C730,588 780,588 810,600 L830,900 Z" fill="#0b0b0c"/>
+        <rect x="726" y="640" width="58" height="120" rx="12" fill="#0f0f10" stroke="#232323"/>
+        <circle cx="755" cy="700" r="17" fill="url(#hi-chrome)"/>
+        <rect x="740" y="756" width="30" height="7" rx="3.5" fill="#ff6a00" opacity=".8"/>
+        <!-- ambient light lines -->
+        <path d="M120,80 L100,80 L60,900 L86,900 Z" fill="#ff6a00" opacity=".07"/>
+        <path d="M1320,80 L1340,80 L1380,900 L1354,900 Z" fill="#ff6a00" opacity=".07"/>
+      </svg>
+    </div>
+
+    <div class="hero-vignette"></div>
+
+    <!-- copy -->
+    <div class="hero-copy" id="heroCopy">
+      <div class="phase phase-1">
+        <span class="hero-kicker">Exotic Rentals · Delivered</span>
+        <h1 class="hero-title"><span class="chrome-text">Drive The</span><br><span class="accent">Unreal.</span></h1>
+        <p class="hero-sub">Supercars, chauffeurs, villas and yachts — one concierge, zero friction. Keep scrolling to step inside.</p>
+        <div class="hero-actions">
+          <a href="#fleet" class="btn btn-primary">Choose Your Car</a>
+          <a href="vip.html" class="btn btn-ghost">VIP Plan ✦</a>
+        </div>
+      </div>
+      <div class="phase phase-2">
+        <span class="hero-kicker">Step Inside</span>
+        <h1 class="hero-title" style="font-size:clamp(36px,6.6vw,84px)"><span class="chrome-text">The Interior</span><br><span class="accent">Keeps You.</span></h1>
+        <p class="hero-sub">Every car is delivered detailed, fueled and cockpit-ready. Your only job is the drive.</p>
+        <div class="hero-actions">
+          <a href="#fleet" class="btn btn-primary">Browse The Fleet</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="scroll-hint" id="scrollHint"><div class="wheel"></div>Scroll</div>
+  </div>
+</header>
+
+<!-- ================= CATEGORY ISLANDS ================= -->
+<div class="islands-wrap" id="fleet">
+  <div class="islands-label">Browse the collection — swipe</div>
+  <div class="islands" id="islands"></div>
+</div>
+
+<!-- ================= FLEET ================= -->
+<section class="section" style="padding-top:40px">
+  <div class="section-head reveal">
+    <span class="eyebrow">The Fleet</span>
+    <h2 class="section-title chrome-text">Pick Your Weapon</h2>
+    <p class="section-sub">Tap any vehicle for pricing, specs and requirements. Every rental includes delivery or showroom pickup — your choice at checkout.</p>
+  </div>
+  <div class="fleet-grid" id="fleetGrid"></div>
+</section>
+
+<!-- ================= SERVICES ================= -->
+<section class="section" id="services" style="padding-top:30px">
+  <div class="section-head reveal">
+    <span class="eyebrow">Beyond The Car</span>
+    <h2 class="section-title chrome-text">Full Lifestyle, One Call</h2>
+    <p class="section-sub">Chauffeurs, villas and yachts curated to the same standard as the fleet. Bundle with any car for preferred pricing.</p>
+  </div>
+  <div class="services-band" id="servicesBand"></div>
+</section>
+
+<!-- ================= VIP BANNER ================= -->
+<section class="section" id="about" style="padding-top:30px">
+  <div class="vip-banner reveal">
+    <div>
+      <span class="vip-badge">✦ TOPNOTCH VIP</span>
+      <h2><span class="chrome-text">Skip the line.</span><br>Own the experience.</h2>
+      <p>Our invite-only membership for the ones who book monthly, not once. Priority fleet access, free delivery anywhere in the city, and a concierge that answers on the first ring.</p>
+      <a href="vip.html" class="btn btn-primary">Explore The VIP Plan</a>
+    </div>
+    <ul class="vip-perks">
+      <li><span class="dot">✦</span> First access to new arrivals</li>
+      <li><span class="dot">✦</span> Free delivery &amp; pickup, always</li>
+      <li><span class="dot">✦</span> Locked member rates on the whole fleet</li>
+      <li><span class="dot">✦</span> Chauffeur, villa &amp; yacht credits</li>
+      <li><span class="dot">✦</span> 24/7 dedicated concierge line</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="foot-grid">
+    <div>
+      <a class="brand" href="index.html" style="margin-bottom:18px">
+        <svg class="t-mark" viewBox="0 0 100 100" width="30" height="30"><path d="M10,14 H90 V36 H62 C61,60 63,74 76,88 H24 C37,74 39,60 38,36 H10 Z" fill="#ff6a00"/></svg>
+        <span class="brand-name">TOPNOTCH</span>
+      </a>
+      <p style="color:var(--muted);max-width:300px">Exotic rentals, chauffeur services, villas and yacht charters. Black on the outside, gold standard on the inside.</p>
+    </div>
+    <div>
+      <h4>Explore</h4>
+      <a href="#fleet">The Fleet</a>
+      <a href="#services">Chauffeur Services</a>
+      <a href="#services">Villas &amp; Yachts</a>
+      <a href="vip.html">VIP Plan</a>
+    </div>
+    <div>
+      <h4>Visit</h4>
+      <p id="footAddress"></p>
+      <p id="footHours"></p>
+      <a href="#" id="footPhone"></a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>© 2026 TOPNOTCH. All rights reserved.</span>
+    <span>Drive responsibly. 25+ · Valid license &amp; insurance required.</span>
+  </div>
+</footer>
+
+<div id="modalRoot"></div>
+
+<script src="js/data.js"></script>
+<script>
+  document.getElementById("footAddress").textContent = BUSINESS.address + ", " + BUSINESS.city;
+  document.getElementById("footHours").textContent = BUSINESS.hours;
+  const fp = document.getElementById("footPhone");
+  fp.textContent = BUSINESS.phone; fp.href = "tel:" + BUSINESS.phone.replace(/\D/g, "");
+</script>
+<script src="js/main.js"></script>
+</body>
+</html>
