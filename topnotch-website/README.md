@@ -22,8 +22,20 @@ under `topnotch_requests`). To go live, set `BUSINESS.bookingWebhook` in
 `js/data.js` to a webhook that appends the row to the booking sheet and pings
 the AI concierge agent, which then messages the owner.
 
+## Branding
+The real TOPNOTCH logo lives in `img/` (`logo-t.png` mark + `logo-topnotch.png`
+wordmark, extracted to transparent PNGs). Headings use the self-hosted
+**Chango** font (`fonts/`) to match the bubble wordmark; body text is Manrope.
+
+## Hero interior video
+Drop a starlight-interior clip (Maybach / Rolls-Royce / Escalade) at
+`img/hero-interior.mp4` — it auto-plays and fades in over the animated
+starlight cockpit art when you scroll into the interior phase. Good free
+sources: pexels.com or coverr.co, search "car interior starlight / luxury
+car interior night". Until the file exists, the animated art shows instead.
+
 ## Swapping in real photography
-All vehicle/service visuals are generated SVG studio art (placeholders).
-Replace the art functions in `js/data.js` (`carArt`, `villaArt`, `yachtArt`,
-`chauffeurArt`) or layer real images into the `.card-media` / hero scenes —
-slots are structured for a drop-in swap.
+Car photo slots are intentionally **empty** ("Photo coming soon") and ready
+for real fleet shots — replace `emptySlot()` usages in `js/main.js` or extend
+`FLEET` entries with image paths. Service cards still use generated art
+(`villaArt`, `yachtArt`, `chauffeurArt` in `js/data.js`).

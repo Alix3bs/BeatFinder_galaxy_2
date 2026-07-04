@@ -14,7 +14,15 @@ const ICONS = {
   key: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
   check: '<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
   user: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>',
-  phone: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>'
+  phone: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  bolt: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+  gauge: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14l4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>',
+  seat2: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>',
+  fuel: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="15" y2="22"/><path d="M4 22V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v18"/><path d="M14 10h2a2 2 0 0 1 2 2v3.5a1.5 1.5 0 0 0 3 0V9l-3-3"/><rect x="6" y="5" width="6" height="5" rx="1"/></svg>',
+  toll: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M12 8.5v3"/></svg>',
+  clock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>',
+  clean: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M5 12V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5"/><path d="M5 12v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>',
+  seat: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 0 1 4 0v6h6a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z"/></svg>'
 };
 
 /* ============================================================
@@ -72,6 +80,14 @@ if (hero) {
   };
   addEventListener("scroll", onScroll, { passive: true });
   onScroll();
+
+  /* hero interior video: fades in over the starlight art once
+     img/hero-interior.mp4 exists and has loaded */
+  const vid = $("#heroVideo");
+  if (vid) {
+    vid.addEventListener("loadeddata", () => vid.classList.add("live"));
+    vid.addEventListener("error", () => vid.remove(), true);
+  }
 }
 
 /* ============================================================
@@ -145,7 +161,7 @@ function renderFleet() {
     <article class="car-card reveal in" data-id="${car.id}" style="transition-delay:${i * 0.04}s">
       <div class="card-media">
         ${car.hot ? '<span class="card-tag hot">In Demand</span>' : `<span class="card-tag">${car.cat}</span>`}
-        ${carArt(car.body, car.paint)}
+        ${emptySlot()}
       </div>
       <div class="card-body">
         <h3 class="card-name">${car.name}</h3>
@@ -212,40 +228,101 @@ function closeModal() {
 addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
 
 function openDetail(kind, id) {
-  let title, cat, art, price, unit, specs, notes;
-  if (kind === "car") {
-    const c = FLEET.find(f => f.id === id);
-    title = c.name; cat = c.cat; art = carArt(c.body, c.paint);
-    price = c.price; unit = "day";
-    specs = [[c.hp.replace(" HP", ""), "Horsepower"], [c.zero60, "0–60 mph"], [c.top.replace(" mph", ""), "Top mph"], [c.seats, "Seats"]];
-    notes = [
-      `Refundable security deposit: $${c.deposit.toLocaleString()}`,
-      "Driver must be 25+ with valid license & full-coverage insurance",
-      "100 miles per day included — extra miles available",
-      "Delivered detailed, sanitized and fueled"
-    ];
-    bookingContext = { kind, id, title, price, unit };
-  } else {
-    const s = SERVICES.find(x => x.id === id);
-    title = s.name; cat = "Concierge Service"; art = s.art();
-    price = s.price; unit = s.unit; specs = s.specs; notes = s.notes;
-    bookingContext = { kind, id, title, price, unit };
-  }
+  if (kind === "car") return openCarDetail(id);
 
+  const s = SERVICES.find(x => x.id === id);
+  bookingContext = { kind, id, title: s.name, price: s.price, unit: s.unit };
   openModal(`
-    <div class="detail-media">${art}</div>
+    <div class="detail-media">${s.art()}</div>
     <div class="modal-pad">
       <div class="detail-head">
         <div>
-          <h3>${title}</h3>
-          <div class="d-cat">${cat}</div>
+          <h3>${s.name}</h3>
+          <div class="d-cat">Concierge Service</div>
         </div>
-        <div class="price-chip"><strong>$${price.toLocaleString()}</strong><span>per ${unit}</span></div>
+        <div class="price-chip"><strong>$${s.price.toLocaleString()}</strong><span>per ${s.unit}</span></div>
       </div>
-      <div class="spec-grid">${specs.map(s => `<div class="spec"><b>${s[0]}</b><i>${s[1]}</i></div>`).join("")}</div>
-      <ul class="detail-notes">${notes.map(n => `<li>${n}</li>`).join("")}</ul>
-      <button class="btn btn-primary btn-block" id="rentNow">${kind === "car" ? "Rent Now" : "Book Now"}</button>
+      <div class="spec-grid">${s.specs.map(x => `<div class="spec"><b>${x[0]}</b><i>${x[1]}</i></div>`).join("")}</div>
+      <ul class="detail-notes">${s.notes.map(n => `<li>${n}</li>`).join("")}</ul>
+      <button class="btn btn-primary btn-block" id="rentNow">Book Now</button>
     </div>`);
+  $("#rentNow").addEventListener("click", () => renderOptionStep());
+}
+
+/* ---- car detail: pills + rates + features + extras + sticky bar ---- */
+function openCarDetail(id) {
+  const c = FLEET.find(f => f.id === id);
+  bookingContext = { kind: "car", id, title: c.name, price: c.price, unit: "day", extras: [] };
+  const mile = extraMileRate(c.price);
+
+  openModal(`
+    <div class="detail-media">${emptySlot()}</div>
+    <div class="modal-pad" style="padding-bottom:16px">
+      <div class="detail-head">
+        <div>
+          <h3>${c.name}</h3>
+          <div class="d-cat">${c.cat}</div>
+        </div>
+      </div>
+
+      <div class="price-pills">
+        <span class="pill">$${c.price.toLocaleString()}<small>/day</small></span>
+        <span class="pill alt">$${weeklyRate(c.price).toLocaleString()}<small>/week</small></span>
+        <span class="pill chrome">$${monthlyRate(c.price).toLocaleString()}<small>/month</small></span>
+      </div>
+
+      <div class="rate-table">
+        <div class="rate-row"><span class="rk">Distance included</span><span class="rv">100 mi / day</span></div>
+        <div class="rate-row"><span class="rk">Additional mileage</span><span class="rv">$${mile} per mile</span></div>
+        <div class="rate-row"><span class="rk">Security deposit</span><span class="rv hl">from $${c.deposit.toLocaleString()}</span></div>
+      </div>
+
+      <div class="block-label">Features</div>
+      <div class="features-grid">
+        <div class="feature-tile"><span class="ft-ico">${ICONS.bolt}</span><span><i>Engine Horsepower</i><b>${c.hp}</b></span></div>
+        <div class="feature-tile"><span class="ft-ico">${ICONS.gauge}</span><span><i>0–60 / Top Speed</i><b>${c.zero60} · ${c.top}</b></span></div>
+        <div class="feature-tile"><span class="ft-ico">${ICONS.seat2}</span><span><i>Seats</i><b>${c.seats}</b></span></div>
+        <div class="feature-tile"><span class="ft-ico">${ICONS.fuel}</span><span><i>Vehicle Fuel Type</i><b>Gasoline</b></span></div>
+      </div>
+
+      <div class="block-label">Extras</div>
+      <div class="extras-list" id="extrasList">
+        ${EXTRAS.map(e => `
+          <div class="extra-card" data-ex="${e.id}">
+            <span class="ex-ico">${ICONS[e.ico] || ICONS.pin}</span>
+            <span class="ex-body"><b>${e.name}</b><p>${e.desc}</p></span>
+            <span class="ex-price">+$${e.price}<small>/${e.per}</small></span>
+            <span class="ex-tick">✓</span>
+          </div>`).join("")}
+      </div>
+    </div>
+
+    <div class="modal-rentbar">
+      <div class="total"><b id="rentTotal">$${c.price.toLocaleString()}</b><span>per day · deposit separate</span></div>
+      <button class="btn btn-primary" id="rentNow">Rent Now</button>
+    </div>`);
+
+  const updateTotal = () => {
+    const perDay = c.price + bookingContext.extras
+      .map(x => EXTRAS.find(e => e.id === x))
+      .filter(e => e.per === "day")
+      .reduce((s, e) => s + e.price, 0);
+    const oneTime = bookingContext.extras
+      .map(x => EXTRAS.find(e => e.id === x))
+      .filter(e => e.per === "trip")
+      .reduce((s, e) => s + e.price, 0);
+    $("#rentTotal").textContent = `$${perDay.toLocaleString()}` + (oneTime ? ` +$${oneTime}` : "");
+    bookingContext.price = perDay;
+  };
+
+  $$(".extra-card").forEach(card => card.addEventListener("click", () => {
+    const ex = card.dataset.ex;
+    card.classList.toggle("on");
+    bookingContext.extras = card.classList.contains("on")
+      ? [...bookingContext.extras, ex]
+      : bookingContext.extras.filter(x => x !== ex);
+    updateTotal();
+  }));
 
   $("#rentNow").addEventListener("click", () => renderOptionStep());
 }
@@ -388,6 +465,7 @@ function wireForm(mode) {
       returnLocation: mode === "delivery" && $("#diffReturnCb").checked ? $("#returnInput").value.trim() : "same",
       start: `${$("#dateStart").value} ${$("#timeStart").value}`,
       end: `${$("#dateEnd").value} ${$("#timeEnd").value}`,
+      extras: (bookingContext.extras || []).map(x => EXTRAS.find(e => e.id === x)?.name).join(", ") || "none",
       name, phone
     };
 

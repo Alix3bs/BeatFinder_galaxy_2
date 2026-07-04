@@ -18,6 +18,29 @@ const BUSINESS = {
   bookingWebhook: ""
 };
 
+/* ---------- empty photo slot (drop real fleet shots in later) ---------- */
+function emptySlot(label) {
+  return `<div class="empty-slot">
+    <img class="es-mark" src="img/logo-t.png" alt="">
+    <span>${label || "Photo coming soon"}</span>
+  </div>`;
+}
+
+/* ---------- rental extras (shown in the car detail popup) ---------- */
+const EXTRAS = [
+  { id: "miles",   name: "Unlimited Miles",  desc: "Worried about the miles? Drive without limits.",            price: 149, per: "day",  ico: "pin" },
+  { id: "tolls",   name: "Pre-paid Tolls",   desc: "Skip the toll booth and drive with ease.",                  price: 25,  per: "day",  ico: "toll" },
+  { id: "late",    name: "Late Return",      desc: "Need extra time? Return the car later, no stress.",         price: 95,  per: "trip", ico: "clock" },
+  { id: "clean",   name: "Cleaning Fee",     desc: "Skip the car wash — return it as-is.",                      price: 150, per: "trip", ico: "clean" },
+  { id: "fuel",    name: "Pre-paid Fuel",    desc: "Skip the gas station — return with any fuel level.",        price: 120, per: "trip", ico: "fuel" },
+  { id: "seat",    name: "Child Seat",       desc: "Required for children under 12 years old.",                 price: 25,  per: "day",  ico: "seat" }
+];
+
+/* weekly ≈ 1 day free, monthly ≈ locked member-style rate */
+const weeklyRate  = d => d * 6;
+const monthlyRate = d => d * 22;
+const extraMileRate = d => (d >= 1200 ? 7.5 : d >= 800 ? 5 : d >= 500 ? 3.5 : 2);
+
 /* ---------- studio art generator ---------- */
 /* paint = main body color of the silhouette */
 function studioBase(inner, glowColor) {
