@@ -46,7 +46,27 @@ Later discovery expands beyond the manual list through hashtag seeds, artist-com
 
 The local test path uses `MockYouTubeChannelClient` and fixture data from `backend/tests/fixtures/mock_youtube_channel_videos.json`. That fixture simulates producer uploads such as `Burgermarty x I Luv Bani Type Beat - Slide`, `Philly x Dallas Type Beat - Motion`, and `Milwaukee x Detroit Type Beat - Fast Money` without touching YouTube.
 
-The module does not implement live YouTube scraping. A future live mode should use permitted YouTube APIs only when a YouTube API key is provided through environment configuration, should be disabled by default, and should respect rate limits, robots/terms, and copyright boundaries.
+## Live Mode — Official YouTube Data API
+
+`backend/discovery/youtube_api_client.py` implements the same client interface against the official YouTube Data API v3. It is metadata-only and disabled by default:
+
+- activation requires `BEATFINDER_YOUTUBE_API_KEY` (Google Cloud console → enable "YouTube Data API v3" → create an API key); without the key `YouTubeDataAPIClient.from_env()` returns `None` and the runner exits with instructions
+- resolves `@handles` and legacy usernames to canonical `UC…` channel ids (`channels.list` with `forHandle` / `forUsername`)
+- lists public uploads newest-to-oldest via the channel's uploads playlist (`playlistItems.list`, 50 per page) and captures `privacyStatus` when the API returns it
+- retries rate-limit and transient server errors with exponential backoff; a `quotaExceeded` response raises `YouTubeQuotaExceededError` immediately (retrying cannot help) and the runner stops cleanly — checkpoints preserve progress so the next run resumes where it left off
+- never downloads media, never bypasses access restrictions, and reads only public listings
+
+Run a live backfill (after loading seeds):
+
+```bash
+export BEATFINDER_YOUTUBE_API_KEY=your-key
+python3 scripts/discovery/run_youtube_backfill.py --max-pages 5
+python3 scripts/discovery/run_youtube_backfill.py --channel @prod.salishan --max-pages 2
+```
+
+Incremental updates: re-running the backfill after a completed pass starts again from the newest uploads and skips already-indexed videos, so a scheduled job (cron/GitHub Actions with the key as a secret) that runs `run_youtube_backfill.py --max-pages 1` gives cheap periodic sync. `last_scanned_at` on each channel records the last successful sync.
+
+CI never uses the live client; `MockYouTubeChannelClient` and recorded fixtures cover the pipeline (`backend/tests/test_youtube_api_client.py` exercises the live client against a scripted transport, including pagination, quota, and retry behavior).
 
 ## Metadata Extraction
 
