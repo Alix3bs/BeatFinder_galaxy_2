@@ -54,6 +54,10 @@ def main() -> int:
         [node_executable, "--experimental-strip-types", "--test", "backend/api/request_parsers.test.ts"],
         cwd=repo_root,
     )
+    run(
+        [node_executable, "--experimental-strip-types", "--test", "backend/api/rate_limit.test.ts"],
+        cwd=repo_root,
+    )
     return 0
 
 

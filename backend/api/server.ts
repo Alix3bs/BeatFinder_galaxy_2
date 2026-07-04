@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
+import { FixedWindowRateLimiter, clientKeyFromHeaders } from "./rate_limit.ts";
 import { PayloadTooLargeError, readRequestPayload } from "./request_parsers.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -19,6 +20,15 @@ const cliTimeoutMs = parsePositiveInt(process.env.BEATFINDER_CLI_TIMEOUT_MS, DEF
 const allowLocalAudioPaths = ["1", "true", "yes"].includes(
   String(process.env.BEATFINDER_ALLOW_LOCAL_AUDIO_PATHS || "").trim().toLowerCase(),
 );
+
+// Audio processing is the expensive path; text search is cheap by
+// comparison but still bounded. 0 disables the limiter (e.g. local dev).
+const rateLimitPerMinute = parseNonNegativeInt(process.env.BEATFINDER_RATE_LIMIT_PER_MINUTE, 30);
+const expensiveRouteLimiter = new FixedWindowRateLimiter({
+  limit: rateLimitPerMinute,
+  windowMs: 60_000,
+});
+const EXPENSIVE_ROUTES = new Set(["POST /search/audio", "POST /search/hybrid", "POST /ingest/beat"]);
 
 const routeMap = new Map<string, string>([
   ["POST /ingest/beat", "ingest"],
@@ -60,6 +70,21 @@ const server = http.createServer(async (req, res) => {
   if (!command) {
     sendJson(res, 404, { error: "not_found", message: "Unknown endpoint." });
     return;
+  }
+
+  if (EXPENSIVE_ROUTES.has(routeKey)) {
+    const clientKey = clientKeyFromHeaders(
+      req.socket.remoteAddress ?? undefined,
+      typeof req.headers["x-forwarded-for"] === "string" ? req.headers["x-forwarded-for"] : undefined,
+    );
+    if (!expensiveRouteLimiter.allow(clientKey)) {
+      res.setHeader("Retry-After", "60");
+      sendJson(res, 429, {
+        error: "rate_limited",
+        message: "Too many requests. Try again in a minute.",
+      });
+      return;
+    }
   }
 
   const contentType = String(req.headers["content-type"] || "");
@@ -193,6 +218,11 @@ function logServerError(error: unknown): void {
 function parsePositiveInt(rawValue: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(String(rawValue || "").trim(), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseNonNegativeInt(rawValue: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(String(rawValue || "").trim(), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
 function runCli(command: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
