@@ -22,12 +22,16 @@ final class BeatSearchViewModel: ObservableObject {
     @Published private(set) var preparedSnippetLabel: String?
     @Published var errorText: String?
 
+    @Published private(set) var historyEntries: [SearchHistoryEntry] = []
+
     private let apiClientFactory: () throws -> BeatFinderBackendAPIClientProtocol
     private let topN: Int
+    private let historyStore: SearchHistoryStore
 
     init(
         apiClient: BeatFinderBackendAPIClientProtocol? = nil,
-        topN: Int = 3
+        topN: Int = 3,
+        historyStore: SearchHistoryStore? = nil
     ) {
         if let apiClient {
             self.apiClientFactory = { apiClient }
@@ -37,6 +41,35 @@ final class BeatSearchViewModel: ObservableObject {
             }
         }
         self.topN = topN
+        self.historyStore = historyStore ?? SearchHistoryStore()
+        self.historyEntries = self.historyStore.entries
+    }
+
+    func clearHistory() {
+        historyStore.clear()
+        historyEntries = historyStore.entries
+    }
+
+    func removeHistoryEntry(_ entry: SearchHistoryEntry) {
+        historyStore.remove(entry)
+        historyEntries = historyStore.entries
+    }
+
+    func rerun(_ entry: SearchHistoryEntry, userId: UUID?) {
+        guard let mode = QueryInputMode(rawValue: entry.mode), mode == .text || mode == .link else {
+            return
+        }
+        query = entry.query
+        inputMode = mode
+        search(forceWeb: false, userId: userId)
+    }
+
+    private func recordSearchHistory(query: String, mode: QueryInputMode, topResultTitle: String?) {
+        // Audio snippets are deleted after upload and cannot be re-run, so
+        // only typed queries are kept in history.
+        guard mode == .text || mode == .link else { return }
+        historyStore.record(query: query, mode: mode.rawValue, topResultTitle: topResultTitle)
+        historyEntries = historyStore.entries
     }
 
     func search(forceWeb: Bool, userId: UUID?) {
@@ -121,6 +154,7 @@ private extension BeatSearchViewModel {
             _ = userId
             response = result
             matches = result.matches
+            recordSearchHistory(query: query, mode: mode, topResultTitle: result.matches.first?.title)
         } catch {
             response = nil
             matches = []

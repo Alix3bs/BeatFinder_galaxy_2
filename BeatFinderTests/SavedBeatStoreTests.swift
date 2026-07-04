@@ -73,6 +73,26 @@ struct SavedBeatStoreTests {
         #expect(saved?.result.recommendedNextSearches == ["prod salishan type beat", "philly type beat"])
     }
 
+    @Test func salvagesDecodableBeatsWhenStoredDataIsPartiallyCorrupted() throws {
+        let defaults = makeDefaults()
+        let key = "saved-beat-migration-tests"
+
+        let firstStore = SavedBeatStore(defaults: defaults, storageKey: key)
+        firstStore.save(makeResult(id: "beat-1", title: "Late Nights", youtubeVideoID: "vid-1"))
+        firstStore.save(makeResult(id: "beat-2", title: "Afterglow", youtubeVideoID: "vid-2"))
+
+        // Simulate a future/legacy schema by appending an undecodable element.
+        let stored = try #require(defaults.data(forKey: key))
+        var raw = try #require(try JSONSerialization.jsonObject(with: stored) as? [Any])
+        raw.append(["unexpected": "shape"])
+        defaults.set(try JSONSerialization.data(withJSONObject: raw), forKey: key)
+
+        let reloaded = SavedBeatStore(defaults: defaults, storageKey: key)
+        #expect(reloaded.savedBeats.count == 2)
+        let titles = Set(reloaded.savedBeats.map(\.result.title))
+        #expect(titles == ["Late Nights", "Afterglow"])
+    }
+
     private func makeStore() -> SavedBeatStore {
         SavedBeatStore(defaults: makeDefaults(), storageKey: UUID().uuidString)
     }

@@ -102,12 +102,30 @@ private extension SavedBeatStore {
     }
 
     func load() {
-        guard let data = defaults.data(forKey: storageKey),
-              let decoded = try? JSONDecoder().decode([SavedBeat].self, from: data) else {
+        guard let data = defaults.data(forKey: storageKey) else {
             savedBeats = []
             return
         }
-        savedBeats = decoded
+        if let decoded = try? JSONDecoder().decode([SavedBeat].self, from: data) {
+            savedBeats = decoded
+            return
+        }
+        // Migration/corruption path: salvage every decodable element instead
+        // of dropping the entire Safe when one entry no longer decodes.
+        if let raw = try? JSONSerialization.jsonObject(with: data) as? [Any] {
+            var salvaged: [SavedBeat] = []
+            for element in raw {
+                guard
+                    let elementData = try? JSONSerialization.data(withJSONObject: element),
+                    let beat = try? JSONDecoder().decode(SavedBeat.self, from: elementData)
+                else { continue }
+                salvaged.append(beat)
+            }
+            savedBeats = salvaged
+            persist()
+            return
+        }
+        savedBeats = []
     }
 
     nonisolated static func normalized(_ value: String) -> String {

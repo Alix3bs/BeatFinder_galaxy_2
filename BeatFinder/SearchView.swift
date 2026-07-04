@@ -302,6 +302,10 @@ private extension SearchView {
     var resultsSection: some View {
         ScrollView(showsIndicators: false) {
             LazyVStack(spacing: 10) {
+                if viewModel.response == nil, !viewModel.isSearching, !viewModel.historyEntries.isEmpty {
+                    historySection
+                }
+
                 if let response = viewModel.response, response.discovery != nil {
                     discoveryCard(response)
                 }
@@ -337,6 +341,75 @@ private extension SearchView {
             }
             .padding(.bottom, 36)
         }
+    }
+
+    var historySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Recent Searches")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.white)
+
+                Spacer()
+
+                Button {
+                    viewModel.clearHistory()
+                } label: {
+                    Text("Clear")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("search.history.clear")
+            }
+
+            ForEach(viewModel.historyEntries) { entry in
+                Button {
+                    viewModel.rerun(entry, userId: auth.sessionUserId)
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.6))
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.query)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+
+                            if let top = entry.topResultTitle, !top.isEmpty {
+                                Text(top)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.white.opacity(0.55))
+                                    .lineLimit(1)
+                            }
+                        }
+
+                        Spacer()
+
+                        Button {
+                            viewModel.removeHistoryEntry(entry)
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(.white.opacity(0.5))
+                                .frame(width: 26, height: 26)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("search.history.remove")
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("search.history.row")
+                .accessibilityLabel("Re-run search \(entry.query)")
+            }
+        }
+        .accessibilityIdentifier("search.history.section")
     }
 
     func discoveryCard(_ response: BeatSearchResponse) -> some View {

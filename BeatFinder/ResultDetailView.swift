@@ -163,7 +163,39 @@ private extension ResultDetailView {
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("result.detail.saveToggle")
+
+            // Shares only metadata text and the public source link — never
+            // audio files.
+            ShareLink(item: shareText) {
+                HStack {
+                    Image(systemName: "square.and.arrow.up")
+                    Text("Share Match Info")
+                }
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(Color.white.opacity(0.10))
+                .clipShape(Capsule())
+            }
+            .accessibilityIdentifier("result.detail.share")
         }
+    }
+
+    var shareText: String {
+        var lines = ["BeatFinder match: \(match.title)"]
+        if let bpm = match.bpm {
+            lines.append("BPM: \(bpm)")
+        }
+        if let key = match.key, !key.isEmpty {
+            lines.append("Key: \(key)")
+        }
+        lines.append("Source: \(match.platform.title)")
+        lines.append("Confidence: \(match.confidencePercentText)")
+        if !match.url.isEmpty {
+            lines.append(match.url)
+        }
+        return lines.joined(separator: "\n")
     }
 
     func metadataRow(_ title: String, _ value: String) -> some View {
@@ -203,6 +235,7 @@ private extension ResultDetailView {
             .background(Color.white)
             .clipShape(Capsule())
         }
+        .accessibilityIdentifier("result.detail.openSource")
     }
 
     func verdictBadge(_ verdict: BeatMatchVerdict) -> some View {
