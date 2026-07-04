@@ -29,6 +29,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -206,3 +207,77 @@ jobs:
             ${{ runner.temp }}/beatfinder-xcodebuild.log
             ${{ runner.temp }}/BeatFinderBuild.xcresult
           if-no-files-found: ignore
+
+  container:
+    name: Backend container build and health check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t beatfinder-backend .
+
+      - name: Run container and verify health and search
+        run: |
+          set -euo pipefail
+          docker run -d --name beatfinder -p 8787:8787 beatfinder-backend
+
+          healthy=0
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:8787/health; then
+              healthy=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$healthy" -ne 1 ]; then
+            docker logs beatfinder
+            echo "Container did not become healthy."
+            exit 1
+          fi
+
+          curl -fsS http://127.0.0.1:8787/health | python3 -c '
+          import json, sys
+          payload = json.load(sys.stdin)
+          assert payload["status"] == "ok", payload
+          assert payload["storage_mode"] == "local", payload
+          print("health ok:", payload["storage_mode"])
+          '
+
+          docker stop beatfinder
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs beatfinder || true
+
+  secret-scan:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run gitleaks over the working tree
+        run: |
+          set -euo pipefail
+          curl -sSfL \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz \
+            -o gitleaks.tgz
+          tar -xzf gitleaks.tgz gitleaks
+          ./gitleaks detect --no-git --source . --config .gitleaks.toml --redact --verbose
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4

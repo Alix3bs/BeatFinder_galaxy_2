@@ -1,0 +1,21 @@
+# Gitleaks configuration for BeatFinder.
+# The scan runs over the working tree (not history) in CI.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Client-safe values that are not secrets"
+regexes = [
+  # Supabase publishable/anon keys are designed to ship inside client apps;
+  # they only grant access permitted by Row Level Security. Service-role
+  # keys (sb_secret_..., JWT service tokens) are NOT allowlisted.
+  '''sb_publishable_[A-Za-z0-9_-]+''',
+  # Documentation placeholders.
+  '''PASTE_YOUR_[A-Z0-9_]+_HERE''',
+  '''YOUR-BEATFINDER-BACKEND''',
+]
+paths = [
+  # Synthetic fixture data.
+  '''backend/tests/fixtures/.*''',
+]
