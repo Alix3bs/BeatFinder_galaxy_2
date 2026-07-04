@@ -13,6 +13,7 @@ from backend.core.types import (
     QueryResultRecord,
 )
 from backend.discovery.producer_channels import ProducerDiscoveryStore
+from backend.discovery.regional_style_classifier import classify_regional_style
 from backend.discovery.search_enrichment import enrich_search_discovery
 from backend.rerank.scoring import build_metadata_breakdown, build_search_result, confidence_label, fuse_scores
 from backend.storage.base import BeatStore
@@ -166,6 +167,11 @@ class RetrievalService:
                 "results": [],
                 "confidence": "no_confident_exact_match",
                 "candidate_pool_sizes": candidate_pool_sizes,
+                "regional_style": self._classify_query_regional_style(
+                    raw_text=raw_text,
+                    query_metadata=query_metadata,
+                    query_bpm=query_bpm,
+                ),
                 "discovery": enrich_search_discovery(
                     query_metadata=query_metadata,
                     detected_producer_tag=detected_producer_tag,
@@ -305,6 +311,11 @@ class RetrievalService:
             "query_id": query_record.id,
             "query_type": query_type,
             "confidence": overall_confidence,
+            "regional_style": self._classify_query_regional_style(
+                raw_text=raw_text,
+                query_metadata=query_metadata,
+                query_bpm=query_bpm,
+            ),
             "results": result_payloads,
             "candidate_pool_sizes": {
                 "embedding": candidate_pool_sizes["embedding"],
@@ -314,6 +325,24 @@ class RetrievalService:
             },
             "discovery": discovery,
         }
+
+    def _classify_query_regional_style(
+        self,
+        *,
+        raw_text: str | None,
+        query_metadata: dict[str, Any],
+        query_bpm: float | None,
+    ) -> dict[str, Any]:
+        texts = [raw_text or ""]
+        phrases = query_metadata.get("normalized_query_phrases")
+        if isinstance(phrases, list):
+            texts.extend(str(item) for item in phrases)
+        hashtags = query_metadata.get("hashtags")
+        return classify_regional_style(
+            texts,
+            hashtags=hashtags if isinstance(hashtags, list) else None,
+            tempo_bpm=query_bpm,
+        ).to_dict()
 
     def _apply_query_audio_retention(self, stored_audio_path: str | None) -> str | None:
         """Delete query audio after feature extraction unless retention is on.

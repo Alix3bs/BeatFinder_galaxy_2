@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "notes": "Controlled taxonomy for regional/style classification. Labels describe stylistic association, never proof of origin.",
+  "regions": [
+    {"label": "philly", "display": "Philadelphia", "aliases": ["philly", "philadelphia", "phila"], "parent": "east_coast", "styles": ["philly_jerk", "drill", "rnb"]},
+    {"label": "new_york", "display": "New York", "aliases": ["new york", "nyc", "ny", "brooklyn", "bronx", "queens", "harlem"], "parent": "east_coast", "styles": ["ny_drill", "boom_bap", "sample_drill"]},
+    {"label": "detroit", "display": "Detroit", "aliases": ["detroit", "michigan"], "parent": "midwest", "styles": ["detroit_type", "flint_type"]},
+    {"label": "flint", "display": "Flint", "aliases": ["flint"], "parent": "midwest", "styles": ["flint_type", "detroit_type"]},
+    {"label": "milwaukee", "display": "Milwaukee", "aliases": ["milwaukee", "mke"], "parent": "midwest", "styles": ["milwaukee_lowend", "detroit_type"]},
+    {"label": "chicago", "display": "Chicago", "aliases": ["chicago", "chiraq"], "parent": "midwest", "styles": ["drill", "chicago_drill"]},
+    {"label": "dallas", "display": "Dallas", "aliases": ["dallas", "dtx"], "parent": "south", "styles": ["dallas_type", "trap"]},
+    {"label": "houston", "display": "Houston", "aliases": ["houston", "htx", "h-town"], "parent": "south", "styles": ["chopped_and_screwed", "trap"]},
+    {"label": "atlanta", "display": "Atlanta", "aliases": ["atlanta", "atl"], "parent": "south", "styles": ["trap", "plugg", "pluggnb"]},
+    {"label": "memphis", "display": "Memphis", "aliases": ["memphis"], "parent": "south", "styles": ["memphis_type", "trap"]},
+    {"label": "arkansas", "display": "Arkansas", "aliases": ["arkansas", "little rock"], "parent": "south", "styles": ["arkansas_type", "trap"]},
+    {"label": "baton_rouge", "display": "Baton Rouge", "aliases": ["baton rouge"], "parent": "south", "styles": ["louisiana_type", "trap"]},
+    {"label": "new_orleans", "display": "New Orleans", "aliases": ["new orleans", "nola"], "parent": "south", "styles": ["bounce", "louisiana_type"]},
+    {"label": "los_angeles", "display": "Los Angeles", "aliases": ["los angeles", "la", "west coast", "compton", "long beach"], "parent": "west_coast", "styles": ["west_coast", "g_funk", "la_jerk"]},
+    {"label": "bay_area", "display": "Bay Area", "aliases": ["bay area", "oakland", "san francisco", "vallejo", "hyphy"], "parent": "west_coast", "styles": ["hyphy", "west_coast"]},
+    {"label": "miami", "display": "Miami", "aliases": ["miami", "south florida", "broward"], "parent": "south", "styles": ["florida_type", "trap"]},
+    {"label": "jacksonville", "display": "Jacksonville", "aliases": ["jacksonville", "duval"], "parent": "south", "styles": ["florida_type", "fast_flow"]},
+    {"label": "uk", "display": "United Kingdom", "aliases": ["uk", "london", "uk drill"], "parent": "international", "styles": ["uk_drill", "grime"]},
+    {"label": "toronto", "display": "Toronto", "aliases": ["toronto", "6ix"], "parent": "international", "styles": ["toronto_type", "rnb"]}
+  ],
+  "scenes": [
+    {"label": "ny_drill", "display": "New York drill", "aliases": ["new york drill", "ny drill", "nyc drill"], "region": "new_york"},
+    {"label": "chicago_drill", "display": "Chicago drill", "aliases": ["chicago drill", "chiraq drill"], "region": "chicago"},
+    {"label": "uk_drill", "display": "UK drill", "aliases": ["uk drill", "london drill"], "region": "uk"},
+    {"label": "milwaukee_lowend", "display": "Milwaukee lowend", "aliases": ["milwaukee lowend", "lowend"], "region": "milwaukee"},
+    {"label": "philly_jerk", "display": "Philly jerk", "aliases": ["philly jerk", "jerk beat"], "region": "philly"},
+    {"label": "chopped_and_screwed", "display": "Chopped and screwed", "aliases": ["chopped and screwed", "chopped n screwed"], "region": "houston"}
+  ],
+  "styles": [
+    {"label": "drill", "aliases": ["drill"], "tempo_bpm": [138, 150], "regions": ["new_york", "chicago", "uk"]},
+    {"label": "trap", "aliases": ["trap"], "tempo_bpm": [130, 170], "regions": ["atlanta", "dallas", "memphis"]},
+    {"label": "rnb", "aliases": ["rnb", "r&b", "randb"], "tempo_bpm": [60, 105], "regions": ["philly", "toronto"]},
+    {"label": "pluggnb", "aliases": ["pluggnb", "plug n b", "plugnb"], "tempo_bpm": [120, 150], "regions": ["atlanta"]},
+    {"label": "plugg", "aliases": ["plugg"], "tempo_bpm": [120, 150], "regions": ["atlanta"]},
+    {"label": "jerk", "aliases": ["jerk"], "tempo_bpm": [92, 115], "regions": ["philly", "los_angeles"]},
+    {"label": "boom_bap", "aliases": ["boom bap"], "tempo_bpm": [80, 100], "regions": ["new_york"]},
+    {"label": "detroit_type", "aliases": ["detroit type", "flint type"], "tempo_bpm": [95, 115], "regions": ["detroit", "flint", "milwaukee"]},
+    {"label": "bounce", "aliases": ["bounce"], "tempo_bpm": [95, 110], "regions": ["new_orleans"]},
+    {"label": "hyphy", "aliases": ["hyphy"], "tempo_bpm": [95, 115], "regions": ["bay_area"]},
+    {"label": "g_funk", "aliases": ["g funk", "gfunk"], "tempo_bpm": [88, 102], "regions": ["los_angeles"]},
+    {"label": "grime", "aliases": ["grime"], "tempo_bpm": [136, 144], "regions": ["uk"]},
+    {"label": "type_beat", "aliases": ["type beat"], "tempo_bpm": null, "regions": []}
+  ]
+}

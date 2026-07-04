@@ -1,0 +1,15 @@
+{
+  "notes": "Labeled evaluation cases for regional/style classification. expected_regions lists acceptable explicit region/scene labels; expected_styles lists acceptable style labels.",
+  "cases": [
+    {"texts": ["philly type beat hard jerk"], "expected_regions": ["philly"], "expected_styles": ["jerk", "type_beat"]},
+    {"texts": ["new york drill type beat"], "expected_regions": ["new_york", "ny_drill"], "expected_styles": ["drill", "type_beat"]},
+    {"texts": ["milwaukee x detroit type beat fast money"], "expected_regions": ["milwaukee", "detroit"], "expected_styles": ["type_beat"]},
+    {"texts": ["arkansas x detroit type beat"], "expected_regions": ["arkansas", "detroit"], "expected_styles": ["type_beat"]},
+    {"texts": ["sza x summer walker rnb type beat"], "expected_regions": [], "expected_styles": ["rnb", "type_beat"]},
+    {"texts": ["atlanta pluggnb type beat"], "expected_regions": ["atlanta"], "expected_styles": ["pluggnb", "type_beat"]},
+    {"texts": ["uk drill x ny drill type beat"], "expected_regions": ["uk", "new_york", "uk_drill", "ny_drill"], "expected_styles": ["drill"]},
+    {"texts": ["houston chopped and screwed type beat"], "expected_regions": ["houston", "chopped_and_screwed"], "expected_styles": ["type_beat"]},
+    {"texts": ["dallas x philly type beat"], "expected_regions": ["dallas", "philly"], "expected_styles": ["type_beat"]},
+    {"texts": ["baton rouge type beat smooth"], "expected_regions": ["baton_rouge"], "expected_styles": ["type_beat"]}
+  ]
+}
