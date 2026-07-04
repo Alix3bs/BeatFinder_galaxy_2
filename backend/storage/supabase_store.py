@@ -314,6 +314,15 @@ def sync_beat_bundle(
     client.upsert_rows("beat_signatures", signature_rows)
 
 
+def query_audio_ttl_days() -> int:
+    raw = os.getenv("BEATFINDER_QUERY_AUDIO_TTL_DAYS", "").strip()
+    try:
+        parsed = int(raw) if raw else 7
+    except ValueError:
+        parsed = 7
+    return parsed if parsed > 0 else 7
+
+
 def sync_query_bundle(
     client: SupabaseRESTClient,
     local_root: Path,
@@ -323,11 +332,54 @@ def sync_query_bundle(
 ) -> None:
     if query.audio_storage_path:
         client.upload_audio(local_root=local_root, relative_path=query.audio_storage_path, bucket=client.query_bucket)
+        register_uploaded_audio_asset(
+            client,
+            local_root=local_root,
+            relative_path=query.audio_storage_path,
+            bucket=client.query_bucket,
+            category="queries",
+        )
 
     query_row = query.to_dict()
     result_rows = [result.to_dict() for result in results]
     client.upsert_rows("queries", [query_row])
     client.upsert_rows("query_results", result_rows)
+
+
+def register_uploaded_audio_asset(
+    client: SupabaseRESTClient,
+    *,
+    local_root: Path,
+    relative_path: str,
+    bucket: str,
+    category: str,
+) -> None:
+    """Track retained query audio so expired files can be purged.
+
+    Rows carry an expires_at horizon (BEATFINDER_QUERY_AUDIO_TTL_DAYS,
+    default 7 days); public.purge_expired_query_audio() reports which storage
+    objects a maintenance job should delete.
+    """
+
+    from datetime import datetime, timedelta, timezone
+
+    absolute_path = local_root / relative_path
+    object_path = relative_path.removeprefix("storage/").lstrip("/")
+    expires_at = datetime.now(timezone.utc) + timedelta(days=query_audio_ttl_days())
+    client.upsert_rows(
+        "uploaded_audio_assets",
+        [
+            {
+                "bucket": bucket,
+                "object_path": object_path,
+                "category": category,
+                "original_file_name": Path(relative_path).name,
+                "mime_type": "audio/wav",
+                "byte_size": absolute_path.stat().st_size if absolute_path.exists() else None,
+                "expires_at": expires_at.isoformat(),
+            }
+        ],
+    )
 
 
 def sync_feedback_event(client: SupabaseRESTClient, event: FeedbackEvent) -> None:

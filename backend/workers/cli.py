@@ -92,11 +92,14 @@ def run_command(command: str, payload: dict[str, object], *, state_dir: str | No
         return retrieval_service.search_hybrid(payload)
     if command == "feedback":
         return retrieval_service.record_feedback(payload)
+    from backend.storage.supabase_store import SupabaseRESTClient
+
     return {
         "status": "ok",
         "state_dir": str(Path(store.root).resolve()),
         "beats_indexed": len(store.list_beats()),
         "storage_mode": os.getenv("BEATFINDER_SUPABASE_MODE", "local").strip().lower() or "local",
+        "supabase_configured": SupabaseRESTClient.from_env() is not None,
         "query_audio_retention": "retain" if query_audio_retention_enabled() else "delete_after_processing",
     }
 
