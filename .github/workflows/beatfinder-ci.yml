@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - beatfinder-system-v1
+      - "claude/**"
   pull_request:
     branches:
       - beatfinder-system-v1
