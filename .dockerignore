@@ -1,0 +1,24 @@
+# iOS app and design assets are irrelevant to the backend image.
+BeatFinder/
+BeatFinder.xcodeproj/
+BeatFinderTests/
+BeatFinderUITests/
+*.gif
+*.png
+supabase.zip
+supabase_backup/
+worker/
+
+# Local state, caches, VCS.
+.git/
+.github/
+.beatfinder_state/
+.beatfinder_eval_state/
+**/__pycache__/
+**/*.pyc
+.env
+.env.*
+node_modules/
+docs/
+KNOWN_ISSUES.md
+README.md
