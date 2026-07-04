@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import socket
@@ -9,6 +10,7 @@ import time
 import unittest
 import uuid
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from backend.tests.fixture_builder import materialize_fixtures
@@ -31,7 +33,10 @@ class ApiSmokeTests(unittest.TestCase):
                 "PORT": str(port),
                 "BEATFINDER_PYTHON_BIN": PYTHON_BIN,
                 "BEATFINDER_STATE_DIR": str(Path(temp_dir) / "state"),
+                # Exercise the production posture: local paths denied, 2 MB cap.
+                "BEATFINDER_MAX_UPLOAD_BYTES": "2000000",
             }
+            env.pop("BEATFINDER_ALLOW_LOCAL_AUDIO_PATHS", None)
 
             server = subprocess.Popen(
                 [NODE_BIN, "--experimental-strip-types", str(repo_root / "backend" / "api" / "server.ts")],
@@ -47,10 +52,15 @@ class ApiSmokeTests(unittest.TestCase):
                 health = request_json(f"http://127.0.0.1:{port}/health")
                 self.assertEqual(health["status"], "ok")
 
+                ingest_payload = dict(fixtures[0])
+                audio_bytes = Path(ingest_payload.pop("audio_path")).read_bytes()
+                ingest_payload["audio_base64"] = base64.b64encode(audio_bytes).decode("ascii")
+                ingest_payload["audio_file_name"] = "late_nights.wav"
+                ingest_payload["audio_mime_type"] = "audio/wav"
                 ingest_response = request_json(
                     f"http://127.0.0.1:{port}/ingest/beat",
                     method="POST",
-                    payload=fixtures[0],
+                    payload=ingest_payload,
                 )
                 self.assertEqual(ingest_response["status"], "ingested")
 
@@ -75,12 +85,58 @@ class ApiSmokeTests(unittest.TestCase):
                 )
                 self.assertTrue(search_response["results"])
                 self.assertIn("score_breakdown", search_response["results"][0])
+
+                # Server-side paths are rejected over HTTP by default.
+                status, error_payload = request_error(
+                    f"http://127.0.0.1:{port}/search/audio",
+                    body=json.dumps({"audio_path": "/etc/passwd", "top_n": 1}).encode("utf-8"),
+                    content_type="application/json",
+                )
+                self.assertEqual(status, 400)
+                self.assertEqual(error_payload["error"], "audio_path_not_allowed")
+
+                # Oversized request bodies are rejected with 413.
+                status, error_payload = request_error(
+                    f"http://127.0.0.1:{port}/search/audio",
+                    body=b"0" * 2_100_000,
+                    content_type="application/json",
+                )
+                self.assertEqual(status, 413)
+                self.assertEqual(error_payload["error"], "upload_too_large")
+
+                # Multipart requests without a boundary are a client error.
+                status, error_payload = request_error(
+                    f"http://127.0.0.1:{port}/search/hybrid",
+                    body=b"garbage",
+                    content_type="multipart/form-data",
+                )
+                self.assertEqual(status, 400)
+                self.assertEqual(error_payload["error"], "invalid_request_body")
+
+                # Unsupported content types are rejected with 415.
+                status, error_payload = request_error(
+                    f"http://127.0.0.1:{port}/search/text",
+                    body=b"query=test",
+                    content_type="application/x-www-form-urlencoded",
+                )
+                self.assertEqual(status, 415)
+                self.assertEqual(error_payload["error"], "unsupported_content_type")
             finally:
                 server.terminate()
                 try:
                     server.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     server.kill()
+
+
+def request_error(url: str, *, body: bytes, content_type: str) -> tuple[int, dict[str, object]]:
+    request = Request(url, data=body, method="POST")
+    request.add_header("Content-Type", content_type)
+    try:
+        with urlopen(request, timeout=30) as response:
+            return response.status, json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        return error.code, json.loads(error.read().decode("utf-8"))
 
 
 def request_json(url: str, *, method: str = "GET", payload: dict[str, object] | None = None) -> dict[str, object]:

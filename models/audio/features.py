@@ -6,14 +6,14 @@ from pathlib import Path
 import numpy as np
 
 from backend.core.types import AudioFeatures, VECTOR_DIMENSION
-from .io import read_wav_mono
+from .io import load_audio_mono
 
 FRAME_SIZE = 1024
 HOP_SIZE = 512
 
 
 def extract_audio_features(audio_path: str | Path) -> AudioFeatures:
-    samples, sample_rate = read_wav_mono(audio_path)
+    samples, sample_rate = load_audio_mono(audio_path)
     if samples.size < FRAME_SIZE:
         samples = np.pad(samples, (0, FRAME_SIZE - samples.size))
 

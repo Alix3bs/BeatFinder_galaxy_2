@@ -13,6 +13,60 @@ protocol BeatFinderBackendAPIClientProtocol {
     func searchText(query: String, detectedProducerTag: String?, topN: Int) async throws -> SearchResponse
     func searchAudio(_ request: BeatFinderAudioSearchRequest) async throws -> SearchResponse
     func searchHybrid(_ request: BeatFinderHybridSearchRequest) async throws -> SearchResponse
+    func searchAudioUpload(_ request: BeatFinderAudioUploadRequest) async throws -> SearchResponse
+}
+
+extension BeatFinderBackendAPIClientProtocol {
+    /// Fallback for conformers without native multipart support: send the
+    /// file as a base64 JSON payload over the equivalent endpoint.
+    func searchAudioUpload(_ request: BeatFinderAudioUploadRequest) async throws -> SearchResponse {
+        if let query = request.query, !query.isEmpty {
+            return try await searchHybrid(
+                BeatFinderHybridSearchRequest(
+                    query: query,
+                    audioBase64: request.fileData.base64EncodedString(),
+                    audioFileName: request.fileName,
+                    audioMimeType: request.mimeType,
+                    detectedProducerTag: request.detectedProducerTag,
+                    topN: request.topN
+                )
+            )
+        }
+        return try await searchAudio(
+            BeatFinderAudioSearchRequest(
+                audioBase64: request.fileData.base64EncodedString(),
+                audioFileName: request.fileName,
+                audioMimeType: request.mimeType,
+                detectedProducerTag: request.detectedProducerTag,
+                topN: request.topN
+            )
+        )
+    }
+}
+
+struct BeatFinderAudioUploadRequest: Equatable {
+    let fileData: Data
+    let fileName: String
+    let mimeType: String
+    let query: String?
+    let detectedProducerTag: String?
+    let topN: Int
+
+    init(
+        fileData: Data,
+        fileName: String,
+        mimeType: String,
+        query: String? = nil,
+        detectedProducerTag: String? = nil,
+        topN: Int = 3
+    ) {
+        self.fileData = fileData
+        self.fileName = fileName
+        self.mimeType = mimeType
+        self.query = query
+        self.detectedProducerTag = detectedProducerTag
+        self.topN = topN
+    }
 }
 
 enum BeatFinderAPIError: LocalizedError, Equatable {
@@ -300,6 +354,56 @@ final class BeatFinderAPIClient: BeatFinderBackendAPIClientProtocol {
 
     func searchHybrid(_ request: BeatFinderHybridSearchRequest) async throws -> SearchResponse {
         try await post(path: "/search/hybrid", body: request)
+    }
+
+    func searchAudioUpload(_ request: BeatFinderAudioUploadRequest) async throws -> SearchResponse {
+        let hasQuery = !(request.query ?? "").isEmpty
+        let path = hasQuery ? "/search/hybrid" : "/search/audio"
+        let boundary = "beatfinder-\(UUID().uuidString)"
+
+        var urlRequest = try makeRequest(path: path, method: "POST")
+        urlRequest.setValue(
+            BeatFinderAPIClient.multipartContentType(boundary: boundary),
+            forHTTPHeaderField: "Content-Type"
+        )
+        urlRequest.httpBody = BeatFinderAPIClient.makeMultipartBody(request: request, boundary: boundary)
+        return try await send(urlRequest)
+    }
+
+    static func multipartContentType(boundary: String) -> String {
+        "multipart/form-data; boundary=\(boundary)"
+    }
+
+    static func makeMultipartBody(request: BeatFinderAudioUploadRequest, boundary: String) -> Data {
+        var fields: [(String, String)] = [("top_n", String(request.topN))]
+        if let query = request.query, !query.isEmpty {
+            fields.append(("query", query))
+        }
+        if let tag = request.detectedProducerTag, !tag.isEmpty {
+            fields.append(("detected_producer_tag", tag))
+        }
+
+        var body = Data()
+        for (name, value) in fields {
+            body.append(Data("--\(boundary)\r\n".utf8))
+            body.append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
+            body.append(Data(value.utf8))
+            body.append(Data("\r\n".utf8))
+        }
+
+        let safeFileName = request.fileName
+            .replacingOccurrences(of: "\"", with: "")
+            .replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(
+            Data("Content-Disposition: form-data; name=\"audio\"; filename=\"\(safeFileName)\"\r\n".utf8)
+        )
+        body.append(Data("Content-Type: \(request.mimeType)\r\n\r\n".utf8))
+        body.append(request.fileData)
+        body.append(Data("\r\n".utf8))
+        body.append(Data("--\(boundary)--\r\n".utf8))
+        return body
     }
 }
 

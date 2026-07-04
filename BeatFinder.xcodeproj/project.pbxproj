@@ -76,6 +76,7 @@
 		EE1BE85B2F340EFA00816C32 /* UploadBeatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1BE81B2F340EFA00816C32 /* UploadBeatView.swift */; };
 		EE1BE85C2F340EFA00816C32 /* UploadEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1BE81C2F340EFA00816C32 /* UploadEntryView.swift */; };
 		EE1BE85D2F340EFA00816C32 /* UploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1BE81D2F340EFA00816C32 /* UploadView.swift */; };
+		EFAB00000000000000000001 /* UploadAudioPreprocessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFAB00000000000000000011 /* UploadAudioPreprocessor.swift */; };
 		EE1BE85E2F340EFA00816C32 /* UserModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1BE81E2F340EFA00816C32 /* UserModel.swift */; };
 		EE1BE85F2F340EFA00816C32 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EE1BE7DE2F340EFA00816C32 /* Assets.xcassets */; };
 		EE90B5652F2F9F830007D2DD /* SoundmapDiscView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE90B5642F2F9F830007D2DD /* SoundmapDiscView.swift */; };
@@ -196,6 +197,7 @@
 		EE1BE81B2F340EFA00816C32 /* UploadBeatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadBeatView.swift; sourceTree = "<group>"; };
 		EE1BE81C2F340EFA00816C32 /* UploadEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadEntryView.swift; sourceTree = "<group>"; };
 		EE1BE81D2F340EFA00816C32 /* UploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadView.swift; sourceTree = "<group>"; };
+		EFAB00000000000000000011 /* UploadAudioPreprocessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadAudioPreprocessor.swift; sourceTree = "<group>"; };
 		EE1BE81E2F340EFA00816C32 /* UserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserModel.swift; sourceTree = "<group>"; };
 		EE90B5642F2F9F830007D2DD /* SoundmapDiscView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundmapDiscView.swift; sourceTree = "<group>"; };
 		6E1EF954681860E5BAC0D6F4 /* BeatFinderAPIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatFinderAPIModels.swift; sourceTree = "<group>"; };
@@ -384,6 +386,7 @@
 				EE1BE81B2F340EFA00816C32 /* UploadBeatView.swift */,
 				EE1BE81C2F340EFA00816C32 /* UploadEntryView.swift */,
 				EE1BE81D2F340EFA00816C32 /* UploadView.swift */,
+				EFAB00000000000000000011 /* UploadAudioPreprocessor.swift */,
 				EE1BE81E2F340EFA00816C32 /* UserModel.swift */,
 			);
 			path = BeatFinder;
@@ -662,6 +665,7 @@
 				EE1BE85B2F340EFA00816C32 /* UploadBeatView.swift in Sources */,
 				EE1BE85C2F340EFA00816C32 /* UploadEntryView.swift in Sources */,
 				EE1BE85D2F340EFA00816C32 /* UploadView.swift in Sources */,
+				EFAB00000000000000000001 /* UploadAudioPreprocessor.swift in Sources */,
 				EE1BE85E2F340EFA00816C32 /* UserModel.swift in Sources */,
 				EE90B5652F2F9F830007D2DD /* SoundmapDiscView.swift in Sources */,
 			);

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from backend.core.audio_input import persist_audio_payload
@@ -58,7 +60,10 @@ class RetrievalService:
             category="queries",
             default_name="query-audio",
         )
-        audio_features = extract_audio_features(processing_audio_path)
+        try:
+            audio_features = extract_audio_features(processing_audio_path)
+        finally:
+            stored_audio_path = self._apply_query_audio_retention(stored_audio_path)
         query_signature = build_audio_signature(audio_features)
         return self._search(
             query_type="audio",
@@ -97,7 +102,10 @@ class RetrievalService:
                 category="queries",
                 default_name="query-hybrid-audio",
             )
-            audio_features = extract_audio_features(processing_audio_path)
+            try:
+                audio_features = extract_audio_features(processing_audio_path)
+            finally:
+                stored_audio_path = self._apply_query_audio_retention(stored_audio_path)
             query_audio_embedding = audio_features_to_embedding(audio_features)
             query_signature = build_audio_signature(audio_features)
             query_bpm = audio_features.tempo_bpm
@@ -307,6 +315,23 @@ class RetrievalService:
             "discovery": discovery,
         }
 
+    def _apply_query_audio_retention(self, stored_audio_path: str | None) -> str | None:
+        """Delete query audio after feature extraction unless retention is on.
+
+        Uploaded query audio is only needed to compute features. By default it
+        is removed immediately so user audio is not retained; set
+        BEATFINDER_RETAIN_QUERY_AUDIO=1 to keep files for debugging.
+        """
+
+        if stored_audio_path is None or query_audio_retention_enabled():
+            return stored_audio_path
+        try:
+            resolved = Path(self.store.resolve_storage_path(stored_audio_path))
+            resolved.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return None
+
     def _load_candidate_beats(
         self,
         *,
@@ -350,6 +375,10 @@ class RetrievalService:
             "signature": 0,
             "merged": len(merged_ids),
         }
+
+
+def query_audio_retention_enabled() -> bool:
+    return os.getenv("BEATFINDER_RETAIN_QUERY_AUDIO", "").strip().lower() in {"1", "true", "yes"}
 
 
 def extract_detected_producer_tag(payload: dict[str, Any]) -> str | None:

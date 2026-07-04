@@ -8,6 +8,19 @@ Base URL:
 
 All POST routes accept JSON. Audio routes also accept `multipart/form-data`.
 
+## Upload contract and limits
+
+- Request bodies are limited to `BEATFINDER_MAX_UPLOAD_BYTES` (default 25 MB). Oversized requests return `413 {"error": "upload_too_large"}`.
+- Supported upload formats: `.wav` natively; `.mp3` / `.m4a` only when an `ffmpeg` binary is available (`BEATFINDER_FFMPEG_BIN` or on the PATH). Unsupported formats return `415 {"error": "unsupported_audio_format"}`.
+- `audio_path` (a server-side file path) is rejected over HTTP with `400 {"error": "audio_path_not_allowed"}` unless the server runs with `BEATFINDER_ALLOW_LOCAL_AUDIO_PATHS=1`. It remains available to trusted local callers (fixture loaders, CLI).
+- Uploaded file names are sanitized server-side (directory components stripped, unsafe characters removed, length capped).
+- Query audio is deleted immediately after feature extraction. Set `BEATFINDER_RETAIN_QUERY_AUDIO=1` to retain it for debugging; retained files live under the state directory's `storage/queries/`.
+- Python CLI processing is killed after `BEATFINDER_CLI_TIMEOUT_MS` (default 120000) and returns `504 {"error": "processing_timeout"}`.
+- Only `application/json` and `multipart/form-data` content types are accepted (`415 {"error": "unsupported_content_type"}` otherwise).
+- Errors are structured as `{"error": "<stable_code>", "message": "<safe text>"}`; internal stack traces are never returned to clients.
+
+The iOS app converts every selected audio or video source to 16 kHz mono 16-bit WAV (capped at 90 seconds) on-device before uploading, so production servers do not need ffmpeg for app traffic.
+
 For local discovery enrichment, seed fixture beats and producer channels into the same local state directory before starting the API:
 
 ```bash

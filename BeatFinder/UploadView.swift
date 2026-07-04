@@ -299,7 +299,8 @@ private struct UploadAnalysisService: UploadAnalysisServicing {
 
             if contentType.conforms(to: .audio) {
                 let metadata = try await readMediaMetadata(from: importedURL)
-                return .audioFile(importedURL, metadata)
+                let convertedURL = try await convertForBackend(importedURL)
+                return .audioFile(convertedURL, metadata)
             }
 
             guard contentType.conforms(to: .movie) else {
@@ -308,8 +309,23 @@ private struct UploadAnalysisService: UploadAnalysisServicing {
 
             try await updateStage(.extractingAudio, onStageChange: onStageChange)
             let audioURL = try await extractAudioTrack(from: importedURL)
-            let metadata = try await readMediaMetadata(from: audioURL)
-            return .audioFile(audioURL, metadata)
+            let metadata = try await readMediaMetadata(from: importedURL)
+            let convertedURL = try await convertForBackend(audioURL)
+            return .audioFile(convertedURL, metadata)
+        }
+    }
+
+    /// The retrieval backend ingests 16 kHz mono WAV. Converting on-device
+    /// makes every upload decodable server-side and keeps payloads small.
+    private func convertForBackend(_ audioURL: URL) async throws -> URL {
+        do {
+            let converted = try await UploadAudioPreprocessor.makeBackendWAV(from: audioURL)
+            if audioURL != converted {
+                try? FileManager.default.removeItem(at: audioURL)
+            }
+            return converted
+        } catch is UploadPreprocessingError {
+            throw UploadProcessingError.unreadableMedia
         }
     }
 
@@ -438,16 +454,20 @@ private struct UploadAnalysisService: UploadAnalysisServicing {
             } catch {
                 throw UploadProcessingError.unreadableMedia
             }
+            defer {
+                try? FileManager.default.removeItem(at: url)
+            }
 
-            let request = BeatFinderAudioSearchRequest(
-                audioBase64: data.base64EncodedString(),
-                audioFileName: metadata.displayName,
-                audioMimeType: metadata.contentType?.preferredMIMEType ?? mimeType(forExtension: url.pathExtension),
+            let baseName = (metadata.displayName as NSString).deletingPathExtension
+            let request = BeatFinderAudioUploadRequest(
+                fileData: data,
+                fileName: baseName.isEmpty ? "upload.wav" : "\(baseName).wav",
+                mimeType: UploadAudioPreprocessor.backendMIMEType,
                 detectedProducerTag: detectedProducerTag,
                 topN: topN
             )
             return try await mapBackendErrors {
-                try await apiClient.searchAudio(request)
+                try await apiClient.searchAudioUpload(request)
             }
         }
     }

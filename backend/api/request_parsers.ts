@@ -7,9 +7,25 @@ type MultipartPart = {
   data: Buffer;
 };
 
-export async function readRequestPayload(req: IncomingMessage): Promise<Record<string, unknown>> {
+export class PayloadTooLargeError extends Error {
+  limitBytes: number;
+
+  constructor(limitBytes: number) {
+    super(`Request body exceeds the ${limitBytes} byte limit.`);
+    this.limitBytes = limitBytes;
+  }
+}
+
+export type ReadPayloadOptions = {
+  maxBytes?: number;
+};
+
+export async function readRequestPayload(
+  req: IncomingMessage,
+  options: ReadPayloadOptions = {},
+): Promise<Record<string, unknown>> {
   const contentType = String(req.headers["content-type"] || "");
-  const rawBody = await readRawBody(req);
+  const rawBody = await readRawBody(req, options);
   if (!rawBody.length) {
     return {};
   }
@@ -20,12 +36,58 @@ export async function readRequestPayload(req: IncomingMessage): Promise<Record<s
   return text ? (JSON.parse(text) as Record<string, unknown>) : {};
 }
 
-export async function readRawBody(req: IncomingMessage): Promise<Buffer> {
+export async function readRawBody(
+  req: IncomingMessage,
+  options: ReadPayloadOptions = {},
+): Promise<Buffer> {
+  const maxBytes = options.maxBytes ?? Number.POSITIVE_INFINITY;
+  // Drain moderately-oversized bodies so the client can read the 413
+  // response instead of hitting a broken pipe; hard-abort beyond the cap.
+  const drainCapBytes = Number.isFinite(maxBytes) ? maxBytes * 4 : Number.POSITIVE_INFINITY;
+
+  const declaredLength = Number.parseInt(String(req.headers?.["content-length"] || ""), 10);
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    if (declaredLength > drainCapBytes) {
+      req.destroy();
+    } else {
+      await drainStream(req);
+    }
+    throw new PayloadTooLargeError(maxBytes);
+  }
+
   const chunks: Buffer[] = [];
+  let received = 0;
+  let overLimit = false;
   for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    received += buffer.length;
+    if (received > maxBytes) {
+      overLimit = true;
+      chunks.length = 0;
+      if (received > drainCapBytes) {
+        req.destroy();
+        break;
+      }
+      continue;
+    }
+    if (!overLimit) {
+      chunks.push(buffer);
+    }
+  }
+  if (overLimit) {
+    throw new PayloadTooLargeError(maxBytes);
   }
   return Buffer.concat(chunks);
+}
+
+async function drainStream(req: IncomingMessage): Promise<void> {
+  try {
+    for await (const _chunk of req) {
+      // discard
+    }
+  } catch {
+    // The connection may already be gone; the caller still reports 413.
+  }
 }
 
 export function parseMultipartPayload(body: Buffer, contentType: string): Record<string, unknown> {
