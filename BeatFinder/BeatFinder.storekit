@@ -1,0 +1,85 @@
+{
+  "identifier" : "8A1B2C3D-0000-4000-9000-BEATF1NDER01",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "BEATFINDER-PRO-GROUP",
+      "localizations" : [
+
+      ],
+      "name" : "BeatFinder Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "6.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "BEATFINDER-PRO-MONTHLY",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited searches and full-length uploads.",
+              "displayName" : "BeatFinder Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.beatfinder.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "BeatFinder Pro Monthly",
+          "subscriptionGroupID" : "BEATFINDER-PRO-GROUP",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "59.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "BEATFINDER-PRO-YEARLY",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "A year of unlimited searches and full-length uploads.",
+              "displayName" : "BeatFinder Pro Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.beatfinder.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "BeatFinder Pro Yearly",
+          "subscriptionGroupID" : "BEATFINDER-PRO-GROUP",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
