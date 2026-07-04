@@ -4,6 +4,10 @@ from collections.abc import Iterable
 
 from backend.core.types import BeatRecord, SearchResult
 
+# A signature match at or above this level is near-exact audio evidence; the
+# fused score is floored so metadata noise can never outrank it.
+STRONG_SIGNATURE_THRESHOLD = 0.72
+
 RERANK_WEIGHTS = {
     "audio_embedding_score": 0.28,
     "metadata_embedding_score": 0.12,
@@ -103,6 +107,14 @@ def fuse_scores(
     denominator = sum(active_weights.values()) or 1.0
     weighted_sum = sum(breakdown[name] * weight for name, weight in active_weights.items())
     score = weighted_sum / denominator
+
+    breakdown["exact_audio_priority"] = 0.0
+    if has_audio_query and breakdown["signature_score"] >= STRONG_SIGNATURE_THRESHOLD:
+        exact_floor = 0.58 + 0.2 * breakdown["signature_score"]
+        if exact_floor > score:
+            score = exact_floor
+            breakdown["exact_audio_priority"] = 1.0
+
     return clamp01(round(score, 6)), breakdown
 
 

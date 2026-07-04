@@ -21,6 +21,7 @@ from models.audio.features import audio_features_to_embedding, extract_audio_fea
 from models.audio.signature import build_audio_signature, score_signature_match
 from models.embedding.providers import build_text_embedding_provider, cosine_similarity
 from models.metadata.gemma_adapter import GemmaReasoner
+from models.metadata.query_aliases import expand_query_synonyms, normalize_query_text
 
 
 class RetrievalService:
@@ -39,7 +40,8 @@ class RetrievalService:
         query_text = str(payload.get("query") or payload.get("raw_text") or "").strip()
         if not query_text:
             raise ValueError("query is required")
-        query_metadata = self.reasoner.expand_query(query_text)
+        query_text = normalize_query_text(query_text)
+        query_metadata = self._expand_query_with_synonyms(query_text)
         query_embedding = self.text_embedder.embed(" | ".join(query_metadata.get("normalized_query_phrases", [])))
         return self._search(
             query_type="text",
@@ -85,7 +87,8 @@ class RetrievalService:
         if not audio_requested and not query_text:
             raise ValueError("audio_path, audio_base64, or query is required for hybrid search")
 
-        query_metadata = self.reasoner.expand_query(query_text) if query_text else {}
+        query_text = normalize_query_text(query_text) if query_text else query_text
+        query_metadata = self._expand_query_with_synonyms(query_text) if query_text else {}
         metadata_embedding = (
             self.text_embedder.embed(" | ".join(query_metadata.get("normalized_query_phrases", [])))
             if query_metadata
@@ -325,6 +328,19 @@ class RetrievalService:
             },
             "discovery": discovery,
         }
+
+    def _expand_query_with_synonyms(self, query_text: str) -> dict[str, Any]:
+        """Expand the query, then add known synonym spellings as extra phrases."""
+
+        query_metadata = dict(self.reasoner.expand_query(query_text))
+        synonyms = expand_query_synonyms(query_text)
+        if synonyms:
+            phrases = list(query_metadata.get("normalized_query_phrases") or [])
+            for variant in synonyms:
+                if variant not in phrases:
+                    phrases.append(variant)
+            query_metadata["normalized_query_phrases"] = phrases
+        return query_metadata
 
     def _classify_query_regional_style(
         self,
