@@ -6,16 +6,64 @@
    ============================================================ */
 
 const BUSINESS = {
-  name: "TOPNOTCH Exotic Rentals",
+  name: "TopNotchRentalz",
   // TODO: replace with the real business address
   address: "1200 Brickell Bay Drive, Suite 400",
   city: "Miami, FL 33131",
+  market: "Miami",
   hours: "Mon – Sun · 9:00 AM – 9:00 PM",
   phone: "(305) 000-0000",
-  instagram: "https://instagram.com/",
-  // Phase 2: paste the webhook URL that writes rows into the
-  // booking spreadsheet + pings the AI concierge agent.
-  bookingWebhook: ""
+  whatsapp: "13050000000",           // digits only, for wa.me links
+  email: "bookings@topnotchrentalz.com",
+  instagram: "https://instagram.com/"
+};
+
+/* ============================================================
+   INTEGRATIONS — point these at your Excel + notification stack.
+   Both receive JSON POSTs. Recommended: a Power Automate flow
+   ("When an HTTP request is received" → "Add a row into a table"
+   on the TopNotchRentalz.xlsx workbook) or a Google Apps Script.
+   Payload shape: { table: "CustomerRequests"|"PartnerInventory"|
+   "ActiveRentals", row: {...} }
+   ============================================================ */
+const WEBHOOKS = {
+  sheet: "",    // writes rows into the Excel tables
+  notify: ""    // pings the team (Teams/Slack/SMS bridge) on new requests
+};
+
+/* customer-facing request pipeline (in order) */
+const STATUS_FLOW = [
+  "Request submitted",
+  "Availability being confirmed",
+  "Approved",
+  "Payment required",
+  "Booking confirmed"
+];
+/* admin-only terminal states */
+const STATUS_OTHER = ["Declined", "Cancelled", "Completed"];
+
+/* premium experience add-ons (booking form, after approval too) */
+const PREMIUM_ADDONS = [
+  { id: "basket",   name: "Branded gift basket",            price: "$75" },
+  { id: "water",    name: "Bottled water",                  price: "Included" },
+  { id: "charger",  name: "Phone charger",                  price: "Included" },
+  { id: "occasion", name: "Birthday / celebration setup",   price: "$250" },
+  { id: "chauffeur",name: "Chauffeur",                      price: "from $150/hr" },
+  { id: "fbo",      name: "Airport / FBO pickup",           price: "$200" },
+  { id: "media",    name: "Professional photos / video",    price: "$350" },
+  { id: "concierge",name: "Yacht, villa or concierge",      price: "Quoted" }
+];
+
+/* shared public rental terms (per-car overrides below) */
+const RENTAL_TERMS = {
+  minAge: 25,
+  license: "Valid driver's license (matching renter)",
+  insurance: "Full-coverage insurance transferable to rental",
+  payments: "Card, Zelle, wire — deposit authorized on card",
+  deliveryAreas: "Miami-Dade, Broward, Palm Beach, MIA/FLL/OPF/FXE airports",
+  minDays: 1,
+  mileageIncluded: 100,     // per day
+  deliveryFee: 150          // waived for VIP members
 };
 
 /* ---------- empty photo slot (drop real fleet shots in later) ---------- */
@@ -201,7 +249,32 @@ const CATEGORIES = [
   { id: "vip",        icon: "✦",  name: "VIP Plan",         type: "link",   href: "vip.html", vip: true }
 ];
 
-/* ---------- fleet ---------- */
+/* ---------- fleet (CUSTOMER-FACING ONLY — no provider/broker
+   rates, payouts or profit ever live in this file) ---------- */
+/* availability overrides (default: available). Admin dashboard
+   changes flow through localStorage at runtime. */
+const VEHICLE_STATUS_SEED = { f8: "booked", autobio: "maintenance" };
+
+function vehicleStatus(id) {
+  try {
+    const o = JSON.parse(localStorage.getItem("tn_vehicle_status") || "{}");
+    if (o[id]) return o[id];
+  } catch (e) { /* ignore */ }
+  return VEHICLE_STATUS_SEED[id] || "available";
+}
+
+/* two comparable alternatives: same category first, then closest price */
+function comparableAlternatives(car, n) {
+  return FLEET
+    .filter(f => f.id !== car.id && vehicleStatus(f.id) === "available")
+    .sort((a, b) => {
+      const catA = (a.cat === car.cat ? 0 : 1) - (b.cat === car.cat ? 0 : 1);
+      if (catA) return catA;
+      return Math.abs(a.price - car.price) - Math.abs(b.price - car.price);
+    })
+    .slice(0, n || 2);
+}
+
 const FLEET = [
   { id: "huracan",   brand: "lamborghini", name: "Lamborghini Huracán EVO", cat: "Supercar", body: "super",  paint: "#ff6a00", price: 1199, deposit: 3000, hp: "631 HP", zero60: "2.9s", top: "202 mph", seats: 2, hot: true },
   { id: "urus",      brand: "lamborghini", name: "Lamborghini Urus",        cat: "Super SUV", body: "suv",   paint: "#15161a", price: 1099, deposit: 3000, hp: "641 HP", zero60: "3.1s", top: "190 mph", seats: 4 },

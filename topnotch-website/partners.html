@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partner With Us — TopNotchRentalz</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,14 H90 V36 H62 C61,60 63,74 76,88 H24 C37,74 39,60 38,36 H10 Z" fill="%23ff6a00"/></svg>'>
+</head>
+<body>
+
+<nav class="nav-island" id="navIsland">
+  <a class="brand" href="index.html">
+    <img class="t-mark" src="img/logo-t.png" alt="TOPNOTCH">
+    <img class="brand-word" src="img/logo-topnotch.png" alt="TOPNOTCH">
+  </a>
+  <div class="nav-links">
+    <a href="index.html#fleet">Fleet</a>
+    <a href="services.html">Services</a>
+    <a href="partners.html">Partners</a>
+    <a href="vip.html" class="vip-link">VIP ✦</a>
+  </div>
+  <div class="nav-cta">
+    <a class="btn btn-primary btn-sm" href="index.html#fleet">Request to Book</a>
+    <button class="nav-burger" id="navBurger" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html#fleet">Fleet</a>
+  <a href="services.html">Services</a>
+  <a href="partners.html">Partners</a>
+  <a href="contact.html">Contact</a>
+</div>
+
+<header class="page-hero">
+  <span class="eyebrow">Fleet Owners &amp; Rental Companies</span>
+  <h1 class="chrome-text">Put Your Fleet In Front Of Premium Renters</h1>
+  <p>TopNotchRentalz brings vetted, deposit-ready customers to approved partner fleets. You set
+  your rates and availability — we handle marketing, screening, concierge and delivery
+  coordination. Your rates and payouts stay private, always.</p>
+</header>
+
+<section style="padding:0 6vw 120px;display:grid;grid-template-columns:1fr 1fr;gap:44px;max-width:1240px" class="partner-grid">
+  <div>
+    <div class="policy-section" style="border:none;padding-top:0">
+      <h2>How it works</h2>
+      <ul>
+        <li>Send us your fleet list, rates, deposits and requirements.</li>
+        <li>We list the vehicles at TopNotchRentalz retail pricing — your wholesale rate is never shown publicly.</li>
+        <li>Every request is screened for age, license, insurance and deposit readiness before it reaches you.</li>
+        <li>You confirm availability — nothing is promised to a customer without your yes.</li>
+        <li>Payouts are tracked per booking and settled on your schedule.</li>
+      </ul>
+    </div>
+    <div class="policy-section" style="border:none">
+      <h2>What we look for</h2>
+      <ul>
+        <li>Late-model exotic, luxury and premium SUVs/sedans</li>
+        <li>Clean titles, commercial insurance, maintained service records</li>
+        <li>Reliable handover and delivery capability in your market</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="form-card" id="partnerForm">
+    <div class="f-label">Company name *</div>
+    <input class="f-input" id="pCompany" placeholder="Your rental company LLC">
+    <div class="f-label">Contact person</div>
+    <input class="f-input" id="pContact" placeholder="Full name">
+    <div class="f-row2" style="margin-top:10px">
+      <div>
+        <div class="f-label">Phone *</div>
+        <input class="f-input" id="pPhone" type="tel" placeholder="(305) …">
+      </div>
+      <div>
+        <div class="f-label">Email</div>
+        <input class="f-input" id="pEmail" type="email" placeholder="you@company.com">
+      </div>
+    </div>
+    <div class="f-row2" style="margin-top:10px">
+      <div>
+        <div class="f-label">Market / city</div>
+        <input class="f-input" id="pMarket" placeholder="Miami, Orlando…">
+      </div>
+      <div>
+        <div class="f-label">Fleet size</div>
+        <select class="f-select" id="pFleet">
+          <option>1–3 vehicles</option><option>4–10 vehicles</option><option>11–25 vehicles</option><option>25+</option>
+        </select>
+      </div>
+    </div>
+    <div class="f-label">Tell us about your fleet</div>
+    <input class="f-input" id="pNotes" placeholder="Makes, models, years…">
+    <button class="btn btn-primary btn-block" id="partnerSubmit" style="margin-top:22px">Submit Partner Inquiry</button>
+    <p class="fineprint">Partner rates, contacts and payouts are stored in our internal system and
+    are never displayed to customers.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-bottom" style="margin-top:0;border-top:none">
+    <span>© 2026 TopNotchRentalz. All rights reserved.</span>
+    <span><a href="policies.html" style="color:var(--orange)">Policies</a> · <a href="contact.html" style="color:var(--orange)">Contact</a></span>
+  </div>
+</footer>
+
+<style>@media (max-width: 900px) { .partner-grid { grid-template-columns: 1fr !important; } }</style>
+<div id="modalRoot"></div>
+<script src="js/data.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

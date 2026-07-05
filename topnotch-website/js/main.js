@@ -1,5 +1,6 @@
 /* ============================================================
-   TOPNOTCH — interactions
+   TopNotchRentalz — customer site interactions (Phase 2)
+   Request-to-Book pipeline · Excel sync · no auto-confirm
    ============================================================ */
 
 const $ = (s, c) => (c || document).querySelector(s);
@@ -22,8 +23,47 @@ const ICONS = {
   toll: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M12 8.5v3"/></svg>',
   clock: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>',
   clean: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M5 12V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5"/><path d="M5 12v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>',
-  seat: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 0 1 4 0v6h6a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z"/></svg>'
+  seat: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4a2 2 0 0 1 4 0v6h6a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z"/></svg>',
+  wa: '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.5 14.2c-.23.65-1.35 1.24-1.86 1.28-.5.05-.97.23-3.26-.68-2.76-1.09-4.5-3.9-4.64-4.08-.13-.18-1.1-1.47-1.1-2.8 0-1.34.7-2 .95-2.27.25-.27.54-.34.72-.34h.52c.17 0 .4-.06.62.47.23.55.77 1.9.84 2.03.07.14.11.3.02.48-.09.18-.13.29-.27.45-.13.16-.29.36-.41.48-.14.14-.28.28-.12.55.16.27.7 1.16 1.5 1.88 1.04.92 1.9 1.2 2.18 1.34.27.14.43.11.59-.07.16-.18.68-.8.86-1.07.18-.27.36-.23.6-.14.25.09 1.58.75 1.85.88.27.14.45.2.52.32.06.11.06.65-.16 1.29Z"/></svg>'
 };
+
+/* ============================================================
+   STORAGE / INTEGRATION LAYER
+   Every write goes to localStorage AND (when configured) to the
+   Excel webhook so rows land in the workbook tables.
+   ============================================================ */
+const DB = {
+  read(key) { try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch (e) { return []; } },
+  write(key, rows) { localStorage.setItem(key, JSON.stringify(rows)); },
+  append(key, row) { const rows = DB.read(key); rows.push(row); DB.write(key, rows); return rows; }
+};
+
+async function syncToExcel(table, row) {
+  if (!WEBHOOKS.sheet) return;
+  try {
+    await fetch(WEBHOOKS.sheet, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ table, row })
+    });
+  } catch (e) { console.warn("Excel webhook unreachable — row kept locally", e); }
+}
+
+async function notifyTeam(summary) {
+  if (WEBHOOKS.notify) {
+    try {
+      await fetch(WEBHOOKS.notify, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(summary)
+      });
+    } catch (e) { console.warn("Notify webhook unreachable", e); }
+  }
+}
+
+const newRequestId = () =>
+  "TN-" + new Date().toISOString().slice(2, 10).replace(/-/g, "") + "-" +
+  Math.random().toString(36).slice(2, 6).toUpperCase();
 
 /* ============================================================
    NAV
@@ -47,8 +87,19 @@ if (burger) {
   }));
 }
 
+/* floating WhatsApp + phone buttons on every customer page */
+(function contactFloat() {
+  if (document.body.dataset.noFloat !== undefined) return;
+  const wrap = document.createElement("div");
+  wrap.className = "contact-float";
+  wrap.innerHTML = `
+    <a class="cf-btn cf-wa" href="https://wa.me/${BUSINESS.whatsapp}?text=Hi%20TopNotchRentalz%2C%20I%27d%20like%20to%20book%20a%20car" target="_blank" rel="noopener" aria-label="WhatsApp">${ICONS.wa}</a>
+    <a class="cf-btn cf-ph" href="tel:${BUSINESS.phone.replace(/\D/g, "")}" aria-label="Call">${ICONS.phone}</a>`;
+  document.body.appendChild(wrap);
+})();
+
 /* ============================================================
-   HERO scroll sequence (exterior -> around -> interior)
+   HERO scroll sequence
    ============================================================ */
 const hero = $("#hero");
 if (hero) {
@@ -63,26 +114,19 @@ if (hero) {
     const r = hero.getBoundingClientRect();
     const total = r.height - innerHeight;
     const prog = clamp(-r.top / total, 0, 1);
-
-    // exterior: subtle drift then zoom-through
     const zoom = ease(clamp((prog - 0.18) / 0.42, 0, 1));
     ext.style.transform = `scale(${1 + prog * 0.12 + zoom * 1.15}) translateX(${zoom * -6}%)`;
     ext.style.opacity = 1 - ease(clamp((prog - 0.34) / 0.28, 0, 1));
     ext.style.filter = `blur(${zoom * 6}px)`;
-
-    // interior: settle in
     const arrive = ease(clamp((prog - 0.42) / 0.34, 0, 1));
     int.style.opacity = arrive;
     int.style.transform = `scale(${1.28 - arrive * 0.28})`;
-
     copy.classList.toggle("flip", prog > 0.52);
     if (hint) hint.style.opacity = prog > 0.05 ? 0 : 1;
   };
   addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 
-  /* hero interior video: fades in over the starlight art once
-     img/hero-interior.mp4 exists and has loaded */
   const vid = $("#heroVideo");
   if (vid) {
     vid.addEventListener("loadeddata", () => vid.classList.add("live"));
@@ -124,7 +168,6 @@ function renderIslands() {
   });
 }
 
-/* drag-to-swipe for the islands row */
 function makeDraggable(el) {
   if (!el) return;
   let down = false, startX = 0, startL = 0, moved = 0;
@@ -157,12 +200,14 @@ const fleetGrid = $("#fleetGrid");
 function renderFleet() {
   if (!fleetGrid) return;
   const list = activeCat === "all" ? FLEET : FLEET.filter(f => f.brand === activeCat);
-  fleetGrid.innerHTML = list.map((car, i) => `
+  fleetGrid.innerHTML = list.map((car, i) => {
+    const st = vehicleStatus(car.id);
+    const tag = st !== "available"
+      ? '<span class="card-tag hot">On Request</span>'
+      : (car.hot ? '<span class="card-tag hot">In Demand</span>' : `<span class="card-tag">${car.cat}</span>`);
+    return `
     <article class="car-card reveal in" data-id="${car.id}" style="transition-delay:${i * 0.04}s">
-      <div class="card-media">
-        ${car.hot ? '<span class="card-tag hot">In Demand</span>' : `<span class="card-tag">${car.cat}</span>`}
-        ${emptySlot()}
-      </div>
+      <div class="card-media">${tag}${emptySlot()}</div>
       <div class="card-body">
         <h3 class="card-name">${car.name}</h3>
         <div class="card-meta">
@@ -173,7 +218,8 @@ function renderFleet() {
           <span class="card-cta">→</span>
         </div>
       </div>
-    </article>`).join("");
+    </article>`;
+  }).join("");
 
   $$(".car-card", fleetGrid).forEach(card =>
     card.addEventListener("click", () => openDetail("car", card.dataset.id)));
@@ -200,7 +246,7 @@ function renderServices() {
 }
 
 /* ============================================================
-   DETAIL MODAL (price + specs + requirements + Rent Now)
+   MODAL SHELL
    ============================================================ */
 const modalRoot = $("#modalRoot");
 let bookingContext = null;
@@ -225,13 +271,29 @@ function closeModal() {
   document.body.style.overflow = "";
   setTimeout(() => (modalRoot.innerHTML = ""), 350);
 }
+function swapModal(html) {
+  const m = $("#mBackdrop .modal");
+  m.scrollTop = 0;
+  m.innerHTML = `<button class="modal-close" id="mClose" aria-label="Close">✕</button>${html}`;
+  $("#mClose").addEventListener("click", closeModal);
+}
 addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
 
+/* step progress header for the wizard */
+function stepsBar(n) {
+  return `<div class="steps-bar">${[1, 2, 3, 4].map(i =>
+    `<span class="step-dot${i === n ? " on" : i < n ? " done" : ""}"></span>`).join("")}
+    <span class="steps-label">Step ${n} of 4</span></div>`;
+}
+
+/* ============================================================
+   DETAIL POPUPS
+   ============================================================ */
 function openDetail(kind, id) {
   if (kind === "car") return openCarDetail(id);
 
   const s = SERVICES.find(x => x.id === id);
-  bookingContext = { kind, id, title: s.name, price: s.price, unit: s.unit };
+  bookingContext = { kind, id, title: s.name, price: s.price, unit: s.unit, extras: [], premium: [], form: {} };
   openModal(`
     <div class="detail-media">${s.art()}</div>
     <div class="modal-pad">
@@ -244,16 +306,29 @@ function openDetail(kind, id) {
       </div>
       <div class="spec-grid">${s.specs.map(x => `<div class="spec"><b>${x[0]}</b><i>${x[1]}</i></div>`).join("")}</div>
       <ul class="detail-notes">${s.notes.map(n => `<li>${n}</li>`).join("")}</ul>
-      <button class="btn btn-primary btn-block" id="rentNow">Book Now</button>
+      <button class="btn btn-primary btn-block" id="rentNow">Request to Book</button>
     </div>`);
-  $("#rentNow").addEventListener("click", () => renderOptionStep());
+  $("#rentNow").addEventListener("click", () => renderStep1());
 }
 
-/* ---- car detail: pills + rates + features + extras + sticky bar ---- */
 function openCarDetail(id) {
   const c = FLEET.find(f => f.id === id);
-  bookingContext = { kind: "car", id, title: c.name, price: c.price, unit: "day", extras: [] };
+  const st = vehicleStatus(id);
+  bookingContext = { kind: "car", id, title: c.name, price: c.price, unit: "day", extras: [], premium: [], form: {} };
   const mile = extraMileRate(c.price);
+
+  const altBanner = st !== "available" ? `
+      <div class="alt-banner">
+        <b>This vehicle is currently ${st === "booked" ? "on rent" : "in service"}.</b>
+        You can still submit a request — our team confirms real-time availability with the
+        provider before anything is promised. Or start with a comparable car:
+        <div class="alt-row">
+          ${comparableAlternatives(c, 2).map(a => `
+            <button class="alt-chip" data-alt="${a.id}">
+              <b>${a.name}</b><span>$${a.price.toLocaleString()}/day</span>
+            </button>`).join("")}
+        </div>
+      </div>` : "";
 
   openModal(`
     <div class="detail-media">${emptySlot()}</div>
@@ -264,7 +339,7 @@ function openCarDetail(id) {
           <div class="d-cat">${c.cat}</div>
         </div>
       </div>
-
+      ${altBanner}
       <div class="price-pills">
         <span class="pill">$${c.price.toLocaleString()}<small>/day</small></span>
         <span class="pill alt">$${weeklyRate(c.price).toLocaleString()}<small>/week</small></span>
@@ -272,9 +347,12 @@ function openCarDetail(id) {
       </div>
 
       <div class="rate-table">
-        <div class="rate-row"><span class="rk">Distance included</span><span class="rv">100 mi / day</span></div>
+        <div class="rate-row"><span class="rk">Distance included</span><span class="rv">${RENTAL_TERMS.mileageIncluded} mi / day</span></div>
         <div class="rate-row"><span class="rk">Additional mileage</span><span class="rv">$${mile} per mile</span></div>
         <div class="rate-row"><span class="rk">Security deposit</span><span class="rv hl">from $${c.deposit.toLocaleString()}</span></div>
+        <div class="rate-row"><span class="rk">Minimum rental</span><span class="rv">${RENTAL_TERMS.minDays} day</span></div>
+        <div class="rate-row"><span class="rk">Delivery / pickup fee</span><span class="rv">$${RENTAL_TERMS.deliveryFee} · free for VIP</span></div>
+        <div class="rate-row"><span class="rk">Minimum driver age</span><span class="rv">${RENTAL_TERMS.minAge}+</span></div>
       </div>
 
       <div class="block-label">Features</div>
@@ -295,21 +373,23 @@ function openCarDetail(id) {
             <span class="ex-tick">✓</span>
           </div>`).join("")}
       </div>
+      <p class="fineprint">Requirements: ${RENTAL_TERMS.minAge}+ · ${RENTAL_TERMS.license.toLowerCase()} ·
+      ${RENTAL_TERMS.insurance.toLowerCase()}. <a href="policies.html">Full rental requirements →</a></p>
     </div>
 
     <div class="modal-rentbar">
       <div class="total"><b id="rentTotal">$${c.price.toLocaleString()}</b><span>per day · deposit separate</span></div>
-      <button class="btn btn-primary" id="rentNow">Rent Now</button>
+      <button class="btn btn-primary" id="rentNow">Request to Book</button>
     </div>`);
+
+  $$(".alt-chip").forEach(chip => chip.addEventListener("click", () => openCarDetail(chip.dataset.alt)));
 
   const updateTotal = () => {
     const perDay = c.price + bookingContext.extras
-      .map(x => EXTRAS.find(e => e.id === x))
-      .filter(e => e.per === "day")
+      .map(x => EXTRAS.find(e => e.id === x)).filter(e => e.per === "day")
       .reduce((s, e) => s + e.price, 0);
     const oneTime = bookingContext.extras
-      .map(x => EXTRAS.find(e => e.id === x))
-      .filter(e => e.per === "trip")
+      .map(x => EXTRAS.find(e => e.id === x)).filter(e => e.per === "trip")
       .reduce((s, e) => s + e.price, 0);
     $("#rentTotal").textContent = `$${perDay.toLocaleString()}` + (oneTime ? ` +$${oneTime}` : "");
     bookingContext.price = perDay;
@@ -324,23 +404,29 @@ function openCarDetail(id) {
     updateTotal();
   }));
 
-  $("#rentNow").addEventListener("click", () => renderOptionStep());
+  $("#rentNow").addEventListener("click", () => renderStep1());
 }
 
 /* ============================================================
-   BOOKING FLOW — step 1: Delivery vs Pickup (with exit ✕)
+   REQUEST-TO-BOOK WIZARD
+   Step 1: delivery or pickup   Step 2: location + dates
+   Step 3: driver & budget      Step 4: occasion, add-ons, contact
    ============================================================ */
-function swapModal(html) {
-  const m = $("#mBackdrop .modal");
-  m.innerHTML = `<button class="modal-close" id="mClose" aria-label="Close">✕</button>${html}`;
-  $("#mClose").addEventListener("click", closeModal);
+function saveInputs(ids) {
+  ids.forEach(i => {
+    const el = $("#" + i);
+    if (!el) return;
+    bookingContext.form[i] = el.type === "checkbox" ? el.checked : el.value.trim();
+  });
 }
+function v(id) { return bookingContext.form[id] || ""; }
 
-function renderOptionStep() {
+function renderStep1() {
   swapModal(`
     <div class="modal-pad">
+      ${stepsBar(1)}
       <h3 class="opt-title">How do you want your <span style="color:var(--orange)">${bookingContext.kind === "car" ? "car" : "booking"}</span>?</h3>
-      <p class="opt-sub">${bookingContext.title}</p>
+      <p class="opt-sub">${bookingContext.title} — this is a booking <b>request</b>; nothing is charged until our team confirms availability and price.</p>
       <div class="opt-grid">
         <button class="opt-card" id="optDelivery">
           <span class="opt-ico">${ICONS.truck}</span>
@@ -354,147 +440,266 @@ function renderOptionStep() {
         </button>
       </div>
     </div>`);
-  $("#optDelivery").addEventListener("click", () => renderLocationStep("delivery"));
-  $("#optPickup").addEventListener("click", () => renderPickupStep());
+  $("#optDelivery").addEventListener("click", () => { bookingContext.form.option = "delivery"; renderStep2(); });
+  $("#optPickup").addEventListener("click", () => { bookingContext.form.option = "pickup"; renderStep2(); });
 }
 
-/* ---- step 2a: pickup — show business address ---- */
-function renderPickupStep() {
+function renderStep2() {
+  const isDelivery = bookingContext.form.option === "delivery";
   swapModal(`
     <div class="modal-pad">
+      ${stepsBar(2)}
       <div class="bk-section-head">
-        <span class="bk-ico">${ICONS.key}</span>
-        <div><h3>Showroom Pickup</h3><p>Collect your keys at our location</p></div>
-      </div>
-      <div class="addr-card">
-        <b>${BUSINESS.name}</b>
-        <p>${BUSINESS.address}<br>${BUSINESS.city}</p>
-        <div class="hours">Hours: <span>${BUSINESS.hours}</span> · ${BUSINESS.phone}</div>
-      </div>
-      ${datesBlock()}
-      ${contactBlock()}
-      <button class="btn btn-primary btn-block" id="submitBooking" style="margin-top:24px">Confirm Request</button>
-    </div>`);
-  wireForm("pickup");
-}
-
-/* ---- step 2b: delivery — Select Location (reference popup, orange) ---- */
-function renderLocationStep() {
-  swapModal(`
-    <div class="modal-pad">
-      <div class="bk-section-head">
-        <span class="bk-ico">${ICONS.pin}</span>
-        <div><h3>Select Location</h3><p>Choose your delivery and return locations</p></div>
+        <span class="bk-ico">${isDelivery ? ICONS.pin : ICONS.key}</span>
+        <div><h3>${isDelivery ? "Select Location" : "Showroom Pickup"}</h3>
+        <p>${isDelivery ? "Choose your delivery and return locations" : "Collect your keys at our location"}</p></div>
       </div>
 
-      <div class="f-label">${ICONS.pin} Delivery location</div>
-      <div class="f-field">${ICONS.pin}
-        <input class="f-input with-ico" id="locInput" placeholder="City, airport, address or hotel">
-      </div>
-      <button class="geo-btn" id="geoBtn">${ICONS.nav} Use my current location</button>
-
-      <label class="f-check" id="diffReturn">
-        <input type="checkbox" id="diffReturnCb"><span class="box">✓</span>
-        Different return location
-      </label>
-      <div class="return-loc" id="returnLoc">
+      ${isDelivery ? `
+        <div class="f-label">${ICONS.pin} Delivery location</div>
         <div class="f-field">${ICONS.pin}
-          <input class="f-input with-ico" id="returnInput" placeholder="Return location">
+          <input class="f-input with-ico" id="locInput" value="${v("locInput")}" placeholder="City, airport, address or hotel">
         </div>
-      </div>
+        <button class="geo-btn" id="geoBtn">${ICONS.nav} Use my current location</button>
+        <label class="f-check" id="diffReturn">
+          <input type="checkbox" id="diffReturnCb" ${v("diffReturnCb") ? "checked" : ""}><span class="box">✓</span>
+          Different return location
+        </label>
+        <div class="return-loc ${v("diffReturnCb") ? "show" : ""}" id="returnLoc">
+          <div class="f-field">${ICONS.pin}
+            <input class="f-input with-ico" id="returnInput" value="${v("returnInput")}" placeholder="Return location">
+          </div>
+        </div>`
+      : `
+        <div class="addr-card">
+          <b>${BUSINESS.name}</b>
+          <p>${BUSINESS.address}<br>${BUSINESS.city}</p>
+          <div class="hours">Hours: <span>${BUSINESS.hours}</span> · ${BUSINESS.phone}</div>
+        </div>`}
 
       ${datesBlock()}
-      ${contactBlock()}
-      <button class="btn btn-primary btn-block" id="submitBooking" style="margin-top:24px">${ICONS.pin} Confirm Request</button>
+      <div class="wizard-nav">
+        <button class="btn btn-ghost btn-sm" id="backBtn">← Back</button>
+        <button class="btn btn-primary" id="nextBtn">Continue</button>
+      </div>
     </div>`);
 
-  $("#diffReturnCb").addEventListener("change", e =>
-    $("#returnLoc").classList.toggle("show", e.target.checked));
-
-  $("#geoBtn").addEventListener("click", () => {
-    if (!navigator.geolocation) return toast("Location not supported on this device");
-    toast("Locating you…");
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        $("#locInput").value = `Current location (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`;
-        toast("Location captured");
-      },
-      () => toast("Couldn't get your location — type it in instead")
-    );
+  if (isDelivery) {
+    $("#diffReturnCb").addEventListener("change", e =>
+      $("#returnLoc").classList.toggle("show", e.target.checked));
+    $("#geoBtn").addEventListener("click", () => {
+      if (!navigator.geolocation) return toast("Location not supported on this device");
+      toast("Locating you…");
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          $("#locInput").value = `Current location (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`;
+          toast("Location captured");
+        },
+        () => toast("Couldn't get your location — type it in instead"));
+    });
+  }
+  $("#backBtn").addEventListener("click", renderStep1);
+  $("#nextBtn").addEventListener("click", () => {
+    saveInputs(["locInput", "diffReturnCb", "returnInput", "dateStart", "timeStart", "dateEnd", "timeEnd"]);
+    if (isDelivery && !v("locInput")) return toast("Please enter a delivery location");
+    if (!v("dateStart") || !v("dateEnd")) return toast("Please pick your dates");
+    renderStep3();
   });
-
-  wireForm("delivery");
 }
 
 function datesBlock() {
   const today = new Date();
   const fmt = d => d.toISOString().slice(0, 10);
-  const start = fmt(today);
-  const end = fmt(new Date(today.getTime() + 2 * 864e5));
+  const s = v("dateStart") || fmt(today);
+  const e = v("dateEnd") || fmt(new Date(today.getTime() + 2 * 864e5));
   return `
     <div class="f-label">${ICONS.cal} ${bookingContext.kind === "car" ? "Pick-up" : "Start"} date and time</div>
-    <div class="f-row"><input class="f-input" type="date" id="dateStart" value="${start}"><input class="f-input" type="time" id="timeStart" value="10:00"></div>
+    <div class="f-row"><input class="f-input" type="date" id="dateStart" value="${s}"><input class="f-input" type="time" id="timeStart" value="${v("timeStart") || "10:00"}"></div>
     <div class="f-label">${ICONS.cal} Return date and time</div>
-    <div class="f-row"><input class="f-input" type="date" id="dateEnd" value="${end}"><input class="f-input" type="time" id="timeEnd" value="10:00"></div>`;
+    <div class="f-row"><input class="f-input" type="date" id="dateEnd" value="${e}"><input class="f-input" type="time" id="timeEnd" value="${v("timeEnd") || "10:00"}"></div>`;
 }
 
-function contactBlock() {
-  return `
-    <div class="f-label">${ICONS.user} Your details</div>
-    <div class="f-row2">
-      <input class="f-input" id="cName" placeholder="Full name">
-      <input class="f-input" id="cPhone" type="tel" placeholder="Phone number">
-    </div>`;
-}
+function renderStep3() {
+  swapModal(`
+    <div class="modal-pad">
+      ${stepsBar(3)}
+      <div class="bk-section-head">
+        <span class="bk-ico">${ICONS.user}</span>
+        <div><h3>Driver &amp; Budget</h3><p>Quick checks so we can approve you faster</p></div>
+      </div>
 
-/* ---- submit ---- */
-function wireForm(mode) {
-  $("#submitBooking").addEventListener("click", async () => {
-    const name = $("#cName").value.trim();
-    const phone = $("#cPhone").value.trim();
-    if (mode === "delivery" && !$("#locInput").value.trim()) return toast("Please enter a delivery location");
-    if (!name || !phone) return toast("Please add your name and phone number");
+      <div class="f-row2">
+        <div>
+          <div class="f-label">Driver age</div>
+          <select class="f-select" id="drvAge">
+            ${["25–29", "30–39", "40+", "Under 25"].map(o => `<option ${v("drvAge") === o ? "selected" : ""}>${o}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <div class="f-label">Budget (per day)</div>
+          <select class="f-select" id="budget">
+            ${["Under $500", "$500–$1,000", "$1,000–$1,500", "$1,500+"].map(o => `<option ${v("budget") === o ? "selected" : ""}>${o}</option>`).join("")}
+          </select>
+        </div>
+      </div>
 
-    const payload = {
-      timestamp: new Date().toISOString(),
-      item: bookingContext.title,
-      type: bookingContext.kind,
-      pricePerUnit: `$${bookingContext.price}/${bookingContext.unit}`,
-      option: mode,
-      location: mode === "delivery" ? $("#locInput").value.trim() : `${BUSINESS.address}, ${BUSINESS.city}`,
-      returnLocation: mode === "delivery" && $("#diffReturnCb").checked ? $("#returnInput").value.trim() : "same",
-      start: `${$("#dateStart").value} ${$("#timeStart").value}`,
-      end: `${$("#dateEnd").value} ${$("#timeEnd").value}`,
-      extras: (bookingContext.extras || []).map(x => EXTRAS.find(e => e.id === x)?.name).join(", ") || "none",
-      name, phone
-    };
+      <label class="f-check"><input type="checkbox" id="hasLicense" ${v("hasLicense") ? "checked" : ""}><span class="box">✓</span>
+        I have a valid driver's license in my name</label>
+      <label class="f-check"><input type="checkbox" id="hasInsurance" ${v("hasInsurance") ? "checked" : ""}><span class="box">✓</span>
+        I carry full-coverage insurance</label>
+      <label class="f-check"><input type="checkbox" id="depositReady" ${v("depositReady") ? "checked" : ""}><span class="box">✓</span>
+        I'm ready to place the security deposit</label>
 
-    /* Phase 2: this webhook writes the row into the booking
-       spreadsheet and notifies the AI concierge agent, which
-       messages the owner with the request details. */
-    if (BUSINESS.bookingWebhook) {
-      try {
-        await fetch(BUSINESS.bookingWebhook, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-      } catch (err) { console.warn("Webhook unavailable, stored locally", err); }
-    }
-    const q = JSON.parse(localStorage.getItem("topnotch_requests") || "[]");
-    q.push(payload);
-    localStorage.setItem("topnotch_requests", JSON.stringify(q));
+      <div class="f-label">Backup vehicle (optional)</div>
+      <select class="f-select" id="backupVehicle">
+        <option value="">No backup — this car only</option>
+        ${FLEET.filter(f => f.id !== bookingContext.id).map(f =>
+          `<option ${v("backupVehicle") === f.name ? "selected" : ""}>${f.name}</option>`).join("")}
+      </select>
 
-    swapModal(`
-      <div class="modal-pad success-wrap">
-        <div class="success-ring">${ICONS.check}</div>
-        <h3>Request Received</h3>
-        <p>Thank you, ${name.split(" ")[0]}. Your ${mode} request for the <b>${bookingContext.title}</b> is in.
-        Our concierge will text you at ${phone} shortly to confirm.</p>
-        <button class="btn btn-primary" id="doneBtn">Done</button>
-      </div>`);
-    $("#doneBtn").addEventListener("click", closeModal);
+      <div class="wizard-nav">
+        <button class="btn btn-ghost btn-sm" id="backBtn">← Back</button>
+        <button class="btn btn-primary" id="nextBtn">Continue</button>
+      </div>
+    </div>`);
+
+  $("#backBtn").addEventListener("click", renderStep2);
+  $("#nextBtn").addEventListener("click", () => {
+    saveInputs(["drvAge", "budget", "hasLicense", "hasInsurance", "depositReady", "backupVehicle"]);
+    if (v("drvAge") === "Under 25") return toast("Drivers must be 25+ for our fleet");
+    if (!v("hasLicense")) return toast("A valid license is required");
+    renderStep4();
   });
+}
+
+function renderStep4() {
+  swapModal(`
+    <div class="modal-pad">
+      ${stepsBar(4)}
+      <div class="bk-section-head">
+        <span class="bk-ico">✦</span>
+        <div><h3>Finish Your Request</h3><p>Occasion, premium touches and how to reach you</p></div>
+      </div>
+
+      <div class="f-label">Occasion (optional)</div>
+      <select class="f-select" id="occasion">
+        ${["Just driving", "Birthday", "Wedding", "Anniversary", "Business trip", "Vacation", "Content shoot", "Other"]
+          .map(o => `<option ${v("occasion") === o ? "selected" : ""}>${o}</option>`).join("")}
+      </select>
+
+      <div class="f-label">Premium experience (optional)</div>
+      <div class="prem-grid">
+        ${PREMIUM_ADDONS.map(p => `
+          <label class="prem-chip${bookingContext.premium.includes(p.id) ? " on" : ""}" data-prem="${p.id}">
+            <b>${p.name}</b><span>${p.price}</span>
+          </label>`).join("")}
+      </div>
+
+      <div class="f-label">Notes / special requests</div>
+      <input class="f-input" id="notes" value="${v("notes")}" placeholder="Color preference, timing, surprises…">
+
+      <div class="f-label">${ICONS.user} Contact</div>
+      <input class="f-input" id="cName" value="${v("cName")}" placeholder="Full name" style="margin-bottom:10px">
+      <div class="f-row2">
+        <input class="f-input" id="cPhone" type="tel" value="${v("cPhone")}" placeholder="Phone number">
+        <input class="f-input" id="cEmail" type="email" value="${v("cEmail")}" placeholder="Email">
+      </div>
+
+      <div class="wizard-nav">
+        <button class="btn btn-ghost btn-sm" id="backBtn">← Back</button>
+        <button class="btn btn-primary" id="submitBtn">Submit Request</button>
+      </div>
+      <p class="fineprint" style="margin-top:14px">Submitting a request does not confirm a booking.
+      Your booking is confirmed only after availability, requirements and price are verified and payment is completed.</p>
+    </div>`);
+
+  $$(".prem-chip").forEach(chip => chip.addEventListener("click", () => {
+    const id = chip.dataset.prem;
+    chip.classList.toggle("on");
+    bookingContext.premium = chip.classList.contains("on")
+      ? [...bookingContext.premium, id]
+      : bookingContext.premium.filter(x => x !== id);
+  }));
+
+  $("#backBtn").addEventListener("click", renderStep3);
+  $("#submitBtn").addEventListener("click", submitRequest);
+}
+
+async function submitRequest() {
+  saveInputs(["occasion", "notes", "cName", "cPhone", "cEmail"]);
+  if (!v("cName") || !v("cPhone")) return toast("Please add your name and phone number");
+  if (!v("cEmail")) return toast("Please add your email");
+
+  const f = bookingContext.form;
+  const req = {
+    requestId: newRequestId(),
+    timestamp: new Date().toISOString(),
+    status: STATUS_FLOW[0],
+    customerName: f.cName,
+    phone: f.cPhone,
+    email: f.cEmail,
+    vehicleRequested: bookingContext.title,
+    backupVehicle: f.backupVehicle || "None",
+    startDate: `${f.dateStart} ${f.timeStart}`,
+    endDate: `${f.dateEnd} ${f.timeEnd}`,
+    budget: f.budget,
+    driverAge: f.drvAge,
+    licenseStatus: f.hasLicense ? "Confirmed by customer" : "Not confirmed",
+    insuranceStatus: f.hasInsurance ? "Confirmed by customer" : "Not confirmed",
+    option: f.option,
+    deliveryLocation: f.option === "delivery" ? f.locInput : `${BUSINESS.address}, ${BUSINESS.city}`,
+    returnLocation: f.option === "delivery" && f.diffReturnCb ? f.returnInput : "Same",
+    depositReadiness: f.depositReady ? "Ready" : "Needs discussion",
+    occasion: f.occasion,
+    chauffeurNeeded: bookingContext.premium.includes("chauffeur") ? "Yes" : "No",
+    fboPickup: bookingContext.premium.includes("fbo") ? "Yes" : "No",
+    addons: bookingContext.extras.map(x => EXTRAS.find(e => e.id === x)?.name)
+      .concat(bookingContext.premium.map(p => PREMIUM_ADDONS.find(a => a.id === p)?.name))
+      .filter(Boolean).join(", ") || "None",
+    specialRequests: f.notes || "None",
+    quotedDayRate: `$${bookingContext.price}/${bookingContext.unit}`,
+    /* internal columns — filled by the team in the admin dashboard */
+    assignedProvider: "", finalCustomerPrice: "", internalCost: "", profit: ""
+  };
+
+  DB.append("tn_requests", req);
+  await syncToExcel("CustomerRequests", req);
+  await notifyTeam({
+    type: "NEW_REQUEST",
+    requestId: req.requestId,
+    vehicle: req.vehicleRequested,
+    dates: `${req.startDate} → ${req.endDate}`,
+    location: req.deliveryLocation,
+    customer: `${req.customerName} · ${req.phone} · ${req.email}`,
+    age: req.driverAge,
+    insurance: req.insuranceStatus,
+    deposit: req.depositReadiness
+  });
+
+  swapModal(`
+    <div class="modal-pad success-wrap">
+      <div class="success-ring">${ICONS.check}</div>
+      <h3>Request Received</h3>
+      <p><b style="color:var(--orange)">${req.requestId}</b><br>
+      Thank you, ${req.customerName.split(" ")[0]}. Our team is checking availability with the provider now —
+      expect a text at ${req.phone} shortly.</p>
+      ${statusTimeline(req.status)}
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px">
+        <a class="btn btn-ghost btn-sm" href="track.html?id=${req.requestId}">Track This Request</a>
+        <button class="btn btn-primary btn-sm" id="doneBtn">Done</button>
+      </div>
+    </div>`);
+  $("#doneBtn").addEventListener("click", closeModal);
+}
+
+/* customer status timeline */
+function statusTimeline(current) {
+  const idx = Math.max(0, STATUS_FLOW.indexOf(current));
+  return `<div class="timeline">${STATUS_FLOW.map((s, i) => `
+    <div class="tl-step${i < idx ? " done" : i === idx ? " now" : ""}">
+      <span class="tl-dot">${i < idx ? "✓" : ""}</span>
+      <span class="tl-name">${s}</span>
+    </div>`).join("")}</div>`;
 }
 
 /* ============================================================
@@ -540,26 +745,41 @@ renderFleet();
 renderServices();
 observeReveals();
 
-/* VIP page apply button */
+/* VIP page apply flow */
 $$("[data-vip-apply]").forEach(btn => btn.addEventListener("click", () => {
-  bookingContext = { kind: "vip", id: "vip", title: `VIP ${btn.dataset.vipApply} Membership`, price: btn.dataset.vipPrice || 0, unit: "month" };
+  bookingContext = { kind: "vip", id: "vip", title: `VIP ${btn.dataset.vipApply} Membership`, price: btn.dataset.vipPrice || 0, unit: "month", extras: [], premium: [], form: {} };
   openModal(`
     <div class="modal-pad">
       <div class="bk-section-head">
         <span class="bk-ico">✦</span>
         <div><h3>Request Invitation</h3><p>VIP ${btn.dataset.vipApply} — membership is application-only</p></div>
       </div>
-      ${contactBlock()}
+      <input class="f-input" id="cName" placeholder="Full name" style="margin-bottom:10px">
+      <div class="f-row2">
+        <input class="f-input" id="cPhone" type="tel" placeholder="Phone number">
+        <input class="f-input" id="cEmail" type="email" placeholder="Email">
+      </div>
       <div class="f-label">${ICONS.phone} Anything we should know?</div>
       <input class="f-input" id="vipNote" placeholder="Occasions, favorite cars, travel dates…">
-      <button class="btn btn-primary btn-block" id="submitBooking" style="margin-top:24px">Submit Application</button>
+      <button class="btn btn-primary btn-block" id="submitVip" style="margin-top:24px">Submit Application</button>
     </div>`);
-  $("#submitBooking").addEventListener("click", () => {
-    const name = $("#cName").value.trim(), phone = $("#cPhone").value.trim();
+  $("#submitVip").addEventListener("click", async () => {
+    const name = $("#cName").value.trim(), phone = $("#cPhone").value.trim(), email = $("#cEmail").value.trim();
     if (!name || !phone) return toast("Please add your name and phone number");
-    const q = JSON.parse(localStorage.getItem("topnotch_requests") || "[]");
-    q.push({ timestamp: new Date().toISOString(), item: bookingContext.title, type: "vip", name, phone, note: $("#vipNote").value.trim() });
-    localStorage.setItem("topnotch_requests", JSON.stringify(q));
+    const row = {
+      requestId: newRequestId(), timestamp: new Date().toISOString(), status: STATUS_FLOW[0],
+      customerName: name, phone, email, vehicleRequested: bookingContext.title,
+      backupVehicle: "", startDate: "", endDate: "", budget: "", driverAge: "",
+      licenseStatus: "", insuranceStatus: "", option: "vip",
+      deliveryLocation: "", returnLocation: "", depositReadiness: "",
+      occasion: "VIP application", chauffeurNeeded: "", fboPickup: "",
+      addons: "", specialRequests: $("#vipNote").value.trim() || "None",
+      quotedDayRate: `$${bookingContext.price}/mo`,
+      assignedProvider: "", finalCustomerPrice: "", internalCost: "", profit: ""
+    };
+    DB.append("tn_requests", row);
+    await syncToExcel("CustomerRequests", row);
+    await notifyTeam({ type: "VIP_APPLICATION", requestId: row.requestId, customer: `${name} · ${phone}` });
     swapModal(`
       <div class="modal-pad success-wrap">
         <div class="success-ring">${ICONS.check}</div>
@@ -570,3 +790,62 @@ $$("[data-vip-apply]").forEach(btn => btn.addEventListener("click", () => {
     $("#doneBtn").addEventListener("click", closeModal);
   });
 }));
+
+/* ---- partner inquiry form (partners.html) ---- */
+const partnerForm = $("#partnerForm");
+if (partnerForm) {
+  $("#partnerSubmit").addEventListener("click", async () => {
+    const g = id => $("#" + id)?.value.trim() || "";
+    if (!g("pCompany") || !g("pPhone")) return toast("Company name and phone are required");
+    const row = {
+      inquiryId: newRequestId().replace("TN-", "PR-"),
+      timestamp: new Date().toISOString(),
+      company: g("pCompany"), contact: g("pContact"), phone: g("pPhone"), email: g("pEmail"),
+      market: g("pMarket"), fleetSize: g("pFleet"), notes: g("pNotes"), status: "New inquiry"
+    };
+    DB.append("tn_partner_inquiries", row);
+    await syncToExcel("PartnerInquiries", row);
+    await notifyTeam({ type: "PARTNER_INQUIRY", company: row.company, phone: row.phone });
+    partnerForm.innerHTML = `
+      <div class="success-wrap">
+        <div class="success-ring">${ICONS.check}</div>
+        <h3>Inquiry Received</h3>
+        <p>Thanks ${row.contact || row.company} — our partnerships team will reach out within one business day.</p>
+      </div>`;
+  });
+}
+
+/* ---- track page (track.html) ---- */
+const trackBox = $("#trackBox");
+if (trackBox) {
+  const params = new URLSearchParams(location.search);
+  const showResult = (id, phone) => {
+    const reqs = DB.read("tn_requests");
+    const r = reqs.find(x => x.requestId.toLowerCase() === id.toLowerCase() &&
+      (!phone || x.phone.replace(/\D/g, "").endsWith(phone.replace(/\D/g, "").slice(-4))));
+    const out = $("#trackResult");
+    if (!r) {
+      out.innerHTML = `<p class="fineprint" style="margin-top:18px">No request found on this device for
+        <b>${id}</b>. Requests are tracked on the device they were submitted from — or text us on
+        WhatsApp and we'll check instantly.</p>`;
+      return;
+    }
+    out.innerHTML = `
+      <div class="addr-card" style="margin-top:22px">
+        <b>${r.vehicleRequested}</b>
+        <p>${r.startDate} → ${r.endDate}<br>${r.option === "pickup" ? "Showroom pickup" : "Delivery: " + r.deliveryLocation}</p>
+        <div class="hours">Request <span>${r.requestId}</span></div>
+      </div>
+      ${statusTimeline(r.status)}
+      ${STATUS_OTHER.includes(r.status) ? `<p class="fineprint">Status: <b>${r.status}</b></p>` : ""}`;
+  };
+  $("#trackBtn").addEventListener("click", () => {
+    const id = $("#trackId").value.trim();
+    if (!id) return toast("Enter your request number (TN-…)");
+    showResult(id, $("#trackPhone").value.trim());
+  });
+  if (params.get("id")) {
+    $("#trackId").value = params.get("id");
+    showResult(params.get("id"), "");
+  }
+}

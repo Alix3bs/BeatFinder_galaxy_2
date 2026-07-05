@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Track Your Request — TopNotchRentalz</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,14 H90 V36 H62 C61,60 63,74 76,88 H24 C37,74 39,60 38,36 H10 Z" fill="%23ff6a00"/></svg>'>
+</head>
+<body>
+
+<nav class="nav-island" id="navIsland">
+  <a class="brand" href="index.html">
+    <img class="t-mark" src="img/logo-t.png" alt="TOPNOTCH">
+    <img class="brand-word" src="img/logo-topnotch.png" alt="TOPNOTCH">
+  </a>
+  <div class="nav-links">
+    <a href="index.html#fleet">Fleet</a>
+    <a href="services.html">Services</a>
+    <a href="track.html">Track</a>
+    <a href="vip.html" class="vip-link">VIP ✦</a>
+  </div>
+  <div class="nav-cta">
+    <a class="btn btn-primary btn-sm" href="index.html#fleet">Request to Book</a>
+    <button class="nav-burger" id="navBurger" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html#fleet">Fleet</a>
+  <a href="services.html">Services</a>
+  <a href="track.html">Track Request</a>
+  <a href="vip.html" style="color:var(--orange)">VIP Plan ✦</a>
+</div>
+
+<header class="page-hero">
+  <span class="eyebrow">Your Booking</span>
+  <h1 class="chrome-text">Track Your Request</h1>
+  <p>Every booking moves through five steps: request submitted, availability being confirmed,
+  approved, payment required, and booking confirmed. Enter your request number to see where yours is.</p>
+</header>
+
+<section style="padding:0 6vw 120px" id="trackBox">
+  <div class="form-card">
+    <div class="f-label">Request number</div>
+    <input class="f-input" id="trackId" placeholder="TN-260705-XXXX">
+    <div class="f-label">Phone number (last 4 digits)</div>
+    <input class="f-input" id="trackPhone" placeholder="Optional — for verification">
+    <button class="btn btn-primary btn-block" id="trackBtn" style="margin-top:22px">Check Status</button>
+    <div id="trackResult"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-bottom" style="margin-top:0;border-top:none">
+    <span>© 2026 TopNotchRentalz. All rights reserved.</span>
+    <span><a href="policies.html" style="color:var(--orange)">Policies</a> · <a href="contact.html" style="color:var(--orange)">Contact</a></span>
+  </div>
+</footer>
+
+<div id="modalRoot"></div>
+<script src="js/data.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

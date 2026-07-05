@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact &amp; Support — TopNotchRentalz</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,14 H90 V36 H62 C61,60 63,74 76,88 H24 C37,74 39,60 38,36 H10 Z" fill="%23ff6a00"/></svg>'>
+</head>
+<body>
+
+<nav class="nav-island" id="navIsland">
+  <a class="brand" href="index.html">
+    <img class="t-mark" src="img/logo-t.png" alt="TOPNOTCH">
+    <img class="brand-word" src="img/logo-topnotch.png" alt="TOPNOTCH">
+  </a>
+  <div class="nav-links">
+    <a href="index.html#fleet">Fleet</a>
+    <a href="services.html">Services</a>
+    <a href="contact.html">Contact</a>
+    <a href="vip.html" class="vip-link">VIP ✦</a>
+  </div>
+  <div class="nav-cta">
+    <a class="btn btn-primary btn-sm" href="index.html#fleet">Request to Book</a>
+    <button class="nav-burger" id="navBurger" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html#fleet">Fleet</a>
+  <a href="services.html">Services</a>
+  <a href="track.html">Track Request</a>
+  <a href="policies.html">Policies</a>
+</div>
+
+<header class="page-hero">
+  <span class="eyebrow">We Answer Fast</span>
+  <h1 class="chrome-text">Contact &amp; Support</h1>
+  <p>Booking questions, live rentals, deliveries, deposits — a real person replies. WhatsApp is
+  the fastest line, day or night.</p>
+</header>
+
+<section style="padding:0 6vw 120px;max-width:1240px">
+  <div class="services-band">
+    <div class="form-card" style="max-width:none">
+      <div class="bk-ico" style="margin-bottom:16px">💬</div>
+      <h3 style="font-family:var(--font-display);margin-bottom:8px">WhatsApp</h3>
+      <p style="color:var(--muted);font-size:14px;line-height:1.7;margin-bottom:18px">Fastest response — bookings, changes and live support.</p>
+      <a class="btn btn-primary btn-block" id="waLink" href="#" target="_blank" rel="noopener">Message Us on WhatsApp</a>
+    </div>
+    <div class="form-card" style="max-width:none">
+      <div class="bk-ico" style="margin-bottom:16px">📞</div>
+      <h3 style="font-family:var(--font-display);margin-bottom:8px">Phone</h3>
+      <p style="color:var(--muted);font-size:14px;line-height:1.7;margin-bottom:18px" id="cPhoneLine"></p>
+      <a class="btn btn-ghost btn-block" id="phLink" href="#">Call Now</a>
+    </div>
+    <div class="form-card" style="max-width:none">
+      <div class="bk-ico" style="margin-bottom:16px">📍</div>
+      <h3 style="font-family:var(--font-display);margin-bottom:8px">Showroom</h3>
+      <p style="color:var(--muted);font-size:14px;line-height:1.7;margin-bottom:18px" id="cAddr"></p>
+      <a class="btn btn-ghost btn-block" href="track.html">Track a Request</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-bottom" style="margin-top:0;border-top:none">
+    <span>© 2026 TopNotchRentalz. All rights reserved.</span>
+    <span><a href="policies.html" style="color:var(--orange)">Policies</a> · <a href="partners.html" style="color:var(--orange)">Partners</a></span>
+  </div>
+</footer>
+
+<div id="modalRoot"></div>
+<script src="js/data.js"></script>
+<script>
+  document.getElementById("waLink").href = "https://wa.me/" + BUSINESS.whatsapp + "?text=Hi%20TopNotchRentalz";
+  document.getElementById("phLink").href = "tel:" + BUSINESS.phone.replace(/\D/g, "");
+  document.getElementById("cPhoneLine").textContent = BUSINESS.phone + " · " + BUSINESS.hours;
+  document.getElementById("cAddr").textContent = BUSINESS.address + ", " + BUSINESS.city;
+</script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TopNotchRentalz — Operations</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="admin.css">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,14 H90 V36 H62 C61,60 63,74 76,88 H24 C37,74 39,60 38,36 H10 Z" fill="%23ff6a00"/></svg>'>
+</head>
+<body data-no-float>
+
+<!-- ===== passcode gate ===== -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <img src="../img/logo-topnotch.png" alt="TOPNOTCH" style="height:22px;margin:0 auto 8px">
+    <p class="gate-sub">Operations Dashboard — team access only</p>
+    <input class="f-input" id="gatePass" type="password" placeholder="Team passcode" autocomplete="off">
+    <button class="btn btn-primary btn-block" id="gateBtn" style="margin-top:14px">Enter</button>
+    <p class="fineprint" style="text-align:center">Customers never see this area. Provider rates and
+    payouts are visible here only.</p>
+  </div>
+</div>
+
+<!-- ===== app ===== -->
+<div class="admin" id="app" hidden>
+  <aside class="side">
+    <div class="side-brand">
+      <img src="../img/logo-t.png" alt="" width="26">
+      <img src="../img/logo-topnotch.png" alt="TOPNOTCH" style="height:12px">
+    </div>
+    <nav class="side-nav" id="sideNav">
+      <button class="on" data-tab="dash">Dashboard</button>
+      <button data-tab="requests">Requests <span class="pill-count" id="reqCount"></span></button>
+      <button data-tab="inventory">Inventory</button>
+      <button data-tab="partners">Partners</button>
+      <button data-tab="rentals">Active Rentals</button>
+    </nav>
+    <div class="side-foot">
+      <button class="btn btn-ghost btn-sm btn-block" id="exportAll">Export All → Excel (CSV)</button>
+      <a class="btn btn-ghost btn-sm btn-block" href="../index.html" style="margin-top:8px">View Site</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section class="tab" id="tab-dash"></section>
+    <section class="tab" id="tab-requests" hidden></section>
+    <section class="tab" id="tab-inventory" hidden></section>
+    <section class="tab" id="tab-partners" hidden></section>
+    <section class="tab" id="tab-rentals" hidden></section>
+  </main>
+</div>
+
+<div id="modalRoot"></div>
+<script src="../js/data.js"></script>
+<script src="data-internal.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
