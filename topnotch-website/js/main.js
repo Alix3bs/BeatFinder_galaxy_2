@@ -28,42 +28,32 @@ const ICONS = {
 };
 
 /* ============================================================
-   STORAGE / INTEGRATION LAYER
-   Every write goes to localStorage AND (when configured) to the
-   Excel webhook so rows land in the workbook tables.
+   API CLIENT — the backend owns all data, secrets and webhooks.
+   localStorage is only an offline demo fallback when no server
+   is running (e.g. opening index.html directly from disk).
    ============================================================ */
+async function api(path, body, method) {
+  const res = await fetch(API_BASE + path, {
+    method: method || (body ? "POST" : "GET"),
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    credentials: "same-origin",
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
+  return data;
+}
+
 const DB = {
   read(key) { try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch (e) { return []; } },
-  write(key, rows) { localStorage.setItem(key, JSON.stringify(rows)); },
-  append(key, row) { const rows = DB.read(key); rows.push(row); DB.write(key, rows); return rows; }
+  append(key, row) { const rows = DB.read(key); rows.push(row); localStorage.setItem(key, JSON.stringify(rows)); }
 };
-
-async function syncToExcel(table, row) {
-  if (!WEBHOOKS.sheet) return;
-  try {
-    await fetch(WEBHOOKS.sheet, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ table, row })
-    });
-  } catch (e) { console.warn("Excel webhook unreachable — row kept locally", e); }
-}
-
-async function notifyTeam(summary) {
-  if (WEBHOOKS.notify) {
-    try {
-      await fetch(WEBHOOKS.notify, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(summary)
-      });
-    } catch (e) { console.warn("Notify webhook unreachable", e); }
-  }
-}
-
 const newRequestId = () =>
   "TN-" + new Date().toISOString().slice(2, 10).replace(/-/g, "") + "-" +
   Math.random().toString(36).slice(2, 6).toUpperCase();
+
+/* live availability for the fleet grid */
+api("/public/availability").then(m => { window.TN_AVAIL = m; renderFleet(); }).catch(() => {});
 
 /* ============================================================
    NAV
@@ -604,6 +594,7 @@ function renderStep4() {
         <input class="f-input" id="cPhone" type="tel" value="${v("cPhone")}" placeholder="Phone number">
         <input class="f-input" id="cEmail" type="email" value="${v("cEmail")}" placeholder="Email">
       </div>
+      <input id="hpWebsite" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
 
       <div class="wizard-nav">
         <button class="btn btn-ghost btn-sm" id="backBtn">← Back</button>
@@ -631,10 +622,7 @@ async function submitRequest() {
   if (!v("cEmail")) return toast("Please add your email");
 
   const f = bookingContext.form;
-  const req = {
-    requestId: newRequestId(),
-    timestamp: new Date().toISOString(),
-    status: STATUS_FLOW[0],
+  const payload = {
     customerName: f.cName,
     phone: f.cPhone,
     email: f.cEmail,
@@ -658,34 +646,32 @@ async function submitRequest() {
       .filter(Boolean).join(", ") || "None",
     specialRequests: f.notes || "None",
     quotedDayRate: `$${bookingContext.price}/${bookingContext.unit}`,
-    /* internal columns — filled by the team in the admin dashboard */
-    assignedProvider: "", finalCustomerPrice: "", internalCost: "", profit: ""
+    website: $("#hpWebsite") ? $("#hpWebsite").value : "" // honeypot — humans never fill this
   };
 
-  DB.append("tn_requests", req);
-  await syncToExcel("CustomerRequests", req);
-  await notifyTeam({
-    type: "NEW_REQUEST",
-    requestId: req.requestId,
-    vehicle: req.vehicleRequested,
-    dates: `${req.startDate} → ${req.endDate}`,
-    location: req.deliveryLocation,
-    customer: `${req.customerName} · ${req.phone} · ${req.email}`,
-    age: req.driverAge,
-    insurance: req.insuranceStatus,
-    deposit: req.depositReadiness
-  });
+  let requestId, note = "";
+  try {
+    const out = await api("/public/requests", payload);
+    requestId = out.requestId;
+    if (out.duplicate) note = "<br><span style='color:var(--muted);font-size:12px'>Looks like you already have an open request for these dates — our team will merge them.</span>";
+  } catch (err) {
+    if (/HTTP 4|required|Valid/.test(err.message)) return toast(err.message);
+    /* offline demo fallback (no backend running) */
+    requestId = newRequestId();
+    DB.append("tn_requests", { ...payload, requestId, status: STATUS_FLOW[0], timestamp: new Date().toISOString() });
+  }
+  bookingContext.form.lastPhone = f.cPhone;
 
   swapModal(`
     <div class="modal-pad success-wrap">
       <div class="success-ring">${ICONS.check}</div>
       <h3>Request Received</h3>
-      <p><b style="color:var(--orange)">${req.requestId}</b><br>
-      Thank you, ${req.customerName.split(" ")[0]}. Our team is checking availability with the provider now —
-      expect a text at ${req.phone} shortly.</p>
-      ${statusTimeline(req.status)}
+      <p><b style="color:var(--orange)">${requestId}</b><br>
+      Thank you, ${f.cName.split(" ")[0]}. Our team is checking availability with the provider now —
+      expect a text at ${f.cPhone} shortly.${note}</p>
+      ${statusTimeline(STATUS_FLOW[0])}
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px">
-        <a class="btn btn-ghost btn-sm" href="track.html?id=${req.requestId}">Track This Request</a>
+        <a class="btn btn-ghost btn-sm" href="track.html?id=${requestId}&ph=${encodeURIComponent(f.cPhone.slice(-4))}">Track This Request</a>
         <button class="btn btn-primary btn-sm" id="doneBtn">Done</button>
       </div>
     </div>`);
@@ -766,20 +752,20 @@ $$("[data-vip-apply]").forEach(btn => btn.addEventListener("click", () => {
   $("#submitVip").addEventListener("click", async () => {
     const name = $("#cName").value.trim(), phone = $("#cPhone").value.trim(), email = $("#cEmail").value.trim();
     if (!name || !phone) return toast("Please add your name and phone number");
-    const row = {
-      requestId: newRequestId(), timestamp: new Date().toISOString(), status: STATUS_FLOW[0],
+    if (!email) return toast("Please add your email");
+    const start = new Date(), end = new Date(Date.now() + 30 * 864e5);
+    const payload = {
       customerName: name, phone, email, vehicleRequested: bookingContext.title,
-      backupVehicle: "", startDate: "", endDate: "", budget: "", driverAge: "",
-      licenseStatus: "", insuranceStatus: "", option: "vip",
-      deliveryLocation: "", returnLocation: "", depositReadiness: "",
-      occasion: "VIP application", chauffeurNeeded: "", fboPickup: "",
-      addons: "", specialRequests: $("#vipNote").value.trim() || "None",
-      quotedDayRate: `$${bookingContext.price}/mo`,
-      assignedProvider: "", finalCustomerPrice: "", internalCost: "", profit: ""
+      startDate: start.toISOString().slice(0, 10) + " 10:00", endDate: end.toISOString().slice(0, 10) + " 10:00",
+      option: "vip", occasion: "VIP application",
+      specialRequests: $("#vipNote").value.trim() || "None",
+      quotedDayRate: `$${bookingContext.price}/mo`
     };
-    DB.append("tn_requests", row);
-    await syncToExcel("CustomerRequests", row);
-    await notifyTeam({ type: "VIP_APPLICATION", requestId: row.requestId, customer: `${name} · ${phone}` });
+    try { await api("/public/requests", payload); }
+    catch (err) {
+      if (/HTTP 4|required|Valid/.test(err.message)) return toast(err.message);
+      DB.append("tn_requests", { ...payload, requestId: newRequestId(), status: STATUS_FLOW[0] });
+    }
     swapModal(`
       <div class="modal-pad success-wrap">
         <div class="success-ring">${ICONS.check}</div>
@@ -798,14 +784,14 @@ if (partnerForm) {
     const g = id => $("#" + id)?.value.trim() || "";
     if (!g("pCompany") || !g("pPhone")) return toast("Company name and phone are required");
     const row = {
-      inquiryId: newRequestId().replace("TN-", "PR-"),
-      timestamp: new Date().toISOString(),
       company: g("pCompany"), contact: g("pContact"), phone: g("pPhone"), email: g("pEmail"),
-      market: g("pMarket"), fleetSize: g("pFleet"), notes: g("pNotes"), status: "New inquiry"
+      market: g("pMarket"), fleetSize: g("pFleet"), notes: g("pNotes")
     };
-    DB.append("tn_partner_inquiries", row);
-    await syncToExcel("PartnerInquiries", row);
-    await notifyTeam({ type: "PARTNER_INQUIRY", company: row.company, phone: row.phone });
+    try { await api("/public/partner-inquiries", row); }
+    catch (err) {
+      if (/HTTP 4|required/.test(err.message)) return toast(err.message);
+      DB.append("tn_partner_inquiries", { ...row, timestamp: new Date().toISOString() });
+    }
     partnerForm.innerHTML = `
       <div class="success-wrap">
         <div class="success-ring">${ICONS.check}</div>
@@ -815,30 +801,61 @@ if (partnerForm) {
   });
 }
 
-/* ---- track page (track.html) ---- */
+/* ---- track page (track.html) — verified against the backend ---- */
 const trackBox = $("#trackBox");
 if (trackBox) {
   const params = new URLSearchParams(location.search);
-  const showResult = (id, phone) => {
-    const reqs = DB.read("tn_requests");
-    const r = reqs.find(x => x.requestId.toLowerCase() === id.toLowerCase() &&
-      (!phone || x.phone.replace(/\D/g, "").endsWith(phone.replace(/\D/g, "").slice(-4))));
-    const out = $("#trackResult");
-    if (!r) {
-      out.innerHTML = `<p class="fineprint" style="margin-top:18px">No request found on this device for
-        <b>${id}</b>. Requests are tracked on the device they were submitted from — or text us on
-        WhatsApp and we'll check instantly.</p>`;
-      return;
-    }
-    out.innerHTML = `
+  const out = () => $("#trackResult");
+
+  const renderTracked = (r, phone) => {
+    const quoteBlock = r.quote && r.quote.internalStatus === "awaiting-acceptance" ? `
+      <div class="addr-card" style="margin-top:16px;border-color:var(--orange)">
+        <b>Your Official Quote</b>
+        <p style="font-size:22px;font-family:var(--font-display);color:var(--orange)">$${Number(r.quote.amount).toLocaleString()}</p>
+        <p class="fineprint" style="margin-top:4px">Valid until ${String(r.quote.expires).slice(0, 10)}. Accepting the quote is not a payment —
+        your payment/deposit link follows right after.</p>
+        <button class="btn btn-primary btn-block" id="acceptQuote" style="margin-top:14px">Accept Quote</button>
+      </div>` : (r.quote && r.quote.accepted && r.status === "Approved" ? "" : "");
+    out().innerHTML = `
       <div class="addr-card" style="margin-top:22px">
-        <b>${r.vehicleRequested}</b>
+        <b>${r.vehicle}</b>
         <p>${r.startDate} → ${r.endDate}<br>${r.option === "pickup" ? "Showroom pickup" : "Delivery: " + r.deliveryLocation}</p>
         <div class="hours">Request <span>${r.requestId}</span></div>
       </div>
-      ${statusTimeline(r.status)}
-      ${STATUS_OTHER.includes(r.status) ? `<p class="fineprint">Status: <b>${r.status}</b></p>` : ""}`;
+      ${["Declined", "Cancelled"].includes(r.status)
+        ? `<p class="fineprint" style="margin-top:16px">Status: <b>${r.status}</b> — message us on WhatsApp if you'd like to rebook.</p>`
+        : statusTimeline(r.status)}
+      ${quoteBlock}`;
+    const acc = $("#acceptQuote");
+    if (acc) acc.addEventListener("click", async () => {
+      try {
+        await api("/public/quote/accept", { requestId: r.requestId, phone });
+        toast("Quote accepted — payment link is on the way");
+        showResult(r.requestId, phone);
+      } catch (e) { toast(e.message); }
+    });
   };
+
+  const showResult = async (id, phone) => {
+    if (!phone) {
+      out().innerHTML = `<p class="fineprint" style="margin-top:18px">Enter the last 4 digits of the phone number on the request so we can verify it's you.</p>`;
+      return;
+    }
+    try {
+      const r = await api(`/public/track?id=${encodeURIComponent(id)}&phone=${encodeURIComponent(phone)}`);
+      renderTracked(r, phone);
+    } catch (e) {
+      /* offline demo fallback */
+      const local = DB.read("tn_requests").find(x => (x.requestId || "").toLowerCase() === id.toLowerCase());
+      if (local) {
+        renderTracked({ requestId: local.requestId, status: local.status, vehicle: local.vehicleRequested,
+          startDate: local.startDate, endDate: local.endDate, option: local.option, deliveryLocation: local.deliveryLocation }, phone);
+      } else {
+        out().innerHTML = `<p class="fineprint" style="margin-top:18px">${e.message === "Request not found" ? "No request found for <b>" + id + "</b>." : e.message} Message us on WhatsApp and we'll check instantly.</p>`;
+      }
+    }
+  };
+
   $("#trackBtn").addEventListener("click", () => {
     const id = $("#trackId").value.trim();
     if (!id) return toast("Enter your request number (TN-…)");
@@ -846,6 +863,6 @@ if (trackBox) {
   });
   if (params.get("id")) {
     $("#trackId").value = params.get("id");
-    showResult(params.get("id"), "");
+    if (params.get("ph")) { $("#trackPhone").value = params.get("ph"); showResult(params.get("id"), params.get("ph")); }
   }
 }

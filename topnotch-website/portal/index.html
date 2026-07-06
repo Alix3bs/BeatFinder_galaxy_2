@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TopNotchRentalz — Partner Portal</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="../admin/admin.css">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,14 H90 V36 H62 C61,60 63,74 76,88 H24 C37,74 39,60 38,36 H10 Z" fill="%23ff6a00"/></svg>'>
+</head>
+<body data-no-float>
+
+<div class="gate" id="gate" hidden>
+  <div class="gate-card">
+    <img src="../img/logo-topnotch.png" alt="TOPNOTCH" style="height:22px;margin:0 auto 8px">
+    <p class="gate-sub">Partner Portal — provider sign in</p>
+    <div id="loginForm">
+      <input class="f-input" id="loginEmail" type="email" placeholder="Portal email" autocomplete="username" style="margin-bottom:10px">
+      <input class="f-input" id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="btn btn-primary btn-block" id="loginBtn" style="margin-top:14px">Sign In</button>
+    </div>
+    <div id="newPassForm" hidden>
+      <p class="gate-sub">Set a new password (min 10 characters)</p>
+      <input class="f-input" id="npCurrent" type="password" placeholder="Temporary password" style="margin-bottom:10px">
+      <input class="f-input" id="npNext" type="password" placeholder="New password">
+      <button class="btn btn-primary btn-block" id="npBtn" style="margin-top:14px">Save Password</button>
+    </div>
+    <p class="fineprint" id="gateMsg" style="text-align:center">You only ever see your own fleet, your own bookings and your own payouts.</p>
+  </div>
+</div>
+
+<div class="admin" id="app" hidden>
+  <aside class="side">
+    <div class="side-brand">
+      <img src="../img/logo-t.png" alt="" width="26">
+      <img src="../img/logo-topnotch.png" alt="TOPNOTCH" style="height:12px">
+    </div>
+    <nav class="side-nav" id="sideNav">
+      <button class="on" data-tab="vehicles">My Vehicles</button>
+      <button data-tab="bookings">Bookings <span class="pill-count" id="bkCount"></span></button>
+      <button data-tab="payouts">Payouts</button>
+      <button data-tab="messages">Messages</button>
+    </nav>
+    <div class="side-foot">
+      <div class="fineprint" id="whoami" style="margin-bottom:8px"></div>
+      <button class="btn btn-ghost btn-sm btn-block" id="logoutBtn">Sign Out</button>
+    </div>
+  </aside>
+  <main class="main">
+    <section class="tab" id="tab-vehicles"></section>
+    <section class="tab" id="tab-bookings" hidden></section>
+    <section class="tab" id="tab-payouts" hidden></section>
+    <section class="tab" id="tab-messages" hidden></section>
+  </main>
+</div>
+
+<script src="portal.js"></script>
+</body>
+</html>

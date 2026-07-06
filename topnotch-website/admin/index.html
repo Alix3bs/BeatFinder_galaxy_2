@@ -10,15 +10,29 @@
 </head>
 <body data-no-float>
 
-<!-- ===== passcode gate ===== -->
-<div class="gate" id="gate">
+<!-- ===== login (real authentication — verified by the server) ===== -->
+<div class="gate" id="gate" hidden>
   <div class="gate-card">
     <img src="../img/logo-topnotch.png" alt="TOPNOTCH" style="height:22px;margin:0 auto 8px">
-    <p class="gate-sub">Operations Dashboard — team access only</p>
-    <input class="f-input" id="gatePass" type="password" placeholder="Team passcode" autocomplete="off">
-    <button class="btn btn-primary btn-block" id="gateBtn" style="margin-top:14px">Enter</button>
-    <p class="fineprint" style="text-align:center">Customers never see this area. Provider rates and
-    payouts are visible here only.</p>
+    <p class="gate-sub" id="gateSub">Operations Dashboard — team sign in</p>
+    <div id="loginForm">
+      <input class="f-input" id="loginEmail" type="email" placeholder="Work email" autocomplete="username" style="margin-bottom:10px">
+      <input class="f-input" id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="btn btn-primary btn-block" id="loginBtn" style="margin-top:14px">Sign In</button>
+      <p class="fineprint" style="text-align:center"><a href="#" id="forgotLink" style="color:var(--orange)">Forgot password?</a></p>
+    </div>
+    <div id="resetForm" hidden>
+      <input class="f-input" id="resetEmail" type="email" placeholder="Work email">
+      <button class="btn btn-primary btn-block" id="resetBtn" style="margin-top:14px">Email Reset Link</button>
+      <p class="fineprint" style="text-align:center"><a href="#" id="backToLogin" style="color:var(--orange)">Back to sign in</a></p>
+    </div>
+    <div id="newPassForm" hidden>
+      <p class="gate-sub">Set a new password (min 10 characters)</p>
+      <input class="f-input" id="npCurrent" type="password" placeholder="Temporary / current password" style="margin-bottom:10px">
+      <input class="f-input" id="npNext" type="password" placeholder="New password">
+      <button class="btn btn-primary btn-block" id="npBtn" style="margin-top:14px">Save Password</button>
+    </div>
+    <p class="fineprint" id="gateMsg" style="text-align:center"></p>
   </div>
 </div>
 
@@ -31,14 +45,19 @@
     </div>
     <nav class="side-nav" id="sideNav">
       <button class="on" data-tab="dash">Dashboard</button>
-      <button data-tab="requests">Requests <span class="pill-count" id="reqCount"></span></button>
-      <button data-tab="inventory">Inventory</button>
-      <button data-tab="partners">Partners</button>
-      <button data-tab="rentals">Active Rentals</button>
+      <button data-tab="requests" data-roles="admin,sales,cx,ops">Requests <span class="pill-count" id="reqCount"></span></button>
+      <button data-tab="inventory" data-roles="admin,partnerships,ops">Inventory</button>
+      <button data-tab="partners" data-roles="admin,partnerships">Partners</button>
+      <button data-tab="rentals" data-roles="admin,ops">Active Rentals</button>
+      <button data-tab="import" data-roles="admin,partnerships">Import Fleet</button>
+      <button data-tab="sync" data-roles="admin">Excel Sync</button>
+      <button data-tab="audit" data-roles="admin">Audit Log</button>
+      <button data-tab="users" data-roles="admin">Team</button>
     </nav>
     <div class="side-foot">
-      <button class="btn btn-ghost btn-sm btn-block" id="exportAll">Export All → Excel (CSV)</button>
-      <a class="btn btn-ghost btn-sm btn-block" href="../index.html" style="margin-top:8px">View Site</a>
+      <div class="fineprint" id="whoami" style="margin-bottom:8px"></div>
+      <a class="btn btn-ghost btn-sm btn-block" href="../index.html">View Site</a>
+      <button class="btn btn-ghost btn-sm btn-block" id="logoutBtn" style="margin-top:8px">Sign Out</button>
     </div>
   </aside>
 
@@ -48,12 +67,14 @@
     <section class="tab" id="tab-inventory" hidden></section>
     <section class="tab" id="tab-partners" hidden></section>
     <section class="tab" id="tab-rentals" hidden></section>
+    <section class="tab" id="tab-import" hidden></section>
+    <section class="tab" id="tab-sync" hidden></section>
+    <section class="tab" id="tab-audit" hidden></section>
+    <section class="tab" id="tab-users" hidden></section>
   </main>
 </div>
 
 <div id="modalRoot"></div>
-<script src="../js/data.js"></script>
-<script src="data-internal.js"></script>
 <script src="admin.js"></script>
 </body>
 </html>

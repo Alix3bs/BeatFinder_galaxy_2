@@ -16,6 +16,7 @@
 }
 .gate-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
 
+.admin[hidden] { display: none; }
 .admin { display: grid; grid-template-columns: 230px 1fr; min-height: 100vh; }
 .side {
   border-right: 1px solid var(--line);

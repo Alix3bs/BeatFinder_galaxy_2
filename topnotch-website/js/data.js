@@ -19,17 +19,11 @@ const BUSINESS = {
 };
 
 /* ============================================================
-   INTEGRATIONS — point these at your Excel + notification stack.
-   Both receive JSON POSTs. Recommended: a Power Automate flow
-   ("When an HTTP request is received" → "Add a row into a table"
-   on the TopNotchRentalz.xlsx workbook) or a Google Apps Script.
-   Payload shape: { table: "CustomerRequests"|"PartnerInventory"|
-   "ActiveRentals", row: {...} }
+   API — all writes go to the TopNotchRentalz backend. Webhook
+   URLs, secrets and all internal pricing live ONLY on the
+   server (topnotch-server/.env), never in this file.
    ============================================================ */
-const WEBHOOKS = {
-  sheet: "",    // writes rows into the Excel tables
-  notify: ""    // pings the team (Teams/Slack/SMS bridge) on new requests
-};
+const API_BASE = "/api";
 
 /* customer-facing request pipeline (in order) */
 const STATUS_FLOW = [
@@ -249,18 +243,12 @@ const CATEGORIES = [
   { id: "vip",        icon: "✦",  name: "VIP Plan",         type: "link",   href: "vip.html", vip: true }
 ];
 
-/* ---------- fleet (CUSTOMER-FACING ONLY — no provider/broker
-   rates, payouts or profit ever live in this file) ---------- */
-/* availability overrides (default: available). Admin dashboard
-   changes flow through localStorage at runtime. */
-const VEHICLE_STATUS_SEED = { f8: "booked", autobio: "maintenance" };
-
+/* ---------- fleet (CUSTOMER-FACING ONLY — retail catalog data;
+   all internal pricing lives on the server) ---------- */
+/* live availability comes from GET /api/public/availability
+   (loaded into window.TN_AVAIL by main.js). Fallback: available. */
 function vehicleStatus(id) {
-  try {
-    const o = JSON.parse(localStorage.getItem("tn_vehicle_status") || "{}");
-    if (o[id]) return o[id];
-  } catch (e) { /* ignore */ }
-  return VEHICLE_STATUS_SEED[id] || "available";
+  return (window.TN_AVAIL || {})[id] || "available";
 }
 
 /* two comparable alternatives: same category first, then closest price */
