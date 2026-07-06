@@ -1,0 +1,35 @@
+# Render Blueprint for the BeatFinder staging backend.
+#
+# Creates ONE paid web service (plan: starter) with a 1 GB persistent disk.
+# Review the plan and current prices on https://render.com/pricing before
+# applying. Apply via Render Dashboard -> New -> Blueprint -> select this
+# repository and the beatfinder-system-v1 branch.
+#
+# No secrets belong in this file. Supabase/YouTube credentials are added
+# later through the Render dashboard as environment variables or secret
+# files, never committed.
+
+services:
+  - type: web
+    name: beatfinder-staging
+    runtime: docker
+    plan: starter # smallest plan that supports persistent disks
+    region: oregon # change if you prefer another region; keep disk + service together
+    branch: beatfinder-system-v1
+    autoDeploy: true # deploys only commits pushed to the branch above
+    healthCheckPath: /health
+    envVars:
+      - key: BEATFINDER_SUPABASE_MODE
+        value: local
+      - key: BEATFINDER_STATE_DIR
+        value: /data/beatfinder_state
+      - key: PORT
+        value: "8787" # server reads PORT; Render routes to this value
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: beatfinder-state
+      mountPath: /data
+      sizeGB: 1

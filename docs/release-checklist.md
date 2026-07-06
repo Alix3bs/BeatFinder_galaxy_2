@@ -11,6 +11,8 @@ Run top to bottom for every release.
 
 ## 2. Backend
 
+- [ ] Staging deployed on Render from `render.yaml` (Starter plan + 1 GB disk, ≈$7.25/month — see "Render staging" in `docs/deployment.md`); staging URL recorded there.
+- [ ] Staging `GET /health` returns 200 with `storage_mode: local`; text and audio smoke tests pass; state survives a service restart.
 - [ ] Backend deployed (owner-approved host, `docs/deployment.md`) and `GET /health` shows expected `storage_mode` / `supabase_configured`.
 - [ ] Supabase migrations applied (`supabase db push`) when using mirror/primary mode.
 - [ ] Rate limits and upload caps verified with a manual oversized/rapid-fire request.

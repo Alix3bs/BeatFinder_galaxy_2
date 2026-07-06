@@ -9,6 +9,8 @@ supabase.zip
 supabase_backup/
 worker/
 
+render.yaml
+
 # Local state, caches, VCS.
 .git/
 .github/

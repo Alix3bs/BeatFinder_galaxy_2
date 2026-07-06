@@ -92,3 +92,68 @@ Request bodies are capped (`BEATFINDER_MAX_UPLOAD_BYTES`), non-JSON/multipart co
 4. Apply Supabase migrations if using `mirror`/`primary`.
 5. Verify `GET /health` shows the expected `storage_mode` and `supabase_configured`.
 6. Put the public HTTPS URL into the iOS app's Settings → Backend → Production.
+
+## Render staging (approved host)
+
+Staging URL: `https://beatfinder-staging.onrender.com` *(placeholder — record the real URL Render assigns after the first deploy)*
+
+The service is defined as code in [`render.yaml`](../render.yaml). Apply it via **Render Dashboard → New → Blueprint → this repository → branch `beatfinder-system-v1`**.
+
+### Service configuration
+
+| Setting | Value |
+| --- | --- |
+| Service type / runtime | Web Service / Docker (repo `Dockerfile`) |
+| Branch | `beatfinder-system-v1` (auto-deploy on push to this branch only) |
+| Plan | Starter (smallest plan that supports persistent disks) |
+| Health check path | `/health` |
+| Persistent disk | `beatfinder-state`, 1 GB, mounted at `/data` |
+| HTTPS | provided by Render's managed TLS on the `onrender.com` URL |
+
+### Environment variables (staging, no secrets)
+
+| Name | Value |
+| --- | --- |
+| `BEATFINDER_SUPABASE_MODE` | `local` |
+| `BEATFINDER_STATE_DIR` | `/data/beatfinder_state` |
+| `PORT` | `8787` |
+| `PYTHONUNBUFFERED` | `1` |
+| `NODE_ENV` | `production` |
+
+All other variables keep their safe defaults (25 MB upload cap, 30 req/min rate limit, query-audio deletion after processing, local audio paths denied). Supabase and YouTube credentials are **not** set at this stage.
+
+### Disk permissions
+
+Render mounts the persistent disk at `/data` owned by root at runtime. The container starts as root only long enough for `scripts/deploy/entrypoint.sh` to create `BEATFINDER_STATE_DIR` and hand ownership to the non-root `beatfinder` user via `gosu`; the API server itself never runs as root. CI's container job exercises this exact path on every push.
+
+### Estimated monthly cost (verify on render.com/pricing before applying)
+
+| Item | Estimate |
+| --- | --- |
+| Web Service, Starter plan | ~$7.00 / month |
+| Persistent disk, 1 GB @ ~$0.25/GB | ~$0.25 / month |
+| **Total staging estimate** | **~$7.25 / month** |
+
+The free instance type cannot be used: it does not support persistent disks and spins down on idle.
+
+### Post-deploy verification
+
+```bash
+BASE=https://<assigned-url>.onrender.com
+curl -fsS "$BASE/health"                      # expect status ok, storage_mode local
+curl -fsS -X POST "$BASE/search/text" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"philly type beat","top_n":3}' # expect JSON with results/discovery keys
+```
+
+The health response contains only `status`, `state_dir`, `beats_indexed`, `storage_mode`, `supabase_configured` (boolean), and `query_audio_retention` — no secret values. Confirm state persistence by triggering **Manual Deploy → Restart** in the Render dashboard and checking `beats_indexed` is unchanged afterward.
+
+### Rollback
+
+- **Bad deploy**: Render Dashboard → the service → *Events/Deploys* → pick the previous successful deploy → **Rollback**. Rollbacks reuse the already-built image and take effect in seconds.
+- **Bad commit**: revert the commit on `beatfinder-system-v1` and push; auto-deploy ships the revert.
+- **Disk data**: the disk is independent of deploys; nothing in a rollback touches `/data`. Render supports disk snapshots for restore points before risky changes.
+
+### Remaining step after staging is verified
+
+Provision Supabase, run `supabase db push` (idempotent migrations in `supabase/migrations/`), then set `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` in the Render dashboard (never in the repo) and flip `BEATFINDER_SUPABASE_MODE` to `primary`. See `docs/storage.md`.
