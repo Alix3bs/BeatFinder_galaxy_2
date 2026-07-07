@@ -138,15 +138,22 @@ The free instance type cannot be used: it does not support persistent disks and 
 
 ### Post-deploy verification
 
+Run the scripted check from any machine with `bash`, `curl`, and `python3`
+(no other dependencies, no secrets):
+
 ```bash
-BASE=https://<assigned-url>.onrender.com
-curl -fsS "$BASE/health"                      # expect status ok, storage_mode local
-curl -fsS -X POST "$BASE/search/text" \
-  -H 'Content-Type: application/json' \
-  -d '{"query":"philly type beat","top_n":3}' # expect JSON with results/discovery keys
+scripts/deploy/verify_staging.sh https://<assigned-url>.onrender.com
+# then restart the service in the Render dashboard and confirm persistence:
+scripts/deploy/verify_staging.sh https://<assigned-url>.onrender.com --check
 ```
 
-The health response contains only `status`, `state_dir`, `beats_indexed`, `storage_mode`, `supabase_configured` (boolean), and `query_audio_retention` — no secret values. Confirm state persistence by triggering **Manual Deploy → Restart** in the Render dashboard and checking `beats_indexed` is unchanged afterward.
+The full run verifies: `/health` returns 200 with only the expected fields
+(`status`, `state_dir`, `beats_indexed`, `storage_mode`,
+`supabase_configured` boolean, `query_audio_retention`) and no secret-like
+content; ingests one synthesized "Staging Persistence Probe" beat; text
+search returns it with explainable fields; a multipart audio upload of the
+same file matches it first. The `--check` run after a dashboard restart
+proves the `/data` disk retained state (`beats_indexed >= 1`).
 
 ### Rollback
 
