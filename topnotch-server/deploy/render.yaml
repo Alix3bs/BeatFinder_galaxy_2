@@ -1,0 +1,50 @@
+# Render blueprint — creates staging + production with persistent disks.
+# Fill env values in the Render dashboard (never commit secrets).
+services:
+  - type: web
+    name: topnotchrentalz-staging
+    runtime: node
+    plan: starter
+    branch: staging
+    buildCommand: ""
+    startCommand: node topnotch-server/server.js
+    healthCheckPath: /api/health
+    disk:
+      name: tn-staging-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: TN_ENV
+        value: staging
+      - key: TN_DATA_DIR
+        value: /var/data/tn
+      - key: TN_BACKUP_DIR
+        value: /var/data/backups
+      - key: TN_SECURE_COOKIES
+        value: "1"
+      - key: PORT
+        value: "10000"
+
+  - type: web
+    name: topnotchrentalz-production
+    runtime: node
+    plan: starter
+    branch: main
+    buildCommand: ""
+    startCommand: node topnotch-server/server.js
+    healthCheckPath: /api/health
+    disk:
+      name: tn-production-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: TN_ENV
+        value: production
+      - key: TN_DATA_DIR
+        value: /var/data/tn
+      - key: TN_BACKUP_DIR
+        value: /var/data/backups
+      - key: TN_SECURE_COOKIES
+        value: "1"
+      - key: PORT
+        value: "10000"

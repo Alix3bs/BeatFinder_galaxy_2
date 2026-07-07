@@ -43,33 +43,70 @@ const VEHICLES = [
   V("V-1008", "911turbo", "P-001", "Prestige Auto Group", 2023, "Porsche", "911 Turbo S", "Turbo S", "GT Silver", 999, 720, 2500, 5, "Dade", {})
 ];
 
+/* real company settings — editable later in Admin → Settings */
+const DEFAULT_SETTINGS = {
+  business_name: "TopNotchRentalz",
+  city: "Miami, Florida",
+  address: "Miami, FL",
+  phone: "(786) 634-1150",
+  whatsapp: "17866341150",
+  email: "bookings@topnotchrentalz.com",
+  instagram: "@topnotchrentalz",
+  hours: "Mon – Sun · 9:00 AM – 9:00 PM",
+  policy_version: "2026-07-06",
+  verify_days: "7",
+  doc_retention_days: "90"
+};
+
 function seed() {
+  const isProd = (process.env.TN_ENV || "staging") === "production";
   const created = [];
+
+  /* staff accounts exist in every environment */
   const users = [
     ["admin@topnotchrentalz.com", "Admin", "admin", null, "TN_ADMIN_PASSWORD"],
     ["sales@topnotchrentalz.com", "Sales Team", "sales", null, "TN_SALES_PASSWORD"],
     ["ops@topnotchrentalz.com", "Operations", "ops", null, "TN_OPS_PASSWORD"],
     ["partnerships@topnotchrentalz.com", "Partnerships", "partnerships", null, "TN_PARTNERSHIPS_PASSWORD"],
-    ["cx@topnotchrentalz.com", "Client Experience", "cx", null, "TN_CX_PASSWORD"],
+    ["cx@topnotchrentalz.com", "Client Experience", "cx", null, "TN_CX_PASSWORD"]
+  ];
+  /* demo partner portal users: staging/dev ONLY */
+  if (!isProd) users.push(
     ["portal@prestigeauto.example", "Prestige Auto Group", "partner", "P-001", "TN_PARTNER1_PASSWORD"],
     ["portal@velocityexotics.example", "Velocity Exotics", "partner", "P-002", "TN_PARTNER2_PASSWORD"],
     ["portal@crownluxury.example", "Crown Luxury Fleet", "partner", "P-003", "TN_PARTNER3_PASSWORD"]
-  ];
+  );
   for (const u of users) {
     const r = ensureUser(...u);
     if (r) created.push(r);
   }
 
-  const pIns = db.prepare(`INSERT OR IGNORE INTO partners (partner_id, company, contact, phone, email, market, payout_method, status, notes)
-    VALUES (:partner_id, :company, :contact, :phone, :email, :market, :payout_method, :status, :notes)`);
-  PARTNERS.forEach(p => pIns.run(p));
+  /* company settings (INSERT OR IGNORE keeps admin edits) */
+  const sIns = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?,?)");
+  Object.entries(DEFAULT_SETTINGS).forEach(([k, v]) => sIns.run(k, v));
 
-  const cols = Object.keys(VEHICLES[0]);
-  const vIns = db.prepare(`INSERT OR IGNORE INTO vehicles (${cols.join(",")}) VALUES (${cols.map(c => ":" + c).join(",")})`);
-  VEHICLES.forEach(v => vIns.run(v));
+  if (isProd) {
+    /* production: NO demo partners, vehicles or transactions.
+       First real inventory source: LUXX Miami — created as an
+       onboarding lead; nothing publishes until Partnerships flips
+       it to Active and each vehicle passes the publish checklist. */
+    db.prepare(`INSERT OR IGNORE INTO partners (partner_id, company, contact, phone, email, market,
+        payout_method, status, notes, onboarding_status, deal_model)
+      VALUES ('P-LUXX', 'LUXX Miami', '', '', '', 'Miami', '', 'Pending',
+        'First real inventory source. Import their workbook via Admin → Import Fleet; every price defaults to awaiting-confirmation until the partnerships team confirms broker rates, deposits, mileage, insurance, delivery areas, photos and contacts.',
+        'Inventory pending', 'broker-markup')`).run();
+  } else {
+    const pIns = db.prepare(`INSERT OR IGNORE INTO partners (partner_id, company, contact, phone, email, market, payout_method, status, notes, onboarding_status)
+      VALUES (:partner_id, :company, :contact, :phone, :email, :market, :payout_method, :status, :notes, 'Active')`);
+    PARTNERS.forEach(p => pIns.run(p));
+    const cols = Object.keys(VEHICLES[0]);
+    const vIns = db.prepare(`INSERT OR IGNORE INTO vehicles (${cols.join(",")}, rate_label, photos_approved, price_approved, requirements_complete)
+      VALUES (${cols.map(c => ":" + c).join(",")}, 'confirmed-broker', 1, 1, 1)`);
+    VEHICLES.forEach(v => vIns.run(v));
+  }
 
   if (created.length) {
-    console.log("\n=== First-run accounts (passwords shown ONCE — change on first login) ===");
+    console.log(`\n=== First-run accounts [${isProd ? "PRODUCTION" : "staging"}] (passwords shown ONCE) ===`);
     created.forEach(c => console.log(`  ${c.role.padEnd(13)} ${c.email.padEnd(36)} ${c.generated ? "temp password: " + c.pw : "(password from env)"}`));
     console.log("===========================================================================\n");
   }

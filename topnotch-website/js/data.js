@@ -5,17 +5,18 @@
    photo will render on top of the studio art automatically.
    ============================================================ */
 
+/* defaults only — the live values come from GET /api/public/settings
+   (editable in Admin → Settings without touching code) */
 const BUSINESS = {
   name: "TopNotchRentalz",
-  // TODO: replace with the real business address
-  address: "1200 Brickell Bay Drive, Suite 400",
-  city: "Miami, FL 33131",
+  address: "Miami, FL",
+  city: "Miami, Florida",
   market: "Miami",
   hours: "Mon – Sun · 9:00 AM – 9:00 PM",
-  phone: "(305) 000-0000",
-  whatsapp: "13050000000",           // digits only, for wa.me links
+  phone: "(786) 634-1150",
+  whatsapp: "17866341150",           // digits only, for wa.me links
   email: "bookings@topnotchrentalz.com",
-  instagram: "https://instagram.com/"
+  instagram: "https://instagram.com/topnotchrentalz"
 };
 
 /* ============================================================

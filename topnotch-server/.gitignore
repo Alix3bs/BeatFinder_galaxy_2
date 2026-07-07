@@ -1,4 +1,7 @@
 data*/
+backups*/
 logs/
 uploads/
 .env
+.env.*
+!.env.example

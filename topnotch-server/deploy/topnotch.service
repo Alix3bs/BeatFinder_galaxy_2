@@ -1,0 +1,17 @@
+# systemd unit — auto-restart after failure (VPS deployments)
+# sudo cp deploy/topnotch.service /etc/systemd/system/ && sudo systemctl enable --now topnotch
+[Unit]
+Description=TopNotchRentalz server
+After=network.target
+
+[Service]
+Type=simple
+User=topnotch
+WorkingDirectory=/opt/topnotch/topnotch-server
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+EnvironmentFile=/opt/topnotch/topnotch-server/.env
+
+[Install]
+WantedBy=multi-user.target

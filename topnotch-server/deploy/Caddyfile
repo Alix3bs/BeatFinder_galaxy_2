@@ -1,0 +1,7 @@
+# Caddy reverse proxy — automatic HTTPS for both environments (VPS)
+topnotchrentalz.com {
+    reverse_proxy localhost:8902
+}
+staging.topnotchrentalz.com {
+    reverse_proxy localhost:8903
+}

@@ -82,7 +82,9 @@ async function waitUp() {
   throw new Error("server did not start");
 }
 
+const ALL_CONSENTS = { terms: true, privacy: true, cancellation: true, deposit: true, vehicleRules: true, communication: true, documents: true };
 const REQ = (over = {}) => ({
+  consents: ALL_CONSENTS, consentText: "e2e consent",
   customerName: "Jordan Blake", phone: "(305) 555-7788", email: "jordan@example.com",
   vehicleRequested: "Lamborghini Huracán EVO", backupVehicle: "Mercedes-AMG G63",
   startDate: "2026-08-10 10:00", endDate: "2026-08-12 10:00",
@@ -207,12 +209,16 @@ async function main() {
     record(10, "Overlapping booking is blocked", true, "assign V-1002 for 08/11–08/13 → 409");
   } catch (e) { record(10, "Overlapping booking is blocked", false, e.message); }
 
-  /* 11 + 12 · rental completed; vehicle available again */
+  /* 11 + 12 · rental completed (with Phase 4 checklists); vehicle available again */
   try {
     const rentalId = mainId.replace("TN-", "AR-");
-    const done = await ops(`/api/rentals/${rentalId}`, { pickup_status: "Done", return_status: "Done", amount_paid: 2498 }, "PATCH");
+    const meta = (await ops("/api/meta/checklists")).data;
+    const all = arr => Object.fromEntries(arr.map(k => [k, true]));
+    const blocked = await ops(`/api/rentals/${rentalId}`, { pickup_status: "Done" }, "PATCH");
+    assert(blocked.status === 409, "pickup must require the pre-rental checklist");
+    const done = await ops(`/api/rentals/${rentalId}`, { pre_checklist: all(meta.pre), post_checklist: all(meta.post), pickup_status: "Done", return_status: "Done", amount_paid: 2498 }, "PATCH");
     assert(done.status === 200, JSON.stringify(done.data));
-    record(11, "Active rental is completed", true, rentalId);
+    record(11, "Active rental is completed", true, rentalId + " (checklists enforced)");
     const v = (await admin("/api/vehicles")).data.find(x => x.vehicle_id === "V-1002");
     assert(v.status === "available" && !v.booked_dates.includes("2026-08-10"), "unit freed");
     const avail = (await anon("/api/public/availability")).data;
@@ -338,6 +344,8 @@ async function main() {
       await page.fill("#cName", "Browser Test");
       await page.fill("#cPhone", "(305) 555-3344");
       await page.fill("#cEmail", "browser@example.com");
+      for (const id of ["cTerms", "cPrivacy", "cCancel", "cDeposit", "cRules", "cComms", "cDocs"])
+        await page.click(`label:has(#${id}) .box`);
       await page.click("#submitBtn");
       await page.waitForSelector(".success-ring", { timeout: 5000 });
       const idText = await page.textContent(".success-wrap p");

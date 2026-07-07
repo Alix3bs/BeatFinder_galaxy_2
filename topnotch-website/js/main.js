@@ -55,6 +55,26 @@ const newRequestId = () =>
 /* live availability for the fleet grid */
 api("/public/availability").then(m => { window.TN_AVAIL = m; renderFleet(); }).catch(() => {});
 
+/* live company settings (Admin → Settings) override the JS defaults */
+window.TN_POLICY_VERSION = "";
+api("/public/settings").then(s => {
+  if (s.businessName) BUSINESS.name = s.businessName;
+  if (s.phone) BUSINESS.phone = s.phone;
+  if (s.whatsapp) BUSINESS.whatsapp = s.whatsapp;
+  if (s.email) BUSINESS.email = s.email;
+  if (s.address) BUSINESS.address = s.address;
+  if (s.city) BUSINESS.city = s.city;
+  if (s.hours) BUSINESS.hours = s.hours;
+  window.TN_POLICY_VERSION = s.policyVersion || "";
+  /* refresh anything already rendered from defaults */
+  const fp = $("#footPhone");
+  if (fp) { fp.textContent = BUSINESS.phone; fp.href = "tel:" + BUSINESS.phone.replace(/\D/g, ""); }
+  const fa = $("#footAddress"); if (fa) fa.textContent = BUSINESS.address + ", " + BUSINESS.city;
+  const fh = $("#footHours"); if (fh) fh.textContent = BUSINESS.hours;
+  const wa = $(".cf-wa"); if (wa) wa.href = `https://wa.me/${BUSINESS.whatsapp}?text=Hi%20TopNotchRentalz%2C%20I%27d%20like%20to%20book%20a%20car`;
+  const ph = $(".cf-ph"); if (ph) ph.href = "tel:" + BUSINESS.phone.replace(/\D/g, "");
+}).catch(() => {});
+
 /* ============================================================
    NAV
    ============================================================ */
@@ -309,9 +329,10 @@ function openCarDetail(id) {
 
   const altBanner = st !== "available" ? `
       <div class="alt-banner">
-        <b>This vehicle is currently ${st === "booked" ? "on rent" : "in service"}.</b>
-        You can still submit a request — our team confirms real-time availability with the
-        provider before anything is promised. Or start with a comparable car:
+        <b>${st === "on-request" ? "Availability on request." : `This vehicle is currently ${st === "booked" ? "on rent" : "in service"}.`}</b>
+        ${st === "on-request"
+          ? "We're re-verifying this unit with the provider, so instant quoting is paused — submit a request and we'll confirm personally."
+          : "You can still submit a request — our team confirms real-time availability with the provider before anything is promised."} Or start with a comparable car:
         <div class="alt-row">
           ${comparableAlternatives(c, 2).map(a => `
             <button class="alt-chip" data-alt="${a.id}">
@@ -596,12 +617,29 @@ function renderStep4() {
       </div>
       <input id="hpWebsite" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
 
+      <div class="f-label">Required agreements</div>
+      <div class="consent-box">
+        ${[
+          ["cTerms", 'I agree to the <a href="policies.html#terms" target="_blank">Terms &amp; Conditions</a>'],
+          ["cPrivacy", 'I agree to the <a href="policies.html#privacy" target="_blank">Privacy Policy</a>'],
+          ["cCancel", 'I accept the <a href="policies.html#cancellation" target="_blank">Cancellation Policy</a>'],
+          ["cDeposit", 'I accept the <a href="policies.html#deposit" target="_blank">Deposit &amp; Refund Policy</a>'],
+          ["cRules", 'I accept the vehicle rules (<a href="policies.html#damage" target="_blank">damage</a>, <a href="policies.html#tickets" target="_blank">tickets/tolls</a>, <a href="policies.html#mileage" target="_blank">mileage</a>, <a href="policies.html#smoking" target="_blank">smoking</a>, <a href="policies.html#fuel" target="_blank">fuel</a>)'],
+          ["cComms", "I consent to booking updates by text, WhatsApp and email"],
+          ["cDocs", "I consent to my license &amp; insurance being processed to verify this booking"]
+        ].map(([id, label]) => `
+          <label class="f-check" style="margin-top:10px;font-size:13px">
+            <input type="checkbox" id="${id}"><span class="box">✓</span><span>${label}</span>
+          </label>`).join("")}
+      </div>
+
       <div class="wizard-nav">
         <button class="btn btn-ghost btn-sm" id="backBtn">← Back</button>
         <button class="btn btn-primary" id="submitBtn">Submit Request</button>
       </div>
-      <p class="fineprint" style="margin-top:14px">Submitting a request does not confirm a booking.
-      Your booking is confirmed only after availability, requirements and price are verified and payment is completed.</p>
+      <p class="fineprint" style="margin-top:14px">Submitting a request does <b>not</b> guarantee vehicle
+      availability or booking approval. Your booking is confirmed only after availability, requirements
+      and price are verified and payment is completed.</p>
     </div>`);
 
   $$(".prem-chip").forEach(chip => chip.addEventListener("click", () => {
@@ -616,10 +654,18 @@ function renderStep4() {
   $("#submitBtn").addEventListener("click", submitRequest);
 }
 
+const CONSENT_TEXT = "I agree to the TopNotchRentalz Terms & Conditions, Privacy Policy, Cancellation Policy, Deposit & Refund Policy and vehicle rules (damage, tickets/tolls, mileage, smoking, fuel); I consent to booking updates by text/WhatsApp/email and to my license and insurance being processed to verify this booking. I understand that submitting a request does not guarantee vehicle availability or booking approval.";
+
 async function submitRequest() {
   saveInputs(["occasion", "notes", "cName", "cPhone", "cEmail"]);
   if (!v("cName") || !v("cPhone")) return toast("Please add your name and phone number");
   if (!v("cEmail")) return toast("Please add your email");
+  const consents = {
+    terms: $("#cTerms").checked, privacy: $("#cPrivacy").checked, cancellation: $("#cCancel").checked,
+    deposit: $("#cDeposit").checked, vehicleRules: $("#cRules").checked,
+    communication: $("#cComms").checked, documents: $("#cDocs").checked
+  };
+  if (Object.values(consents).some(x => !x)) return toast("Please tick every agreement to continue");
 
   const f = bookingContext.form;
   const payload = {
@@ -646,6 +692,8 @@ async function submitRequest() {
       .filter(Boolean).join(", ") || "None",
     specialRequests: f.notes || "None",
     quotedDayRate: `$${bookingContext.price}/${bookingContext.unit}`,
+    consents,
+    consentText: CONSENT_TEXT + (window.TN_POLICY_VERSION ? ` (policy version ${window.TN_POLICY_VERSION})` : ""),
     website: $("#hpWebsite") ? $("#hpWebsite").value : "" // honeypot — humans never fill this
   };
 
@@ -747,19 +795,26 @@ $$("[data-vip-apply]").forEach(btn => btn.addEventListener("click", () => {
       </div>
       <div class="f-label">${ICONS.phone} Anything we should know?</div>
       <input class="f-input" id="vipNote" placeholder="Occasions, favorite cars, travel dates…">
-      <button class="btn btn-primary btn-block" id="submitVip" style="margin-top:24px">Submit Application</button>
+      <label class="f-check" style="margin-top:16px;font-size:13px">
+        <input type="checkbox" id="vipConsent"><span class="box">✓</span>
+        <span>I agree to the <a href="policies.html" target="_blank" style="color:var(--orange)">policies</a> (terms, privacy, cancellation, deposit, vehicle rules), to booking updates by text/WhatsApp/email, and to document processing for verification.</span>
+      </label>
+      <button class="btn btn-primary btn-block" id="submitVip" style="margin-top:20px">Submit Application</button>
     </div>`);
   $("#submitVip").addEventListener("click", async () => {
     const name = $("#cName").value.trim(), phone = $("#cPhone").value.trim(), email = $("#cEmail").value.trim();
     if (!name || !phone) return toast("Please add your name and phone number");
     if (!email) return toast("Please add your email");
+    if (!$("#vipConsent").checked) return toast("Please accept the policies to continue");
+    const all = { terms: true, privacy: true, cancellation: true, deposit: true, vehicleRules: true, communication: true, documents: true };
     const start = new Date(), end = new Date(Date.now() + 30 * 864e5);
     const payload = {
       customerName: name, phone, email, vehicleRequested: bookingContext.title,
       startDate: start.toISOString().slice(0, 10) + " 10:00", endDate: end.toISOString().slice(0, 10) + " 10:00",
       option: "vip", occasion: "VIP application",
       specialRequests: $("#vipNote").value.trim() || "None",
-      quotedDayRate: `$${bookingContext.price}/mo`
+      quotedDayRate: `$${bookingContext.price}/mo`,
+      consents: all, consentText: CONSENT_TEXT
     };
     try { await api("/public/requests", payload); }
     catch (err) {

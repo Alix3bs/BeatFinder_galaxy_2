@@ -20,8 +20,21 @@ if (fs.existsSync(envFile)) {
 const { db, DATA_DIR } = require("./lib/db");
 const auth = require("./lib/auth");
 const U = require("./lib/util");
+const backup = require("./lib/backup");
+const stripe = require("./lib/stripe");
+const emails = require("./lib/emails");
 const { seed } = require("./seed");
 seed();
+
+const SETTING = k => db.prepare("SELECT value FROM settings WHERE key=?").get(k)?.value || "";
+const allSettings = () => Object.fromEntries(db.prepare("SELECT key, value FROM settings").all().map(r => [r.key, r.value]));
+
+/* server-held signing key for temporary file links (generated once) */
+if (!SETTING("file_signing_key")) {
+  db.prepare("INSERT INTO settings (key, value) VALUES ('file_signing_key', ?)").run(crypto.randomBytes(32).toString("hex"));
+}
+const fileSig = (id, exp) =>
+  crypto.createHmac("sha256", SETTING("file_signing_key")).update(`${id}.${exp}`).digest("hex");
 
 const PORT = Number(process.env.PORT || 8902);
 const SITE_DIR = path.resolve(__dirname, "..", "topnotch-website");
@@ -95,14 +108,44 @@ const bad = (res, msg, code = 400) => json(res, code, { error: msg });
 /* ============================================================
    PUBLIC ROUTES
    ============================================================ */
+/* publishing controls: a unit is publicly visible only when its
+   partner is Active, its checklist is complete, and availability was
+   verified within the configurable window. Stale verification demotes
+   it to "on-request" (no instant quoting) and alerts partnerships. */
+function publishableUnits() {
+  const verifyDays = Number(SETTING("verify_days") || 7);
+  const activePartners = new Set(db.prepare(
+    "SELECT partner_id FROM partners WHERE onboarding_status='Active'").all().map(p => p.partner_id));
+  return db.prepare("SELECT * FROM vehicles WHERE fleet_id IS NOT NULL").all().map(v => {
+    const partnerOk = activePartners.has(v.partner_id);
+    const checklistOk = v.photos_approved && v.price_approved && v.requirements_complete &&
+      ["confirmed-broker", "customer-approved"].includes(v.rate_label);
+    const fresh = v.last_verified && (Date.now() - Date.parse(v.last_verified)) / 864e5 <= verifyDays;
+    let pub = null;
+    if (partnerOk && checklistOk && ["available", "booked", "maintenance"].includes(v.status)) {
+      pub = v.status === "available" ? (fresh ? "available" : "on-request") : v.status;
+    }
+    return { ...v, publicStatus: pub, stale: partnerOk && checklistOk && v.status === "available" && !fresh };
+  });
+}
+
 route("GET", "/api/public/availability", (req, res) => {
-  const rows = db.prepare("SELECT fleet_id, status FROM vehicles WHERE fleet_id IS NOT NULL").all();
   const map = {};
-  for (const r of rows) {
-    if (r.status === "available") map[r.fleet_id] = "available";
-    else if (!map[r.fleet_id]) map[r.fleet_id] = r.status;
+  for (const v of publishableUnits()) {
+    if (!v.publicStatus) continue;
+    const rank = { available: 3, "on-request": 2, booked: 1, maintenance: 0 };
+    if (!(v.fleet_id in map) || rank[v.publicStatus] > rank[map[v.fleet_id]]) map[v.fleet_id] = v.publicStatus;
   }
   json(res, 200, map);
+});
+
+route("GET", "/api/public/settings", (req, res) => {
+  const s = allSettings();
+  json(res, 200, {
+    businessName: s.business_name, city: s.city, address: s.address, phone: s.phone,
+    whatsapp: s.whatsapp, email: s.email, instagram: s.instagram, hours: s.hours,
+    policyVersion: s.policy_version
+  });
 });
 
 route("POST", "/api/public/requests", async (req, res) => {
@@ -119,6 +162,12 @@ route("POST", "/api/public/requests", async (req, res) => {
   if (!vehicle) return bad(res, "Vehicle required");
   const sd = start.slice(0, 10), ed = end.slice(0, 10);
   if (!U.isDate(sd) || !U.isDate(ed) || Date.parse(ed) <= Date.parse(sd)) return bad(res, "Valid date range required");
+
+  /* legal consent — every box must be explicitly ticked (never pre-checked) */
+  const CONSENT_ITEMS = ["terms", "privacy", "cancellation", "deposit", "vehicleRules", "communication", "documents"];
+  const c = b.consents || {};
+  const missingConsent = CONSENT_ITEMS.filter(k => c[k] !== true);
+  if (missingConsent.length) return bad(res, "Please accept all required policies before submitting (" + missingConsent.join(", ") + ")");
 
   /* duplicate detection: same phone/email + vehicle + overlapping dates, still open */
   const dupe = db.prepare(`SELECT request_id, start_date, end_date FROM requests
@@ -138,8 +187,15 @@ route("POST", "/api/public/requests", async (req, res) => {
       U.strip(b.occasion), U.strip(b.chauffeurNeeded), U.strip(b.fboPickup), U.stripLong(b.addons),
       U.stripLong(b.specialRequests), U.strip(b.quotedDayRate), dupe ? dupe.request_id : null, req.ip);
 
+  db.prepare("INSERT INTO consents (request_id, ip, policy_version, consent_text, items) VALUES (?,?,?,?,?)")
+    .run(id, req.ip, SETTING("policy_version"), U.stripLong(b.consentText || ""), JSON.stringify(CONSENT_ITEMS));
+
   const row = db.prepare("SELECT * FROM requests WHERE request_id = ?").get(id);
   U.queueSync("CustomerRequests", row);
+  emails.customerEmail("REQUEST_RECEIVED", email, {
+    requestId: id, firstName: name.split(" ")[0], vehicle, dates: `${start} → ${end}`,
+    trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${id}&ph=${phone.replace(/\D/g, "").slice(-4)}`
+  }).catch(() => {});
   if (!dupe) {
     await U.notify("sales", null, "NEW_REQUEST", `New request ${id} — ${vehicle}`,
       `Customer: ${name} · ${phone} · ${email}\nVehicle: ${vehicle} (backup: ${row.backup_vehicle || "none"})\nDates: ${start} → ${end}\nBudget: ${row.budget}\nDelivery: ${row.delivery_location}\nAge: ${row.driver_age} · License: ${row.license_status} · Insurance: ${row.insurance_status}\nDeposit: ${row.deposit_readiness}\nSpecial: ${row.special_requests}`);
@@ -179,6 +235,11 @@ route("POST", "/api/public/quote/accept", async (req, res) => {
   db.prepare("UPDATE requests SET status='Quote accepted', quote_accepted_at=datetime('now') WHERE request_id=?").run(id);
   U.audit(null, "quote.accepted", "request", id, "status", "Quote sent", "Quote accepted", id);
   await U.notify("sales", null, "QUOTE_ACCEPTED", `Quote accepted — ${id}`, `${r.customer_name} accepted $${r.quote_amount}. Issue the payment/deposit link.`);
+  emails.customerEmail("QUOTE_ACCEPTED", r.email, {
+    requestId: id, firstName: r.customer_name.split(" ")[0], vehicle: r.vehicle_requested,
+    amount: r.quote_amount,
+    trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+  }).catch(() => {});
   json(res, 200, { ok: true });
 });
 
@@ -294,15 +355,21 @@ route("GET", "/api/vehicles", (req, res) => {
 const VEHICLE_EDITABLE = ["fleet_id", "partner_id", "market", "year", "make", "model", "trim", "color", "vin",
   "daily_rate", "weekly_rate", "monthly_rate", "provider_rate", "customer_price", "provider_payout", "profit",
   "deposit", "min_days", "mileage_included", "mileage_fee", "delivery_areas", "delivery_fee",
-  "min_age", "license", "insurance", "payments", "status", "booked_dates", "last_verified", "provider_contact", "notes"];
+  "min_age", "license", "insurance", "payments", "status", "booked_dates", "last_verified", "provider_contact", "notes",
+  "rate_label", "photos_approved", "price_approved", "requirements_complete", "deal_model"];
+const RATE_LABELS = ["public-retail", "confirmed-broker", "customer-approved", "awaiting-confirmation"];
 
 function applyVehiclePatch(req, res, v, body, allowedFields) {
   const audited = ["daily_rate", "provider_rate", "customer_price", "provider_payout", "deposit", "status", "booked_dates"];
   for (const k of allowedFields) {
     if (!(k in body)) continue;
     let val = typeof body[k] === "string" ? U.stripLong(body[k]) : body[k];
-    if (/rate|price|payout|profit|deposit|fee/.test(k) && !U.isMoney(val)) return bad(res, `Invalid amount for ${k}`);
+    const MONEY_FIELDS = ["daily_rate", "weekly_rate", "monthly_rate", "provider_rate", "customer_price",
+      "provider_payout", "profit", "deposit", "mileage_fee", "delivery_fee"];
+    if (MONEY_FIELDS.includes(k) && !U.isMoney(val)) return bad(res, `Invalid amount for ${k}`);
     if (k === "status" && !["available", "booked", "maintenance", "unavailable"].includes(val)) return bad(res, "Invalid status");
+    if (k === "rate_label" && !RATE_LABELS.includes(val)) return bad(res, "rate_label must be one of: " + RATE_LABELS.join(", "));
+    if (["photos_approved", "price_approved", "requirements_complete"].includes(k)) val = val === true || val === 1 || val === "1" || val === "true" ? 1 : 0;
     if (audited.includes(k) && String(v[k]) !== String(val))
       U.audit(req.user, "vehicle.update", "vehicle", v.vehicle_id, k, v[k], typeof val === "object" ? JSON.stringify(val) : val);
     v[k] = typeof val === "object" ? JSON.stringify(val) : val;
@@ -362,14 +429,22 @@ route("PATCH", "/api/partners/:id", (req, res) => {
   if (!guard("partners.write")(req, res)) return;
   const p = db.prepare("SELECT * FROM partners WHERE partner_id=?").get(req.params.id);
   if (!p) return bad(res, "Not found", 404);
-  for (const k of ["company", "contact", "phone", "email", "market", "payout_method", "status", "notes"]) {
+  const ONBOARDING = ["Lead", "Discussion", "Terms pending", "Documents pending", "Inventory pending", "Active", "Paused", "Terminated"];
+  const DEALS = ["split-80-20", "referral-fixed", "broker-markup", "flat-payout", "custom"];
+  for (const k of ["company", "contact", "phone", "email", "market", "payout_method", "status", "notes", "onboarding_status", "deal_model", "deal_terms"]) {
     if (k in (req.body || {})) {
-      if (String(p[k]) !== String(req.body[k])) U.audit(req.user, "partner.update", "partner", p.partner_id, k, p[k], req.body[k]);
-      p[k] = U.stripLong(req.body[k]);
+      const val = U.stripLong(req.body[k]);
+      if (k === "onboarding_status" && !ONBOARDING.includes(val)) return bad(res, "onboarding_status must be one of: " + ONBOARDING.join(", "));
+      if (k === "deal_model" && !DEALS.includes(val)) return bad(res, "deal_model must be one of: " + DEALS.join(", "));
+      if (String(p[k]) !== String(val)) U.audit(req.user, "partner.update", "partner", p.partner_id, k, p[k], val);
+      p[k] = val;
     }
   }
-  db.prepare("UPDATE partners SET company=?,contact=?,phone=?,email=?,market=?,payout_method=?,status=?,notes=? WHERE partner_id=?")
-    .run(p.company, p.contact, p.phone, p.email, p.market, p.payout_method, p.status, p.notes, p.partner_id);
+  db.prepare(`UPDATE partners SET company=?,contact=?,phone=?,email=?,market=?,payout_method=?,status=?,notes=?,
+      onboarding_status=?,deal_model=?,deal_terms=? WHERE partner_id=?`)
+    .run(p.company, p.contact, p.phone, p.email, p.market, p.payout_method, p.status, p.notes,
+      p.onboarding_status, p.deal_model, p.deal_terms, p.partner_id);
+  U.queueSync("Partners", db.prepare("SELECT * FROM partners WHERE partner_id=?").get(p.partner_id));
   json(res, 200, { ok: true });
 });
 route("GET", "/api/partner-inquiries", (req, res) => {
@@ -388,7 +463,7 @@ route("GET", "/api/requests/:id/matches", (req, res) => {
   const r = db.prepare("SELECT * FROM requests WHERE request_id=?").get(req.params.id);
   if (!r) return bad(res, "Not found", 404);
   const want = (r.vehicle_requested || "").toLowerCase();
-  const approved = new Set(db.prepare("SELECT partner_id FROM partners WHERE status='Approved'").all().map(p => p.partner_id));
+  const approved = new Set(db.prepare("SELECT partner_id FROM partners WHERE onboarding_status='Active'").all().map(p => p.partner_id));
   const pool = db.prepare("SELECT * FROM vehicles WHERE market=?").all(process.env.TN_MARKET || "Miami")
     .filter(v => approved.has(v.partner_id));
   const exact = pool.filter(v => want.includes(v.model.toLowerCase()));
@@ -429,6 +504,11 @@ route("POST", "/api/requests/:id/assign", async (req, res) => {
   /* notify the provider with ONLY what they need to confirm */
   await U.notify(null, v.partner_id, "AVAILABILITY_REQUEST", `Availability check — ${v.year} ${v.make} ${v.model}`,
     `Unit ${v.vehicle_id}: ${r.start_date} → ${r.end_date}. Delivery area: ${r.option === "pickup" ? "Showroom pickup" : r.delivery_location}. Reply in your portal: confirm or decline. (Request ${r.request_id})`);
+  emails.customerEmail("AVAILABILITY_CHECK", r.email, {
+    requestId: r.request_id, firstName: r.customer_name.split(" ")[0], vehicle: r.vehicle_requested,
+    dates: `${r.start_date} → ${r.end_date}`,
+    trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${r.request_id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+  }).catch(() => {});
   json(res, 200, { ok: true });
 });
 
@@ -474,6 +554,11 @@ route("POST", "/api/requests/:id/quote", async (req, res) => {
   setStatus(req.user, r, "Quote sent");
   U.audit(req.user, "quote.sent", "request", r.request_id, "quote_amount", null, r.final_price, r.request_id);
   await U.notify("sales", null, "QUOTE_SENT", `Quote sent — ${r.request_id}`, `$${r.final_price}, expires ${expires.slice(0, 10)}. Customer accepts via their tracking page.`);
+  emails.customerEmail("QUOTE_ISSUED", r.email, {
+    requestId: r.request_id, firstName: r.customer_name.split(" ")[0], vehicle: r.vehicle_requested,
+    dates: `${r.start_date} → ${r.end_date}`, amount: r.final_price, expires: expires.slice(0, 10),
+    trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${r.request_id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+  }).catch(() => {});
   json(res, 200, { ok: true, expires });
 });
 
@@ -487,26 +572,27 @@ route("POST", "/api/requests/:id/payment-link", async (req, res) => {
   json(res, 200, { ok: true });
 });
 
-route("POST", "/api/requests/:id/payment-verified", async (req, res) => {
-  if (!guard("requests.write")(req, res)) return;
-  const r = getReq(res, req.params.id); if (!r) return;
-  if (r.status !== "Payment required") return bad(res, "Issue the payment link first (current: " + r.status + ")");
+/* shared confirmation path: manual verification AND the Stripe
+   webhook both land here — the status machine gates both. */
+async function confirmBooking(actor, r, amount, method, stripeInfo) {
   const v = db.prepare("SELECT * FROM vehicles WHERE vehicle_id=?").get(r.assigned_vehicle_id);
-  if (!v) return bad(res, "No provider unit assigned");
+  if (!v) return { error: "No provider unit assigned" };
   const sd = r.start_date.slice(0, 10), ed = r.end_date.slice(0, 10);
   const conflicts = vehicleConflicts(v.vehicle_id, sd, ed, r.request_id);
-  if (conflicts.length) return bad(res, "Overlap appeared since assignment: " + conflicts.join(", "), 409);
+  if (conflicts.length) return { error: "Overlap appeared since assignment: " + conflicts.join(", "), code: 409 };
 
-  const amount = Number(req.body.amount) || r.final_price || 0;
-  db.prepare("INSERT INTO payments (request_id, kind, amount, method, status, recorded_by) VALUES (?,?,?,?,?,?)")
-    .run(r.request_id, "payment", amount, U.strip(req.body.method || "card"), "verified", req.user.email);
-  U.audit(req.user, "payment.verified", "request", r.request_id, "amount", null, amount, r.request_id);
+  db.prepare(`INSERT INTO payments (request_id, kind, category, amount, method, status, recorded_by,
+      stripe_customer_id, stripe_payment_intent, currency)
+    VALUES (?,?,?,?,?,?,?,?,?,?)`)
+    .run(r.request_id, "payment", stripeInfo?.category || "rental-payment", amount, method, "verified",
+      actor?.email || "stripe-webhook", stripeInfo?.customerId || null, stripeInfo?.paymentIntent || null, "usd");
+  U.audit(actor, "payment.verified", "request", r.request_id, "amount", null, amount, r.request_id);
   db.prepare("UPDATE requests SET payment_status='verified' WHERE request_id=?").run(r.request_id);
-  setStatus(req.user, r, "Booking confirmed");
+  setStatus(actor, r, "Booking confirmed");
 
   const booked = JSON.parse(v.booked_dates || "[]"); booked.push(`${sd}→${ed}`);
   db.prepare("UPDATE vehicles SET status='booked', booked_dates=? WHERE vehicle_id=?").run(JSON.stringify(booked), v.vehicle_id);
-  U.audit(req.user, "vehicle.update", "vehicle", v.vehicle_id, "status", v.status, "booked", r.request_id);
+  U.audit(actor, "vehicle.update", "vehicle", v.vehicle_id, "status", v.status, "booked", r.request_id);
   U.queueSync("PartnerInventory", db.prepare("SELECT * FROM vehicles WHERE vehicle_id=?").get(v.vehicle_id));
 
   const rentalId = r.request_id.replace("TN-", "AR-");
@@ -519,10 +605,25 @@ route("POST", "/api/requests/:id/payment-verified", async (req, res) => {
       r.option === "pickup" ? "Showroom" : r.delivery_location,
       v.deposit, amount, Math.max(0, (r.final_price || 0) - amount), r.internal_cost || 0, r.profit || 0);
   U.queueSync("ActiveRentals", db.prepare("SELECT * FROM rentals WHERE rental_id=?").get(rentalId));
-  U.queueSync("Payments", { request_id: r.request_id, kind: "payment", amount, by: req.user.email });
+  U.queueSync("Payments", { request_id: r.request_id, kind: "payment", category: stripeInfo?.category || "rental-payment", amount, by: actor?.email || "stripe" });
   await U.notify("ops", null, "BOOKING_CONFIRMED", `Booking confirmed — ${rentalId}`, `${v.year} ${v.make} ${v.model} for ${r.customer_name}. Prepare ${r.option === "pickup" ? "showroom handover" : "delivery to " + r.delivery_location} on ${r.start_date}.`);
   await U.notify(null, v.partner_id, "BOOKING_CONFIRMED", `Booking confirmed — unit ${v.vehicle_id}`, `${r.start_date} → ${r.end_date}. Customer: ${r.customer_name}, ${r.phone}. ${r.option === "pickup" ? "Showroom pickup" : "Delivery: " + r.delivery_location}.`);
-  json(res, 200, { ok: true, rentalId });
+  emails.customerEmail("BOOKING_CONFIRMED", r.email, {
+    requestId: r.request_id, firstName: r.customer_name.split(" ")[0],
+    vehicle: `${v.year} ${v.make} ${v.model}`, dates: `${r.start_date} → ${r.end_date}`,
+    handover: r.option === "pickup" ? "Showroom pickup" : "Delivered to " + r.delivery_location,
+    trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${r.request_id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+  }).catch(() => {});
+  return { ok: true, rentalId };
+}
+
+route("POST", "/api/requests/:id/payment-verified", async (req, res) => {
+  if (!guard("requests.write")(req, res)) return;
+  const r = getReq(res, req.params.id); if (!r) return;
+  if (r.status !== "Payment required") return bad(res, "Issue the payment link first (current: " + r.status + ")");
+  const out = await confirmBooking(req.user, r, Number(req.body.amount) || r.final_price || 0, U.strip(req.body.method || "card"));
+  if (out.error) return bad(res, out.error, out.code || 400);
+  json(res, 200, out);
 });
 
 route("POST", "/api/requests/:id/decline", (req, res) => {
@@ -547,21 +648,59 @@ route("GET", "/api/rentals", (req, res) => {
   if (!guard("rentals.read")(req, res)) return;
   json(res, 200, db.prepare("SELECT * FROM rentals ORDER BY created_at DESC").all());
 });
+/* operational checklists — enforced before handover and before payout */
+const PRE_CHECKLIST = ["provider_confirmed", "customer_approved", "license_verified", "insurance_verified",
+  "contract_signed", "payment_verified", "deposit_verified", "delivery_confirmed",
+  "pre_inspection_done", "start_mileage_recorded", "fuel_recorded", "keys_released"];
+const POST_CHECKLIST = ["vehicle_returned", "return_time_recorded", "final_mileage_recorded", "fuel_recorded",
+  "post_inspection_done", "damage_reviewed", "tolls_tickets_checked", "deposit_decided",
+  "payout_approved", "review_request_sent", "vehicle_reavailable"];
+route("GET", "/api/meta/checklists", (req, res) => json(res, 200, { pre: PRE_CHECKLIST, post: POST_CHECKLIST }));
+
 route("PATCH", "/api/rentals/:id", async (req, res) => {
   if (!guard("rentals.write")(req, res)) return;
   const x = db.prepare("SELECT * FROM rentals WHERE rental_id=?").get(req.params.id);
   if (!x) return bad(res, "Not found", 404);
+
+  /* checklist updates (audited per flipped item) */
+  for (const [col, items] of [["pre_checklist", PRE_CHECKLIST], ["post_checklist", POST_CHECKLIST]]) {
+    if (req.body && typeof req.body[col] === "object" && req.body[col]) {
+      const cur = JSON.parse(x[col] || "{}");
+      for (const k of items) {
+        if (k in req.body[col] && !!cur[k] !== !!req.body[col][k]) {
+          U.audit(req.user, "rental.checklist", "rental", x.rental_id, `${col}.${k}`, !!cur[k], !!req.body[col][k], x.request_id);
+          cur[k] = !!req.body[col][k];
+        }
+      }
+      x[col] = JSON.stringify(cur);
+    }
+  }
+  const pre = JSON.parse(x.pre_checklist || "{}"), post = JSON.parse(x.post_checklist || "{}");
+  if (req.body.pickup_status === "Done" && x.pickup_status !== "Done") {
+    const missing = PRE_CHECKLIST.filter(k => !pre[k]);
+    if (missing.length) return bad(res, "Pre-rental checklist incomplete: " + missing.join(", "), 409);
+  }
+  if (req.body.payout_paid === "Yes" && x.payout_paid !== "Yes") {
+    const missing = POST_CHECKLIST.filter(k => !post[k]);
+    if (missing.length) return bad(res, "Post-rental checklist incomplete before payout: " + missing.join(", "), 409);
+  }
+
   const fields = ["amount_paid", "balance_due", "deposit", "provider_payout", "pickup_status", "return_status",
-    "deposit_refunded", "payout_paid", "review_requested", "review", "notes"];
+    "deposit_refunded", "payout_paid", "review_requested", "review", "notes", "pre_checklist", "post_checklist"];
   const audited = ["amount_paid", "deposit", "provider_payout", "pickup_status", "return_status", "deposit_refunded", "payout_paid"];
   for (const k of fields) {
-    if (!(k in (req.body || {}))) continue;
+    if (!(k in (req.body || {})) || k.endsWith("_checklist")) continue;
     const val = typeof req.body[k] === "string" ? U.stripLong(req.body[k]) : req.body[k];
     if (/amount|deposit|payout|balance/.test(k) && !U.isMoney(val)) return bad(res, "Invalid amount for " + k);
     if (audited.includes(k) && String(x[k]) !== String(val))
       U.audit(req.user, "rental.update", "rental", x.rental_id, k, x[k], val, x.request_id);
     x[k] = val;
   }
+  const custEmail = db.prepare("SELECT email, customer_name FROM requests WHERE request_id=?").get(x.request_id);
+  if (req.body.deposit_refunded === "Yes" && custEmail?.email)
+    emails.customerEmail("DEPOSIT_STATUS", custEmail.email, { requestId: x.request_id, firstName: (custEmail.customer_name || "").split(" ")[0], message: `Your $${x.deposit} security deposit has been released. Allow 3–7 business days for your bank to post it.` }).catch(() => {});
+  if (req.body.review_requested === "Yes" && custEmail?.email)
+    emails.customerEmail("REVIEW_REQUEST", custEmail.email, { requestId: x.request_id, firstName: (custEmail.customer_name || "").split(" ")[0], vehicle: x.vehicle, instagram: SETTING("instagram") }).catch(() => {});
   db.prepare(`UPDATE rentals SET ${fields.map(f => f + "=?").join(",")} WHERE rental_id=?`)
     .run(...fields.map(f => x[f]), x.rental_id);
 
@@ -703,11 +842,11 @@ route("POST", "/api/uploads", (req, res) => {
   const b = req.body || {};
   const data = String(b.data || "");
   const m = data.match(/^data:image\/(jpeg|png|webp);base64,(.+)$/);
-  if (!m) return bad(res, "Only JPEG/PNG/WebP images accepted");
+  if (!m) { U.audit(req.user, "upload.rejected", "upload", "type"); return bad(res, "Only JPEG/PNG/WebP images accepted"); }
   const buf = Buffer.from(m[2], "base64");
-  if (buf.length > 5 * 1024 * 1024) return bad(res, "Max 5 MB per photo");
+  if (buf.length > 5 * 1024 * 1024) { U.audit(req.user, "upload.rejected", "upload", "size"); return bad(res, "Max 5 MB per photo"); }
   const magic = MAGIC[m[1] === "jpeg" ? "jpeg" : m[1]];
-  if (!magic.every((v, i) => buf[i] === v)) return bad(res, "File content does not match its type");
+  if (!magic.every((v, i) => buf[i] === v)) { U.audit(req.user, "upload.rejected", "upload", "magic"); return bad(res, "File content does not match its type"); }
   const id = crypto.randomUUID();
   const ext = m[1] === "jpeg" ? "jpg" : m[1];
   const file = path.join(UPLOAD_DIR, `${id}.${ext}`);
@@ -726,13 +865,41 @@ route("GET", "/api/uploads", (req, res) => {
   if (req.query.vehicleId) rows = rows.filter(u => u.vehicle_id === req.query.vehicleId);
   json(res, 200, rows);
 });
+/* File access: session-authenticated OR signed temporary link.
+   No permanent public URLs exist; every view is access-logged. */
 route("GET", "/api/files/:id", (req, res) => {
+  const u = db.prepare("SELECT * FROM uploads WHERE id=?").get(req.params.id);
+  if (!u) return bad(res, "Not found", 404);
+  const { exp, sig } = req.query;
+  const signedOk = exp && sig && Number(exp) > Date.now() &&
+    crypto.timingSafeEqual(Buffer.from(fileSig(u.id, exp)), Buffer.from(String(sig).padEnd(64, "0").slice(0, 64)));
+  if (!signedOk) {
+    if (!req.user) return bad(res, "Sign in required", 401);
+    if (req.user.role === "partner" && u.partner_id !== req.user.partner_id) return bad(res, "Forbidden", 403);
+  }
+  U.audit(req.user, "file.view", "upload", u.id, "via", null, signedOk ? "signed-link" : "session", u.rental_id || u.vehicle_id);
+  res.writeHead(200, { "Content-Type": u.mime, "Cache-Control": "private, no-store" });
+  fs.createReadStream(u.path).pipe(res);
+});
+
+route("POST", "/api/files/:id/sign", (req, res) => {
   if (!req.user) return bad(res, "Sign in required", 401);
   const u = db.prepare("SELECT * FROM uploads WHERE id=?").get(req.params.id);
   if (!u) return bad(res, "Not found", 404);
   if (req.user.role === "partner" && u.partner_id !== req.user.partner_id) return bad(res, "Forbidden", 403);
-  res.writeHead(200, { "Content-Type": u.mime, "Cache-Control": "private, max-age=3600" });
-  fs.createReadStream(u.path).pipe(res);
+  const exp = Date.now() + Math.min(60, Number(req.body.minutes) || 15) * 60e3;
+  U.audit(req.user, "file.sign", "upload", u.id, "expires", null, new Date(exp).toISOString(), u.rental_id);
+  json(res, 200, { url: `/api/files/${u.id}?exp=${exp}&sig=${fileSig(u.id, exp)}`, expires: new Date(exp).toISOString() });
+});
+
+route("DELETE", "/api/uploads/:id", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const u = db.prepare("SELECT * FROM uploads WHERE id=?").get(req.params.id);
+  if (!u) return bad(res, "Not found", 404);
+  try { fs.unlinkSync(u.path); } catch (e) { /* already gone */ }
+  db.prepare("DELETE FROM uploads WHERE id=?").run(u.id);
+  U.audit(req.user, "upload.delete", "upload", u.id, "kind", u.kind, null, u.rental_id || u.vehicle_id);
+  json(res, 200, { ok: true });
 });
 
 /* ============================================================
@@ -831,6 +998,7 @@ route("POST", "/api/import/commit", (req, res) => {
   const p = importPreviews.get(String(req.body.token || ""));
   if (!p) return bad(res, "Preview expired — run the preview again", 410);
   importPreviews.delete(req.body.token);
+  backup.backupNow("pre-import by " + req.user.email); // snapshot before bulk changes
   let created = 0, updated = 0;
   for (const rec of p.parsed) {
     const id = rec.vehicle_id || U.rid("V");
@@ -863,6 +1031,219 @@ route("POST", "/api/import/commit", (req, res) => {
   }
   U.audit(req.user, "import.commit", "inventory", `${created} new / ${updated} updated`, null, null, null, "previewed by " + p.by);
   json(res, 200, { ok: true, created, updated });
+});
+
+/* ============================================================
+   STRIPE — hosted Checkout links + verified, idempotent webhook
+   ============================================================ */
+route("POST", "/api/requests/:id/stripe-link", async (req, res) => {
+  if (!guard("requests.write")(req, res)) return;
+  const r = getReq(res, req.params.id); if (!r) return;
+  const category = U.strip(req.body.category || "rental-payment");
+  const amount = Number(req.body.amount) || r.final_price || 0;
+  if (!amount) return bad(res, "Amount required");
+
+  if (stripe.POST_RENTAL.includes(category)) {
+    /* damage / mileage / tolls: admin-only, never automatic, must be documented */
+    if (req.user.role !== "admin") return bad(res, "Post-rental charges require admin review", 403);
+    if (!U.strip(req.body.authorizationNote)) return bad(res, "Documented authorization (authorizationNote) is required for post-rental charges");
+  } else {
+    /* pre-booking money is blocked until the quote is accepted */
+    if (!["Quote accepted", "Payment required", "Booking confirmed"].includes(r.status))
+      return bad(res, "Payments stay blocked until provider confirmation, price approval and quote acceptance (current: " + r.status + ")");
+    if (r.status === "Quote accepted") {
+      db.prepare("UPDATE requests SET payment_status='link-issued' WHERE request_id=?").run(r.request_id);
+      setStatus(req.user, r, "Payment required");
+    }
+  }
+  try {
+    const out = await stripe.createCheckout({
+      requestId: r.request_id, category, amount,
+      description: `${r.vehicle_requested} · ${category} · ${r.request_id}`,
+      customerEmail: r.email
+    });
+    if (stripe.POST_RENTAL.includes(category))
+      U.audit(req.user, "payment.postrental.link", "request", r.request_id, "category", null, `${category} $${amount} — ${U.strip(req.body.authorizationNote)}`, r.request_id);
+    U.audit(req.user, "stripe.link.created", "request", r.request_id, "amount", null, amount, r.request_id);
+    emails.customerEmail("PAYMENT_REQUIRED", r.email, {
+      requestId: r.request_id, firstName: r.customer_name.split(" ")[0], vehicle: r.vehicle_requested,
+      amount, category, payUrl: out.url
+    }).catch(() => {});
+    json(res, 200, out);
+  } catch (e) { bad(res, e.message, 502); }
+});
+
+route("POST", "/api/stripe/webhook", async (req, res) => {
+  if (!stripe.verifySignature(req.rawBody || "", req.headers["stripe-signature"])) {
+    U.audit(null, "stripe.webhook.rejected", "stripe", "signature");
+    return bad(res, "Invalid signature", 400);
+  }
+  let event;
+  try { event = JSON.parse(req.rawBody); } catch (e) { return bad(res, "Bad payload"); }
+  const requestId = event.data?.object?.metadata?.requestId;
+  if (stripe.seenEvent(event.id, event.type, requestId))
+    return json(res, 200, { ok: true, duplicate: true }); // idempotent: duplicate delivery ignored
+
+  if (event.type === "checkout.session.completed") {
+    const s = event.data.object;
+    const r = requestId && db.prepare("SELECT * FROM requests WHERE request_id=?").get(requestId);
+    const category = s.metadata?.category || "rental-payment";
+    const amount = (s.amount_total || 0) / 100;
+    if (r && r.status === "Payment required" && !stripe.POST_RENTAL.includes(category) && category !== "security-deposit") {
+      const out = await confirmBooking(null, r, amount, "stripe", {
+        category, customerId: s.customer || null, paymentIntent: s.payment_intent || null
+      });
+      if (out.error) await U.notify("admin", null, "STRIPE_CONFLICT", `Paid but not confirmable — ${requestId}`, out.error);
+    } else if (r) {
+      /* deposits, add-ons, post-rental: record only; admin reviews */
+      db.prepare(`INSERT INTO payments (request_id, kind, category, amount, method, status, recorded_by, stripe_customer_id, stripe_payment_intent, currency)
+        VALUES (?,?,?,?,?,?,?,?,?,?)`)
+        .run(requestId, category === "security-deposit" ? "deposit" : "payment", category, amount, "stripe", "verified",
+          "stripe-webhook", s.customer || null, s.payment_intent || null, s.currency || "usd");
+      U.audit(null, "stripe.payment.recorded", "request", requestId, "category", null, `${category} $${amount}`, requestId);
+      U.queueSync("Payments", { request_id: requestId, category, amount, by: "stripe" });
+    }
+  }
+  json(res, 200, { ok: true });
+});
+
+/* ============================================================
+   QUOTE ECONOMICS (internal only — admin + sales)
+   ============================================================ */
+route("GET", "/api/requests/:id/economics", (req, res) => {
+  if (!req.user || !["admin", "sales"].includes(req.user.role)) return bad(res, req.user ? "Forbidden" : "Sign in required", req.user ? 403 : 401);
+  const r = getReq(res, req.params.id); if (!r) return;
+  const v = r.assigned_vehicle_id && db.prepare("SELECT * FROM vehicles WHERE vehicle_id=?").get(r.assigned_vehicle_id);
+  const p = v && db.prepare("SELECT * FROM partners WHERE partner_id=?").get(v.partner_id);
+  const days = Math.max(1, Math.round((Date.parse(r.end_date) - Date.parse(r.start_date)) / 864e5) || 1);
+  const customerPrice = Number(r.final_price) || (v ? v.customer_price * days : 0);
+  const model = (v && v.deal_model) || (p && p.deal_model) || "broker-markup";
+  let payout;
+  switch (model) {
+    case "split-80-20": payout = customerPrice * 0.8; break;
+    case "referral-fixed": payout = Number((p?.deal_terms.match(/\d+/) || [150])[0]); break;
+    case "flat-payout": payout = v ? v.provider_payout * days : 0; break;
+    default: payout = Number(r.internal_cost) || (v ? v.provider_rate * days : 0);
+  }
+  const delivery = Number(SETTING("delivery_fee") || 0);
+  const processingFee = Math.round((customerPrice * 0.029 + 0.30) * 100) / 100;
+  const gross = customerPrice - payout;
+  json(res, 200, {
+    days, dealModel: model, dealTerms: (v && v.deal_model ? v : p)?.deal_terms || "",
+    publicRetail: v ? v.daily_rate * days : null,
+    providerRate: v ? v.provider_rate * days : null,
+    customerPrice, deliveryAddons: delivery,
+    providerPayout: Math.round(payout * 100) / 100,
+    grossProfit: Math.round(gross * 100) / 100,
+    processingFee,
+    netProfitEstimate: Math.round((gross - processingFee) * 100) / 100,
+    rateLabel: v ? v.rate_label : null
+  });
+});
+
+/* customer-communication templates (sales/cx triggered) */
+route("POST", "/api/requests/:id/notify-customer", async (req, res) => {
+  if (!guard("requests.write")(req, res)) return;
+  const r = getReq(res, req.params.id); if (!r) return;
+  const tpl = U.strip(req.body.template);
+  if (!["VEHICLE_UNAVAILABLE", "ALTERNATIVE_OFFERED", "AVAILABILITY_CHECK", "QUOTE_EXPIRING", "DELIVERY_REMINDER", "RETURN_REMINDER", "DEPOSIT_STATUS"].includes(tpl))
+    return bad(res, "Unknown template");
+  const delivery = await emails.customerEmail(tpl, r.email, {
+    requestId: r.request_id, firstName: r.customer_name.split(" ")[0], vehicle: r.vehicle_requested,
+    dates: `${r.start_date} → ${r.end_date}`, amount: r.quote_amount || r.final_price,
+    expires: String(r.quote_expires || "").slice(0, 10),
+    altVehicle: U.strip(req.body.altVehicle || r.backup_vehicle),
+    when: U.strip(req.body.when || ""), message: U.stripLong(req.body.message || ""),
+    trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${r.request_id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+  });
+  U.audit(req.user, "email.customer", "request", r.request_id, "template", null, tpl, r.request_id);
+  json(res, 200, { ok: true, delivery });
+});
+
+/* ============================================================
+   SETTINGS / BACKUPS / SYSTEM HEALTH (admin)
+   ============================================================ */
+const adminOnly = (req, res) => {
+  if (!req.user) { bad(res, "Sign in required", 401); return false; }
+  if (req.user.role !== "admin") { bad(res, "Admin only", 403); return false; }
+  return true;
+};
+
+const EDITABLE_SETTINGS = ["business_name", "city", "address", "phone", "whatsapp", "email",
+  "instagram", "hours", "policy_version", "verify_days", "doc_retention_days"];
+route("GET", "/api/settings", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, Object.fromEntries(Object.entries(allSettings()).filter(([k]) => EDITABLE_SETTINGS.includes(k))));
+});
+route("PATCH", "/api/settings", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  for (const k of EDITABLE_SETTINGS) {
+    if (!(k in (req.body || {}))) continue;
+    const old = SETTING(k);
+    const val = U.strip(req.body[k]);
+    if (String(old) !== String(val)) U.audit(req.user, "settings.update", "settings", k, k, old, val);
+    db.prepare("INSERT INTO settings (key, value, updated_by) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now'), updated_by=excluded.updated_by")
+      .run(k, val, req.user.email);
+  }
+  json(res, 200, { ok: true });
+});
+
+route("GET", "/api/system/backups", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, {
+    encryptionConfigured: !!process.env.BACKUP_ENCRYPTION_KEY,
+    retention: Number(process.env.TN_BACKUP_RETENTION || 30),
+    last: backup.lastBackup(),
+    history: db.prepare("SELECT * FROM backups ORDER BY id DESC LIMIT 40").all()
+  });
+});
+route("POST", "/api/system/backup", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const out = backup.backupNow("manual by " + req.user.email);
+  U.audit(req.user, "backup.manual", "backup", out.file || "failed", null, null, out.ok ? "ok" : out.error);
+  json(res, out.ok ? 200 : 500, out);
+});
+
+route("GET", "/api/health", (req, res) => json(res, 200, { ok: true, ts: new Date().toISOString() }));
+
+route("GET", "/api/system/health", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const day = "datetime('now','-1 day')";
+  const q = sql => { try { return db.prepare(sql).get(); } catch (e) { return { n: "err" }; } };
+  const dirSize = d => { try { return fs.readdirSync(d).reduce((s, f) => s + fs.statSync(path.join(d, f)).size, 0); } catch (e) { return 0; } };
+  const lastB = backup.lastBackup();
+  json(res, 200, {
+    env: process.env.TN_ENV || "staging",
+    db: { ok: !!q("SELECT 1 n").n, sizeBytes: fs.existsSync(path.join(DATA_DIR, "topnotch.db")) ? fs.statSync(path.join(DATA_DIR, "topnotch.db")).size : 0 },
+    backups: {
+      lastOkAt: lastB?.ts || null,
+      ageHours: lastB ? Math.round((Date.now() - Date.parse(lastB.ts + "Z")) / 36e5) : null,
+      failures24h: q(`SELECT count(*) n FROM backups WHERE status='failed' AND ts > ${day}`).n,
+      encrypted: !!process.env.BACKUP_ENCRYPTION_KEY
+    },
+    excelSync: {
+      configured: !!process.env.EXCEL_WEBHOOK_URL,
+      pending: q("SELECT count(*) n FROM sync_outbox WHERE status='pending'").n,
+      failed: q("SELECT count(*) n FROM sync_outbox WHERE status='failed'").n,
+      lastSuccessAt: db.prepare("SELECT sent_at FROM sync_outbox WHERE status='sent' ORDER BY id DESC LIMIT 1").get()?.sent_at || null
+    },
+    email: {
+      configured: !!(process.env.RESEND_API_KEY || process.env.NOTIFY_EMAIL_WEBHOOK_URL),
+      recordedOnly24h: q(`SELECT count(*) n FROM notifications WHERE delivery='recorded' AND ts > ${day}`).n
+    },
+    stripe: {
+      configured: stripe.configured(),
+      webhookSecretSet: !!process.env.STRIPE_WEBHOOK_SECRET,
+      rejectedWebhooks24h: q(`SELECT count(*) n FROM audit WHERE action='stripe.webhook.rejected' AND ts > ${day}`).n
+    },
+    security: {
+      failedLogins24h: q(`SELECT count(*) n FROM audit WHERE action='auth.login.failed' AND ts > ${day}`).n,
+      authzDenied24h: q(`SELECT count(*) n FROM audit WHERE action='authz.denied' AND ts > ${day}`).n,
+      activeSessions: q("SELECT count(*) n FROM sessions WHERE expires_at > datetime('now')").n
+    },
+    storage: { uploadsBytes: dirSize(UPLOAD_DIR), backupsBytes: dirSize(backup.BACKUP_DIR) },
+    uploads: { failed24h: q(`SELECT count(*) n FROM audit WHERE action='upload.rejected' AND ts > ${day}`).n }
+  });
 });
 
 /* ============================================================
@@ -994,12 +1375,13 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname.startsWith("/api/")) {
       if (["POST", "PATCH", "PUT", "DELETE"].includes(req.method)) {
-        req.body = await new Promise((resolve, reject) => {
+        req.rawBody = await new Promise((resolve, reject) => {
           let size = 0; const chunks = [];
           req.on("data", c => { size += c.length; if (size > 8 * 1024 * 1024) { reject(new Error("Payload too large")); req.destroy(); } else chunks.push(c); });
-          req.on("end", () => { try { resolve(chunks.length ? JSON.parse(Buffer.concat(chunks)) : {}); } catch (e) { resolve({}); } });
+          req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
           req.on("error", reject);
         });
+        try { req.body = req.rawBody ? JSON.parse(req.rawBody) : {}; } catch (e) { req.body = {}; }
       }
       for (const r of routes) {
         if (r.method !== req.method) continue;
@@ -1026,6 +1408,40 @@ const server = http.createServer(async (req, res) => {
 
 /* Excel sync worker */
 setInterval(() => U.drainOutbox().catch(() => {}), 60e3).unref();
+
+/* daily housekeeping: encrypted backup, document retention,
+   stale-verification alerts, quote-expiring emails */
+backup.schedule();
+async function dailyTick() {
+  /* delete expired customer documents (photos of licenses etc.) */
+  const days = Number(SETTING("doc_retention_days") || 90);
+  const old = db.prepare(`SELECT * FROM uploads WHERE kind='document' AND ts < datetime('now', ?)`).all(`-${days} days`);
+  for (const u of old) {
+    try { fs.unlinkSync(u.path); } catch (e) { /* gone */ }
+    db.prepare("DELETE FROM uploads WHERE id=?").run(u.id);
+    U.audit(null, "upload.retention.delete", "upload", u.id, "kind", u.kind, null, u.rental_id);
+  }
+  /* stale availability → alert partnerships (once per unit per day) */
+  for (const v of publishableUnits().filter(v => v.stale)) {
+    const dupe = db.prepare("SELECT 1 FROM notifications WHERE type='STALE_VERIFICATION' AND body LIKE ? AND ts > datetime('now','-1 day')").get(`%${v.vehicle_id}%`);
+    if (!dupe) await U.notify("partnerships", null, "STALE_VERIFICATION",
+      `Availability on request — ${v.year} ${v.make} ${v.model}`,
+      `Unit ${v.vehicle_id} has not been verified in over ${SETTING("verify_days")} days. It now shows "Availability on request" and instant quoting is paused.`);
+  }
+  /* quote-expiring reminders (within 24h) */
+  const expiring = db.prepare(`SELECT * FROM requests WHERE status='Quote sent'
+    AND quote_expires BETWEEN datetime('now') AND datetime('now','+1 day')`).all();
+  for (const r of expiring) {
+    const dupe = db.prepare("SELECT 1 FROM notifications WHERE type='CUSTOMER_QUOTE_EXPIRING' AND title LIKE ?").get(`%${r.request_id}%`);
+    if (!dupe) emails.customerEmail("QUOTE_EXPIRING", r.email, {
+      requestId: r.request_id, firstName: r.customer_name.split(" ")[0], vehicle: r.vehicle_requested,
+      amount: r.quote_amount, expires: String(r.quote_expires).slice(0, 10),
+      trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${r.request_id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+    }).catch(() => {});
+  }
+}
+dailyTick().catch(() => {});
+setInterval(() => dailyTick().catch(() => {}), 6 * 36e5).unref();
 
 if (require.main === module) {
   server.listen(PORT, () => console.log(`TopNotchRentalz server → http://localhost:${PORT}  (site: ${SITE_DIR})`));

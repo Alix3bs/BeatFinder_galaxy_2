@@ -47,10 +47,15 @@ function audit(user, action, entity, entityId, field, oldValue, newValue, relate
          newValue == null ? null : String(newValue).slice(0, 400), relatedId ?? null);
 }
 
-/* ---------- Excel sync outbox (server-side only; retries with backoff) ---------- */
+/* ---------- Excel sync outbox (server-side only; retries with backoff) ----------
+   Every row carries a stable rowKey (duplicate-prevention id) and a
+   syncedAt stamp so the Excel flow can UPSERT and so stale Excel edits
+   never overwrite newer database records (DB is the source of truth). */
 function queueSync(table, row) {
-  db.prepare("INSERT INTO sync_outbox (table_name, row_json, next_retry) VALUES (?,?,datetime('now'))")
-    .run(table, JSON.stringify(row));
+  const id = row.request_id || row.rental_id || row.vehicle_id || row.partner_id || row.inquiry_id || row.id || crypto.randomUUID();
+  const rowKey = `${table}:${id}`;
+  db.prepare("INSERT INTO sync_outbox (table_name, row_json, row_key, next_retry) VALUES (?,?,?,datetime('now'))")
+    .run(table, JSON.stringify({ ...row, rowKey, syncedAt: new Date().toISOString() }), rowKey);
 }
 async function drainOutbox() {
   const url = process.env.EXCEL_WEBHOOK_URL;

@@ -148,6 +148,8 @@ async function renderAll() {
     if (t === "sync") await renderSync();
     if (t === "audit") await renderAudit();
     if (t === "users") await renderUsers();
+    if (t === "settings") await renderSettings();
+    if (t === "system") await renderSystem();
   } catch (e) {
     if (e.message !== "Signed out")
       $("#tab-" + t).innerHTML = `<h1>${t}</h1><p class="sub">${esc(e.message)}</p>`;
@@ -286,8 +288,54 @@ async function renderRequestDetail() {
           <div><label>Final customer price (total)</label><input class="f-input" id="wFinal" value="${r.final_price || (list[0] ? list[0].daily_rate * matches.days : "")}"></div>
           <div><label>Internal cost (provider total)</label><input class="f-input" id="wCost" value="${r.internal_cost || (list[0] && list[0].provider_rate ? list[0].provider_rate * matches.days : "")}"></div>
         </div>` : ""}
-      <p class="fineprint">Two lowest approved rates are ranked first. Customers only ever see the TopNotchRentalz price. Card details are never stored on this system.</p>
+      <div id="econBox"></div>
+      <h2 style="margin:18px 0 10px">Customer communication &amp; payment</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select class="f-select" id="stripeCat" style="max-width:220px">
+          ${["rental-payment", "booking-deposit", "security-deposit", "remaining-balance", "addons", "damage-charge", "mileage-charge", "toll-ticket-reimbursement"].map(c => `<option>${c}</option>`).join("")}
+        </select>
+        <input class="f-input" id="stripeAmt" placeholder="Amount" style="max-width:120px" value="${r.final_price || ""}">
+        <button class="btn btn-primary btn-mini" id="stripeLink">Create Stripe link</button>
+        <select class="f-select" id="notifyTpl" style="max-width:230px">
+          ${["VEHICLE_UNAVAILABLE", "ALTERNATIVE_OFFERED", "AVAILABILITY_CHECK", "QUOTE_EXPIRING", "DELIVERY_REMINDER", "RETURN_REMINDER", "DEPOSIT_STATUS"].map(t2 => `<option>${t2}</option>`).join("")}
+        </select>
+        <button class="btn btn-ghost btn-mini" id="notifySend">Send branded email</button>
+      </div>
+      <p class="fineprint">Two lowest approved rates are ranked first. Customers only ever see the TopNotchRentalz price. Card details are never stored on this system — Stripe hosts checkout. Damage/mileage/toll charges require an admin + documented authorization.</p>
     </div>`;
+
+  if (["admin", "sales"].includes(ME.role)) {
+    api(`/requests/${r.request_id}/economics`).then(ec => {
+      $("#econBox").innerHTML = `
+        <h2 style="margin:18px 0 10px">Deal economics (internal) <span class="badge dim">${esc(ec.dealModel)}</span> ${ec.rateLabel ? `<span class="badge ${ec.rateLabel === "awaiting-confirmation" ? "warn" : "ok"}">${esc(ec.rateLabel)}</span>` : ""}</h2>
+        <div class="detail-grid">
+          <div class="kv"><i>Public retail (${ec.days}d)</i><b>${ec.publicRetail != null ? money(ec.publicRetail) : "—"}</b></div>
+          <div class="kv"><i>Provider rate</i><b>${ec.providerRate != null ? money(ec.providerRate) : "—"}</b></div>
+          <div class="kv"><i>Customer price</i><b>${money(ec.customerPrice)}</b></div>
+          <div class="kv"><i>Delivery / add-ons</i><b>${money(ec.deliveryAddons)}</b></div>
+          <div class="kv"><i>Provider payout</i><b>${money(ec.providerPayout)}</b></div>
+          <div class="kv"><i>Gross profit</i><b style="color:var(--orange)">${money(ec.grossProfit)}</b></div>
+          <div class="kv"><i>Processing fee (est.)</i><b>${money(ec.processingFee)}</b></div>
+          <div class="kv"><i>Net profit (est.)</i><b style="color:var(--orange)">${money(ec.netProfitEstimate)}</b></div>
+        </div>`;
+    }).catch(() => {});
+  }
+  $("#stripeLink").addEventListener("click", async () => {
+    try {
+      const body = { category: $("#stripeCat").value, amount: Number($("#stripeAmt").value) || r.final_price };
+      if (["damage-charge", "mileage-charge", "toll-ticket-reimbursement"].includes(body.category))
+        body.authorizationNote = prompt("Documented authorization for this post-rental charge (required):") || "";
+      const out = await api(`/requests/${r.request_id}/stripe-link`, body);
+      prompt("Stripe Checkout link (also emailed to the customer):", out.url);
+      renderRequests();
+    } catch (e) { alert(e.message); }
+  });
+  $("#notifySend").addEventListener("click", async () => {
+    try {
+      const out = await api(`/requests/${r.request_id}/notify-customer`, { template: $("#notifyTpl").value });
+      alert("Sent (" + out.delivery + ")");
+    } catch (e) { alert(e.message); }
+  });
 
   const act = async (fn) => { try { await fn(); selReq = r.request_id; renderRequests(); } catch (e) { alert(e.message); } };
   $$("[data-assign]", box).forEach(b => b.addEventListener("click", () => act(() => api(`/requests/${r.request_id}/assign`, { vehicleId: b.dataset.assign }))));
@@ -386,7 +434,10 @@ const INV_FIELDS = [
   ["deposit", "Deposit"], ["min_days", "Min days"], ["mileage_included", "Miles/day"], ["mileage_fee", "Extra mile fee"],
   ["delivery_areas", "Delivery areas"], ["delivery_fee", "Delivery fee"], ["min_age", "Min age"], ["license", "License req"],
   ["insurance", "Insurance req"], ["payments", "Payment methods"], ["last_verified", "Last verified"],
-  ["provider_contact", "Provider contact"], ["notes", "Notes"]
+  ["provider_contact", "Provider contact"], ["notes", "Notes"],
+  ["rate_label", "Rate label: public-retail | confirmed-broker | customer-approved | awaiting-confirmation"],
+  ["photos_approved", "Photos approved (1/0)"], ["price_approved", "Price approved (1/0)"],
+  ["requirements_complete", "Requirements complete (1/0)"], ["deal_model", "Deal model (blank = partner default)"]
 ];
 function invForm(v) {
   const isNew = !v;
@@ -428,14 +479,17 @@ async function renderPartners() {
       <div class="panel-head"><h2>Partners (${partners.length})</h2>
         <button class="btn btn-primary btn-mini" id="pAdd">+ Add partner</button></div>
       <div class="tbl-wrap"><table class="tbl">
-        <tr><th>ID</th><th>Company</th><th>Contact</th><th>Market</th><th>Payout</th><th>Status</th></tr>
+        <tr><th>ID</th><th>Company</th><th>Contact</th><th>Market</th><th>Deal model</th><th>Onboarding</th></tr>
         ${partners.map(p => `
           <tr><td><b>${p.partner_id}</b></td><td>${esc(p.company)}</td>
           <td>${esc(p.contact)}<br><span style="color:var(--muted)">${esc(p.phone)} · ${esc(p.email)}</span></td>
-          <td>${esc(p.market)}</td><td>${esc(p.payout_method)}</td>
+          <td>${esc(p.market)}</td>
+          <td><select class="f-select" style="padding:6px 10px;font-size:11.5px" data-deal="${p.partner_id}">
+            ${["broker-markup", "split-80-20", "referral-fixed", "flat-payout", "custom"].map(s => `<option ${p.deal_model === s ? "selected" : ""}>${s}</option>`).join("")}
+          </select></td>
           <td><select class="f-select" style="padding:6px 10px;font-size:11.5px" data-pst="${p.partner_id}">
-            ${["Approved", "Pending", "Paused"].map(s => `<option ${p.status === s ? "selected" : ""}>${s}</option>`).join("")}
-          </select></td></tr>`).join("")}
+            ${["Lead", "Discussion", "Terms pending", "Documents pending", "Inventory pending", "Active", "Paused", "Terminated"].map(s => `<option ${p.onboarding_status === s ? "selected" : ""}>${s}</option>`).join("")}
+          </select>${p.onboarding_status !== "Active" ? '<br><span class="fineprint" style="margin:4px 0 0">not publishing</span>' : ""}</td></tr>`).join("")}
       </table></div>
     </div>
     <div class="panel">
@@ -449,7 +503,11 @@ async function renderPartners() {
     </div>
     <div id="pForm"></div>`;
   $$("[data-pst]", el).forEach(s => s.addEventListener("change", async () => {
-    await api("/partners/" + s.dataset.pst, { status: s.value }, "PATCH").catch(e => alert(e.message));
+    await api("/partners/" + s.dataset.pst, { onboarding_status: s.value, status: s.value === "Active" ? "Approved" : "Pending" }, "PATCH").catch(e => alert(e.message));
+    renderPartners();
+  }));
+  $$("[data-deal]", el).forEach(s => s.addEventListener("change", async () => {
+    await api("/partners/" + s.dataset.deal, { deal_model: s.value }, "PATCH").catch(e => alert(e.message));
   }));
   $("#pAdd").addEventListener("click", () => {
     $("#pForm").innerHTML = `<div class="panel"><h2>Add partner</h2><div class="frm">
@@ -502,6 +560,17 @@ async function renderRentalDetail() {
   const x = rentals.find(r => r.rental_id === selRental);
   if (!x || !box) return;
   const photos = await api("/uploads?rentalId=" + x.rental_id).catch(() => []);
+  const meta = await api("/meta/checklists").catch(() => ({ pre: [], post: [] }));
+  const pre = JSON.parse(x.pre_checklist || "{}"), post = JSON.parse(x.post_checklist || "{}");
+  const nice = k => k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  const checklistHTML = (title, items, state, prefix, note) => `
+    <div class="frm-full">
+      <label>${title} — ${items.filter(k => state[k]).length}/${items.length} ${note}</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;margin-top:6px">
+        ${items.map(k => `<label class="f-check" style="margin:0;font-size:12.5px">
+          <input type="checkbox" data-ck="${prefix}.${k}" ${state[k] ? "checked" : ""}><span class="box">✓</span>${nice(k)}</label>`).join("")}
+      </div>
+    </div>`;
   box.innerHTML = `
     <div class="panel">
       <div class="panel-head"><h2>${x.rental_id} — ${esc(x.vehicle)}</h2>
@@ -516,6 +585,8 @@ async function renderRentalDetail() {
         <div><label>Deposit refunded</label><select class="f-select" id="rDepRef">${["No", "Yes"].map(s => `<option ${x.deposit_refunded === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
         <div><label>Payout paid</label><select class="f-select" id="rPayoutPaid">${["No", "Yes"].map(s => `<option ${x.payout_paid === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
         <div><label>Review requested</label><select class="f-select" id="rRevReq">${["No", "Yes"].map(s => `<option ${x.review_requested === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+        ${checklistHTML("Pre-rental checklist (required before pickup can be marked Done)", meta.pre, pre, "pre", "")}
+        ${checklistHTML("Post-rental checklist (required before provider payout)", meta.post, post, "post", "")}
         <div class="frm-full"><label>Customer review</label><input class="f-input" id="rReview" value="${esc(x.review || "")}"></div>
         <div class="frm-full"><label>Notes</label><input class="f-input" id="rNotes" value="${esc(x.notes || "")}"></div>
         <div class="frm-full">
@@ -541,13 +612,19 @@ async function renderRentalDetail() {
     });
   });
   $("#rSave").addEventListener("click", async () => {
+    const ck = { pre: {}, post: {} };
+    $$("[data-ck]", box).forEach(c => {
+      const [grp, key] = c.dataset.ck.split(".");
+      ck[grp][key] = c.checked;
+    });
     try {
       await api("/rentals/" + x.rental_id, {
         amount_paid: Number($("#rPaid").value) || 0, balance_due: Number($("#rDue").value) || 0,
         deposit: Number($("#rDep").value) || 0, provider_payout: Number($("#rPayout").value) || 0,
         pickup_status: $("#rPick").value, return_status: $("#rRet").value,
         deposit_refunded: $("#rDepRef").value, payout_paid: $("#rPayoutPaid").value,
-        review_requested: $("#rRevReq").value, review: $("#rReview").value, notes: $("#rNotes").value
+        review_requested: $("#rRevReq").value, review: $("#rReview").value, notes: $("#rNotes").value,
+        pre_checklist: ck.pre, post_checklist: ck.post
       }, "PATCH");
       renderRentals();
     } catch (e) { alert(e.message); }
@@ -696,6 +773,76 @@ async function renderUsers() {
       renderUsers();
     } catch (e) { alert(e.message); }
   });
+}
+
+/* ----- company settings + backups (admin) ----- */
+async function renderSettings() {
+  const el = $("#tab-settings");
+  const [s, b] = await Promise.all([api("/settings"), api("/system/backups")]);
+  const FIELDS = [["business_name", "Business name"], ["city", "Business location"], ["address", "Address"],
+    ["phone", "Business phone"], ["whatsapp", "WhatsApp (digits only)"], ["email", "Business email"],
+    ["instagram", "Instagram"], ["hours", "Hours"], ["policy_version", "Policy version"],
+    ["verify_days", "Availability verification window (days)"], ["doc_retention_days", "Customer document retention (days)"]];
+  el.innerHTML = `
+    <h1>Company Settings</h1>
+    <p class="sub">Changes go live on the customer site immediately — no code edits.</p>
+    <div class="panel">
+      <div class="frm">${FIELDS.map(f => `<div><label>${f[1]}</label><input class="f-input" id="set_${f[0]}" value="${esc(s[f[0]] ?? "")}"></div>`).join("")}</div>
+      <button class="btn btn-primary btn-mini" id="setSave" style="margin-top:14px">Save settings</button>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Database backups ${b.encryptionConfigured ? '<span class="badge ok">encrypted</span>' : '<span class="badge warn">BACKUP_ENCRYPTION_KEY not set</span>'}</h2>
+        <button class="btn btn-chrome btn-mini" id="bkNow">Back up now</button>
+      </div>
+      <p class="fineprint">Daily automatic backups · ${b.retention}-day retention · a backup also runs before every fleet import.
+      Customer documents are excluded from these archives by design. Restore: <code>node scripts/restore.mjs &lt;file&gt;</code>.</p>
+      <div class="tbl-wrap"><table class="tbl">
+        <tr><th>When</th><th>File</th><th>Size</th><th>Reason</th><th>Status</th></tr>
+        ${b.history.map(h => `<tr><td>${esc(h.ts)}</td><td>${esc(h.file)}</td><td>${h.size ? (h.size / 1024).toFixed(0) + " KB" : ""}</td>
+          <td>${esc(h.reason)}</td><td><span class="badge ${h.status === "ok" ? "ok" : "bad"}">${h.status}</span>${h.error ? " " + esc(h.error) : ""}</td></tr>`).join("")}
+      </table></div>
+    </div>`;
+  $("#setSave").addEventListener("click", async () => {
+    const body = {};
+    FIELDS.forEach(f => body[f[0]] = $("#set_" + f[0]).value.trim());
+    try { await api("/settings", body, "PATCH"); renderSettings(); } catch (e) { alert(e.message); }
+  });
+  $("#bkNow").addEventListener("click", async () => {
+    try { await api("/system/backup", {}); renderSettings(); } catch (e) { alert(e.message); }
+  });
+}
+
+/* ----- system health (admin) ----- */
+async function renderSystem() {
+  const el = $("#tab-system");
+  const h = await api("/system/health");
+  const flag = (ok, okTxt, badTxt) => ok ? `<span class="badge ok">${okTxt}</span>` : `<span class="badge bad">${badTxt}</span>`;
+  const row = (k, v) => `<div class="rem-item"><span class="rem-dot"></span>${k}<span class="rem-when">${v}</span></div>`;
+  el.innerHTML = `
+    <h1>System Health</h1>
+    <p class="sub">Environment: <b style="color:var(--orange)">${esc(h.env)}</b> · point an uptime monitor (e.g. UptimeRobot) at <code>/api/health</code>.</p>
+    <div class="stat-row">
+      <div class="stat"><b>${flag(h.db.ok, "OK", "DOWN")}</b><span>Database (${(h.db.sizeBytes / 1024).toFixed(0)} KB)</span></div>
+      <div class="stat"><b>${h.backups.ageHours == null ? "—" : h.backups.ageHours + "h"}</b><span>Since last backup ${h.backups.failures24h ? "· " + h.backups.failures24h + " failed" : ""}</span></div>
+      <div class="stat"><b>${h.excelSync.pending + h.excelSync.failed}</b><span>Excel rows queued (${h.excelSync.failed} failed)</span></div>
+      <div class="stat"><b>${flag(h.email.configured, "LIVE", "RECORDED-ONLY")}</b><span>Email delivery</span></div>
+      <div class="stat"><b>${flag(h.stripe.configured, "LIVE", "NOT SET")}</b><span>Stripe</span></div>
+      <div class="stat"><b>${h.security.failedLogins24h}</b><span>Failed logins (24h)</span></div>
+    </div>
+    <div class="panel"><h2>Detail</h2>
+      ${row("Excel webhook configured", h.excelSync.configured ? "yes" : "no — rows queue safely")}
+      ${row("Last successful Excel sync", h.excelSync.lastSuccessAt || "never")}
+      ${row("Backups encrypted", h.backups.encrypted ? "yes (AES-256-GCM)" : "no — set BACKUP_ENCRYPTION_KEY")}
+      ${row("Stripe webhook secret set", h.stripe.webhookSecretSet ? "yes" : "no")}
+      ${row("Rejected Stripe webhooks (24h)", h.stripe.rejectedWebhooks24h)}
+      ${row("Emails recorded-only (24h)", h.email.recordedOnly24h)}
+      ${row("Permission denials (24h)", h.security.authzDenied24h)}
+      ${row("Active sessions", h.security.activeSessions)}
+      ${row("Upload storage", (h.storage.uploadsBytes / 1048576).toFixed(1) + " MB")}
+      ${row("Backup storage", (h.storage.backupsBytes / 1048576).toFixed(1) + " MB")}
+      ${row("Rejected uploads (24h)", h.uploads.failed24h)}
+    </div>`;
 }
 
 boot();

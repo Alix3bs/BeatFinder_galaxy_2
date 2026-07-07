@@ -155,4 +155,61 @@ CREATE TABLE IF NOT EXISTS uploads (
 );
 `);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at TEXT DEFAULT (datetime('now')),
+  updated_by TEXT
+);
+
+CREATE TABLE IF NOT EXISTS consents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts TEXT DEFAULT (datetime('now')),
+  request_id TEXT,
+  ip TEXT,
+  policy_version TEXT,
+  consent_text TEXT,
+  items TEXT
+);
+
+CREATE TABLE IF NOT EXISTS stripe_events (
+  event_id TEXT PRIMARY KEY,
+  ts TEXT DEFAULT (datetime('now')),
+  type TEXT,
+  request_id TEXT,
+  status TEXT
+);
+
+CREATE TABLE IF NOT EXISTS backups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts TEXT DEFAULT (datetime('now')),
+  file TEXT, size INTEGER, encrypted INTEGER,
+  reason TEXT, status TEXT, error TEXT
+);
+`);
+
+/* additive migrations — safe to run on existing databases */
+function addColumn(table, col, def) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+  if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+}
+addColumn("partners", "onboarding_status", "TEXT DEFAULT 'Lead'");
+addColumn("partners", "deal_model", "TEXT DEFAULT 'broker-markup'");
+addColumn("partners", "deal_terms", "TEXT DEFAULT ''");
+addColumn("vehicles", "rate_label", "TEXT DEFAULT 'awaiting-confirmation'");
+addColumn("vehicles", "photos_approved", "INTEGER DEFAULT 0");
+addColumn("vehicles", "price_approved", "INTEGER DEFAULT 0");
+addColumn("vehicles", "requirements_complete", "INTEGER DEFAULT 0");
+addColumn("vehicles", "deal_model", "TEXT DEFAULT ''");
+addColumn("payments", "stripe_customer_id", "TEXT");
+addColumn("payments", "stripe_payment_intent", "TEXT");
+addColumn("payments", "currency", "TEXT DEFAULT 'usd'");
+addColumn("payments", "category", "TEXT DEFAULT ''");
+addColumn("payments", "authorization_note", "TEXT");
+addColumn("rentals", "pre_checklist", "TEXT DEFAULT '{}'");
+addColumn("rentals", "post_checklist", "TEXT DEFAULT '{}'");
+addColumn("sync_outbox", "row_key", "TEXT");
+addColumn("uploads", "expires_at", "TEXT");
+
 module.exports = { db, DATA_DIR };
