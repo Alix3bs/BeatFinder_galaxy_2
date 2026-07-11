@@ -891,6 +891,91 @@ if (trackBox) {
     });
   };
 
+  /* ---- Phase 4.1: availability result + payment popup panel ---- */
+  let holdTimer;
+  const renderPayPanel = async (id, phone) => {
+    let po;
+    try { po = await api(`/public/payment-options?id=${encodeURIComponent(id)}&phone=${encodeURIComponent(phone)}`); }
+    catch (e) { return; }
+    let box = $("#payPanel");
+    if (!box) { box = document.createElement("div"); box.id = "payPanel"; out().appendChild(box); }
+    clearInterval(holdTimer);
+
+    if (po.state === "available") {
+      const b = po.breakdown;
+      const rowsHtml = [
+        ["Vehicle", b.vehicle], ["Dates", b.dates], ["Delivery", b.deliveryLocation],
+        ["Rental amount", "$" + b.rentalAmount.toLocaleString()],
+        ["Security deposit", "$" + b.securityDeposit.toLocaleString() + " (" + b.depositHandling + ", separate)"],
+        ["Delivery fee", "$" + b.deliveryFee.toLocaleString()], ["Add-ons", b.addons],
+        ["Taxes / processing", "$" + b.taxesProcessing.toLocaleString()]
+      ].map(x => `<div class="rate-row"><span class="rk">${x[0]}</span><span class="rv">${x[1]}</span></div>`).join("");
+      const methodBtn = m => `<button class="btn ${m.kind === "online" ? "btn-primary" : "btn-ghost"} btn-block" data-pm="${m.id}" style="margin-top:10px">${m.label}</button>`;
+      box.innerHTML = `
+        <div class="addr-card" style="margin-top:20px;border-color:var(--orange)">
+          <b style="color:var(--orange)">Your vehicle is available for the selected dates ✓</b>
+          <p class="fineprint" style="margin-top:4px">Complete payment before the temporary hold expires:
+          <b id="holdCountdown" style="color:var(--orange)">--:--</b></p>
+          <div class="rate-table" style="margin:14px 0">${rowsHtml}
+            <div class="rate-row"><span class="rk"><b>Total due now</b></span><span class="rv hl" style="font-size:18px">$${b.totalDueNow.toLocaleString()}</span></div>
+            ${b.remainingBalance ? `<div class="rate-row"><span class="rk">Remaining balance</span><span class="rv">$${b.remainingBalance.toLocaleString()}</span></div>` : ""}
+          </div>
+          ${po.methods.online.length ? `<div class="f-label">Pay online${po.methods.providerName ? " · " + po.methods.providerName : ""}</div>` + po.methods.online.map(methodBtn).join("") : ""}
+          ${po.methods.manual.length ? `<div class="f-label" style="margin-top:16px">Other approved payment options</div>` + po.methods.manual.map(methodBtn).join("") : ""}
+          <p class="fineprint">Payments are processed securely — card details never touch our servers. Manual methods confirm after our team verifies receipt.</p>
+        </div>`;
+      const expiry = new Date(po.holdExpiresAt.replace(" ", "T"));
+      const tick = () => {
+        const left = expiry - Date.now();
+        const el = $("#holdCountdown");
+        if (!el) return clearInterval(holdTimer);
+        if (left <= 0) { el.textContent = "expired"; clearInterval(holdTimer); renderPayPanel(id, phone); return; }
+        el.textContent = `${String(Math.floor(left / 6e4)).padStart(2, "0")}:${String(Math.floor(left / 1e3) % 60).padStart(2, "0")}`;
+      };
+      tick(); holdTimer = setInterval(tick, 1000);
+      $$("[data-pm]", box).forEach(btn => btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        try {
+          const outp = await api("/public/pay", { requestId: id, phone, method: btn.dataset.pm });
+          if (outp.state === "redirect") location.href = outp.url;
+          else { toast(outp.state === "manual" ? "Instructions below" : outp.message || "Updated"); renderPayPanel(id, phone); if (outp.message) alert(outp.message); }
+        } catch (e) { toast(e.message); btn.disabled = false; }
+      }));
+    } else if (po.state === "unavailable") {
+      box.innerHTML = `
+        <div class="alt-banner" style="margin-top:20px">
+          <b>This vehicle is unavailable for the selected dates.</b>
+          ${po.alternatives.length ? "Two approved alternatives — pick one and we'll re-run the check instantly (no new form):" : "Message us on WhatsApp and we'll hunt something comparable."}
+          <div class="alt-row">
+            ${po.alternatives.map(a => `<button class="alt-chip" data-alt='${JSON.stringify(a.model)}'>
+              <b>${a.name}</b><span>$${Number(a.pricePerDay).toLocaleString()}/day · $${Number(a.deposit).toLocaleString()} deposit</span>
+              <span style="color:var(--muted);font-weight:600;display:block;font-size:11px">${a.dates} · ${a.delivery}</span></button>`).join("")}
+          </div>
+        </div>`;
+      $$("[data-alt]", box).forEach(chip => chip.addEventListener("click", async () => {
+        try {
+          await api(`/public/requests/${id}/choose-alternative`, { phone, model: JSON.parse(chip.dataset.alt) });
+          toast("Switched — re-checking availability now");
+          showResult(id, phone);
+        } catch (e) { toast(e.message); }
+      }));
+    } else if (po.state === "expired") {
+      box.innerHTML = `<div class="alt-banner" style="margin-top:20px"><b>Your temporary hold expired.</b>
+        The car went back on the market — tap below and we'll re-verify availability with the provider.
+        <div class="alt-row"><button class="btn btn-primary btn-sm" id="recheckBtn">Re-check availability</button></div></div>`;
+      $("#recheckBtn").addEventListener("click", async () => {
+        try { const o = await api("/public/pay", { requestId: id, phone, method: "card" }); toast(o.message || "Re-checking"); showResult(id, phone); }
+        catch (e) { toast(e.message); }
+      });
+    } else if (po.state === "manual-pending") {
+      box.innerHTML = `<p class="fineprint" style="margin-top:18px"><b style="color:var(--orange)">Payment verification in progress.</b> ${po.message}</p>`;
+    } else if (po.state === "pending") {
+      box.innerHTML = `<p class="fineprint" style="margin-top:18px">${po.message}</p>`;
+    } else if (po.state === "confirmed") {
+      box.innerHTML = `<p class="fineprint" style="margin-top:18px" >✓ ${po.message}</p>`;
+    }
+  };
+
   const showResult = async (id, phone) => {
     if (!phone) {
       out().innerHTML = `<p class="fineprint" style="margin-top:18px">Enter the last 4 digits of the phone number on the request so we can verify it's you.</p>`;
@@ -899,6 +984,7 @@ if (trackBox) {
     try {
       const r = await api(`/public/track?id=${encodeURIComponent(id)}&phone=${encodeURIComponent(phone)}`);
       renderTracked(r, phone);
+      renderPayPanel(id, phone);
     } catch (e) {
       /* offline demo fallback */
       const local = DB.read("tn_requests").find(x => (x.requestId || "").toLowerCase() === id.toLowerCase());

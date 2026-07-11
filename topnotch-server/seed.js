@@ -29,7 +29,7 @@ const V = (vehicle_id, fleet_id, partner_id, provider, year, make, model, trim, 
   deposit, min_days: 1, mileage_included: 100, mileage_fee: mileageFee,
   delivery_areas: areas, delivery_fee: 150, min_age: 25,
   license: "Valid US/Intl license", insurance: "Full coverage transferable", payments: "Card, Zelle, wire",
-  status: "available", booked_dates: "[]", last_verified: "2026-07-03", ...extra
+  status: "available", booked_dates: "[]", last_verified: new Date().toISOString().slice(0, 10), ...extra
 });
 
 const VEHICLES = [
@@ -39,7 +39,7 @@ const VEHICLES = [
   V("V-1004", "f8", "P-002", "Velocity Exotics", 2022, "Ferrari", "F8 Tributo", "Base", "Rosso Corsa", 1399, 1000, 5000, 7.5, "Dade, Broward", { status: "booked", booked_dates: '["2026-07-02→2026-07-09"]', notes: "On rent until 07/09." }),
   V("V-1005", "cullinan", "P-003", "Crown Luxury Fleet", 2023, "Rolls-Royce", "Cullinan", "Black Badge", "Black", 1499, 1100, 5000, 7.5, "Dade, Broward, FBO", { min_age: 27, delivery_fee: 0, notes: "Starlight headliner." }),
   V("V-1006", "g63", "P-001", "Prestige Auto Group", 2023, "Mercedes-AMG", "G63", "AMG", "Matte Black", 899, 650, 2500, 5, "Dade, Broward", {}),
-  V("V-1007", "g63", "P-003", "Crown Luxury Fleet", 2022, "Mercedes-AMG", "G63", "AMG", "White", 949, 700, 2500, 5, "Dade, Broward, Palm Beach", { last_verified: "2026-06-28" }),
+  V("V-1007", "g63", "P-003", "Crown Luxury Fleet", 2022, "Mercedes-AMG", "G63", "AMG", "White", 949, 700, 2500, 5, "Dade, Broward, Palm Beach", { last_verified: new Date(Date.now() - 9 * 864e5).toISOString().slice(0, 10) }),
   V("V-1008", "911turbo", "P-001", "Prestige Auto Group", 2023, "Porsche", "911 Turbo S", "Turbo S", "GT Silver", 999, 720, 2500, 5, "Dade", {})
 ];
 
@@ -55,7 +55,18 @@ const DEFAULT_SETTINGS = {
   hours: "Mon – Sun · 9:00 AM – 9:00 PM",
   policy_version: "2026-07-06",
   verify_days: "7",
-  doc_retention_days: "90"
+  doc_retention_days: "90",
+  /* Phase 4.1 — payments & holds (all editable in Admin → Settings) */
+  payment_provider: "lumino",        // lumino | stripe | mock (mock auto-selected when no credentials)
+  stripe_enabled: "0",
+  hold_minutes: "20",
+  quote_expiry_days: "3",
+  payment_mode: "full",              // full | partial
+  reservation_amount: "500",
+  deposit_handling: "collected",     // collected | external | authorization (authorization only if provider supports it)
+  methods_card: "1", methods_ach: "0", methods_bnpl: "0", methods_link: "1", methods_invoice: "1",
+  methods_bank: "1", methods_zelle: "1", methods_cash: "1", methods_other: "0",
+  tax_processing_pct: "3"            // shown to customer as taxes/processing estimate
 };
 
 function seed() {

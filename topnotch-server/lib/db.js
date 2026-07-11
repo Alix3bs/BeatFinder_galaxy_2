@@ -189,6 +189,26 @@ CREATE TABLE IF NOT EXISTS backups (
 );
 `);
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS holds (
+  hold_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  request_id TEXT NOT NULL,
+  vehicle_id TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active','expired','released','converted')),
+  created_by TEXT, note TEXT
+);
+
+CREATE TABLE IF NOT EXISTS payment_events (
+  provider TEXT NOT NULL,
+  event_id TEXT NOT NULL,
+  ts TEXT DEFAULT (datetime('now')),
+  type TEXT, request_id TEXT, status TEXT DEFAULT 'processed', error TEXT,
+  PRIMARY KEY (provider, event_id)
+);
+`);
+
 /* additive migrations — safe to run on existing databases */
 function addColumn(table, col, def) {
   const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
@@ -211,5 +231,13 @@ addColumn("rentals", "pre_checklist", "TEXT DEFAULT '{}'");
 addColumn("rentals", "post_checklist", "TEXT DEFAULT '{}'");
 addColumn("sync_outbox", "row_key", "TEXT");
 addColumn("uploads", "expires_at", "TEXT");
+addColumn("requests", "availability_status", "TEXT DEFAULT 'unchecked'");
+addColumn("requests", "availability_reasons", "TEXT DEFAULT ''");
+addColumn("requests", "availability_checked_at", "TEXT");
+addColumn("requests", "payment_method", "TEXT DEFAULT ''");
+addColumn("payments", "provider", "TEXT DEFAULT ''");
+addColumn("payments", "external_ref", "TEXT");
+addColumn("payments", "paid_at", "TEXT");
+addColumn("payments", "refund_status", "TEXT DEFAULT ''");
 
 module.exports = { db, DATA_DIR };

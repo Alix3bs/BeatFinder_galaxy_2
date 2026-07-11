@@ -23,6 +23,8 @@ const U = require("./lib/util");
 const backup = require("./lib/backup");
 const stripe = require("./lib/stripe");
 const emails = require("./lib/emails");
+const P = require("./lib/payments");
+const agent = require("./lib/agent");
 const { seed } = require("./seed");
 seed();
 
@@ -53,6 +55,7 @@ const TERMINAL = ["Declined", "Cancelled", "Completed"];
 const CUSTOMER_LABEL = s => ({
   "Request submitted": "Request submitted",
   "Under review": "Availability being confirmed",
+  "Manual availability confirmation required": "Availability being confirmed",
   "Availability being confirmed": "Availability being confirmed",
   "Provider confirmed": "Availability being confirmed",
   "Approved": "Approved",
@@ -82,8 +85,65 @@ function vehicleConflicts(vehicleId, start, end, ignoreRequestId) {
     if (rangesOverlap(start, end, r.start_date.slice(0, 10), r.end_date.slice(0, 10)))
       conflicts.push(`request ${r.request_id}`);
   }
+  /* active temporary holds block overlapping requests from reaching payment */
+  const holds = db.prepare(`SELECT h.hold_id, r.start_date s, r.end_date e FROM holds h
+      JOIN requests r ON r.request_id = h.request_id
+      WHERE h.vehicle_id = ? AND h.status='active' AND h.expires_at > datetime('now') AND h.request_id != ?`)
+    .all(vehicleId, ignoreRequestId || "");
+  for (const h of holds)
+    if (rangesOverlap(start, end, h.s.slice(0, 10), h.e.slice(0, 10))) conflicts.push(`hold #${h.hold_id}`);
   return conflicts;
 }
+
+/* ============================================================
+   TEMPORARY VEHICLE HOLDS
+   ============================================================ */
+const activeHold = requestId => db.prepare(
+  "SELECT * FROM holds WHERE request_id=? AND status='active' AND expires_at > datetime('now') ORDER BY hold_id DESC LIMIT 1").get(requestId);
+
+function createHold(actor, r, vehicleId, minutes) {
+  const mins = minutes || Number(SETTING("hold_minutes") || 20);
+  const existing = activeHold(r.request_id);
+  if (existing) return existing;
+  const expires = new Date(Date.now() + mins * 6e4).toISOString().replace("T", " ").slice(0, 19);
+  const info = db.prepare("INSERT INTO holds (request_id, vehicle_id, expires_at, created_by) VALUES (?,?,?,?)")
+    .run(r.request_id, vehicleId, expires, actor?.email || "system");
+  U.audit(actor, "hold.created", "hold", info.lastInsertRowid, "expires_at", null, expires, r.request_id);
+  U.notify("ops", null, "HOLD_CREATED", `Hold created — ${r.request_id}`,
+    `Unit ${vehicleId} held ${mins} min (until ${expires.slice(11, 16)} UTC) for ${r.customer_name}.`).catch(() => {});
+  const v = db.prepare("SELECT * FROM vehicles WHERE vehicle_id=?").get(vehicleId);
+  if (v) U.queueSync("PartnerInventory", { ...v, activeHold: r.request_id, holdExpires: expires });
+  return db.prepare("SELECT * FROM holds WHERE hold_id=?").get(info.lastInsertRowid);
+}
+
+function closeHold(actor, hold, status) {
+  db.prepare("UPDATE holds SET status=? WHERE hold_id=?").run(status, hold.hold_id);
+  U.audit(actor, "hold." + status, "hold", hold.hold_id, "status", "active", status, hold.request_id);
+  const v = db.prepare("SELECT * FROM vehicles WHERE vehicle_id=?").get(hold.vehicle_id);
+  if (v) U.queueSync("PartnerInventory", { ...v, activeHold: null, holdExpires: null });
+}
+
+/* sweeper: expire overdue holds, warn customers 5 min out */
+async function sweepHolds() {
+  for (const h of db.prepare("SELECT * FROM holds WHERE status='active' AND expires_at <= datetime('now')").all()) {
+    closeHold(null, h, "expired");
+    db.prepare("UPDATE requests SET payment_status='Hold expired' WHERE request_id=? AND payment_status != 'verified'").run(h.request_id);
+    await U.notify("sales", null, "HOLD_EXPIRED", `Hold expired — ${h.request_id}`,
+      `Unit ${h.vehicle_id} released. Availability must be re-checked before any new payment.`);
+  }
+  const soon = db.prepare(`SELECT h.*, r.email, r.customer_name, r.vehicle_requested, r.phone FROM holds h
+      JOIN requests r ON r.request_id=h.request_id
+      WHERE h.status='active' AND h.expires_at BETWEEN datetime('now') AND datetime('now','+5 minutes') AND h.note IS NULL`).all();
+  for (const h of soon) {
+    db.prepare("UPDATE holds SET note='warned' WHERE hold_id=?").run(h.hold_id);
+    emails.customerEmail("HOLD_EXPIRING", h.email, {
+      requestId: h.request_id, firstName: (h.customer_name || "").split(" ")[0],
+      vehicle: h.vehicle_requested, expires: h.expires_at.slice(11, 16) + " UTC",
+      trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${h.request_id}&ph=${(h.phone || "").replace(/\D/g, "").slice(-4)}`
+    }).catch(() => {});
+  }
+}
+setInterval(() => sweepHolds().catch(() => {}), 60e3).unref();
 
 /* ---------- field filters (what each audience may see) ---------- */
 const VEHICLE_PUBLIC = ["vehicle_id", "fleet_id", "year", "make", "model", "trim", "color", "market",
@@ -149,7 +209,7 @@ route("GET", "/api/public/settings", (req, res) => {
 });
 
 route("POST", "/api/public/requests", async (req, res) => {
-  if (!U.rateLimit(req.ip, "requests", 5, 10 * 60e3)) return bad(res, "Too many requests — please try again shortly.", 429);
+  if (!U.rateLimit(req.ip, "requests", Number(process.env.TN_RATE_REQUESTS || 5), 10 * 60e3)) return bad(res, "Too many requests — please try again shortly.", 429);
   const b = req.body || {};
   if (b.website) return json(res, 200, { ok: true, requestId: "TN-OK" }); // honeypot: swallow silently
 
@@ -203,8 +263,48 @@ route("POST", "/api/public/requests", async (req, res) => {
     await U.notify("sales", null, "DUPLICATE_REQUEST", `Possible duplicate ${id} (of ${dupe.request_id})`,
       `${name} re-submitted ${vehicle} for overlapping dates.`);
   }
+  /* AI availability agent — runs on every fresh request; never invents availability */
+  if (!dupe) await runAgent(null, row);
   json(res, 200, { ok: true, requestId: id, duplicate: !!dupe, duplicateOf: dupe?.request_id });
 });
+
+async function runAgent(actor, r) {
+  const d = agent.checkAvailability(r);
+  db.prepare("UPDATE requests SET availability_status=?, availability_reasons=?, availability_checked_at=? WHERE request_id=?")
+    .run(d.result, JSON.stringify({ reasons: d.reasons, alternatives: d.alternatives || [], customerIssues: d.customerIssues }), d.checkedAt, r.request_id);
+  U.audit(actor, "agent.availability", "request", r.request_id, "result", r.availability_status, d.result + " — " + d.reasons.join("; ").slice(0, 200), r.request_id);
+  if (d.excelWarning)
+    await U.notify("admin", null, "EXCEL_LAG", `Excel sync warning — ${r.request_id}`, d.excelWarning);
+
+  if (d.result === "available" && d.unit) {
+    /* current record + no overlap → straight to provider confirmation */
+    db.prepare("UPDATE requests SET assigned_vehicle_id=?, status='Availability being confirmed' WHERE request_id=?")
+      .run(d.unit.vehicle_id, r.request_id);
+    U.audit(actor, "agent.assign", "request", r.request_id, "assigned_vehicle_id", null, d.unit.vehicle_id, r.request_id);
+    await U.notify(null, d.unit.partner_id, "AVAILABILITY_REQUEST", `Availability check — ${d.unit.year} ${d.unit.make} ${d.unit.model}`,
+      `Unit ${d.unit.vehicle_id}: ${r.start_date} → ${r.end_date}. ${r.option === "pickup" ? "Showroom pickup" : "Delivery: " + r.delivery_location}. Confirm or decline in your portal. (${r.request_id})`);
+    emails.customerEmail("AVAILABILITY_CHECK", r.email, {
+      requestId: r.request_id, firstName: (r.customer_name || "").split(" ")[0], vehicle: r.vehicle_requested,
+      dates: `${r.start_date} → ${r.end_date}`,
+      trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${r.request_id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+    }).catch(() => {});
+  } else if (d.result === "unavailable") {
+    await U.notify("sales", null, "AI_UNAVAILABLE", `Unavailable — ${r.request_id}`,
+      `${r.vehicle_requested} has date conflicts for ${r.start_date}→${r.end_date}. ${d.alternatives?.length || 0} alternatives offered.`);
+    emails.customerEmail("VEHICLE_UNAVAILABLE", r.email, {
+      requestId: r.request_id, firstName: (r.customer_name || "").split(" ")[0], vehicle: r.vehicle_requested,
+      dates: `${r.start_date} → ${r.end_date}`,
+      trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${r.request_id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+    }).catch(() => {});
+  } else {
+    db.prepare("UPDATE requests SET status='Manual availability confirmation required' WHERE request_id=? AND status IN ('Request submitted','Under review')").run(r.request_id);
+    await U.notify("ops", null, "AI_MANUAL", `Manual availability confirmation required — ${r.request_id}`,
+      `Reasons: ${d.reasons.join("; ")}${d.customerIssues.length ? " · Customer: " + d.customerIssues.join("; ") : ""}`);
+    if (d.unit) await U.notify(null, d.unit.partner_id, "AVAILABILITY_QUESTION",
+      `Please re-verify unit ${d.unit.vehicle_id}`, `A customer requested it for ${r.start_date} → ${r.end_date} but the record needs verification.`);
+  }
+  return d;
+}
 
 route("GET", "/api/public/track", (req, res) => {
   if (!U.rateLimit(req.ip, "track", 30, 10 * 60e3)) return bad(res, "Slow down.", 429);
@@ -538,10 +638,17 @@ route("POST", "/api/requests/:id/approve", (req, res) => {
   const final = Number(req.body.finalPrice), cost = Number(req.body.internalCost);
   if (!U.isMoney(final) || !final || !U.isMoney(cost)) return bad(res, "Valid final price and internal cost required");
   U.audit(req.user, "request.price.approved", "request", r.request_id, "final_price", r.final_price, final, r.request_id);
-  db.prepare("UPDATE requests SET final_price=?, internal_cost=?, profit=? WHERE request_id=?")
+  db.prepare("UPDATE requests SET final_price=?, internal_cost=?, profit=?, payment_status='Available — payment required' WHERE request_id=?")
     .run(final, cost, final - cost, r.request_id);
   setStatus(req.user, r, "Approved");
-  json(res, 200, { ok: true, profit: final - cost });
+  /* provider confirmed + price approved → temporary hold + payment popup */
+  const hold = createHold(req.user, r, r.assigned_vehicle_id);
+  emails.customerEmail("VEHICLE_AVAILABLE", r.email, {
+    requestId: r.request_id, firstName: r.customer_name.split(" ")[0], vehicle: r.vehicle_requested,
+    dates: `${r.start_date} → ${r.end_date}`, amount: final, expires: hold.expires_at.slice(11, 16) + " UTC",
+    trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${r.request_id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+  }).catch(() => {});
+  json(res, 200, { ok: true, profit: final - cost, holdExpires: hold.expires_at });
 });
 
 route("POST", "/api/requests/:id/quote", async (req, res) => {
@@ -587,8 +694,16 @@ async function confirmBooking(actor, r, amount, method, stripeInfo) {
     .run(r.request_id, "payment", stripeInfo?.category || "rental-payment", amount, method, "verified",
       actor?.email || "stripe-webhook", stripeInfo?.customerId || null, stripeInfo?.paymentIntent || null, "usd");
   U.audit(actor, "payment.verified", "request", r.request_id, "amount", null, amount, r.request_id);
-  db.prepare("UPDATE requests SET payment_status='verified' WHERE request_id=?").run(r.request_id);
+  db.prepare("UPDATE requests SET payment_status='verified', payment_method=? WHERE request_id=?")
+    .run(method || r.payment_method || "manual", r.request_id);
   setStatus(actor, r, "Booking confirmed");
+  const holdRow = activeHold(r.request_id);
+  if (holdRow) closeHold(actor, holdRow, "converted");
+  emails.customerEmail("PAYMENT_SUCCESS", r.email, {
+    requestId: r.request_id, firstName: (r.customer_name || "").split(" ")[0],
+    vehicle: r.vehicle_requested, amount,
+    trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${r.request_id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+  }).catch(() => {});
 
   const booked = JSON.parse(v.booked_dates || "[]"); booked.push(`${sd}→${ed}`);
   db.prepare("UPDATE vehicles SET status='booked', booked_dates=? WHERE vehicle_id=?").run(JSON.stringify(booked), v.vehicle_id);
@@ -620,7 +735,13 @@ async function confirmBooking(actor, r, amount, method, stripeInfo) {
 route("POST", "/api/requests/:id/payment-verified", async (req, res) => {
   if (!guard("requests.write")(req, res)) return;
   const r = getReq(res, req.params.id); if (!r) return;
-  if (r.status !== "Payment required") return bad(res, "Issue the payment link first (current: " + r.status + ")");
+  /* offline/manual payments may only be verified by an authorized admin */
+  if (r.payment_status === "Payment verification required" && req.user.role !== "admin")
+    return bad(res, "Manual payments must be verified by an admin", 403);
+  /* strict ordering: verification only after the payment-link step, or
+     after the customer explicitly chose a manual method (Phase 4.1) */
+  if (r.status !== "Payment required" && r.payment_status !== "Payment verification required")
+    return bad(res, "Issue the payment link first, or let the customer pick a manual method (current: " + r.status + ")");
   const out = await confirmBooking(req.user, r, Number(req.body.amount) || r.final_price || 0, U.strip(req.body.method || "card"));
   if (out.error) return bad(res, out.error, out.code || 400);
   json(res, 200, out);
@@ -1034,6 +1155,331 @@ route("POST", "/api/import/commit", (req, res) => {
 });
 
 /* ============================================================
+   PHASE 4.1 — payment options, holds, provider-agnostic webhooks
+   ============================================================ */
+function verifyCustomer(res, id, phone) {
+  const r = db.prepare("SELECT * FROM requests WHERE request_id=?").get(U.strip(id));
+  if (!r) { bad(res, "Request not found", 404); return null; }
+  const rp = (r.phone || "").replace(/\D/g, ""), given = String(phone || "").replace(/\D/g, "");
+  if (!given || !rp.endsWith(given.slice(-4))) { bad(res, "Phone verification failed", 403); return null; }
+  return r;
+}
+
+function paymentBreakdown(r) {
+  const v = r.assigned_vehicle_id && db.prepare("SELECT * FROM vehicles WHERE vehicle_id=?").get(r.assigned_vehicle_id);
+  const rental = Number(r.final_price) || Number(r.quote_amount) || 0;
+  const deposit = v ? Number(v.deposit) : 0;
+  const deliveryFee = r.option === "delivery" ? (v ? Number(v.delivery_fee) : 0) : 0;
+  const pct = Number(SETTING("tax_processing_pct") || 0);
+  const processing = Math.round(rental * pct) / 100;
+  const total = rental + deliveryFee + processing;
+  const dueNow = SETTING("payment_mode") === "partial"
+    ? Math.min(total, Number(SETTING("reservation_amount") || 500)) : total;
+  return {
+    vehicle: r.vehicle_requested, dates: `${r.start_date} → ${r.end_date}`,
+    deliveryLocation: r.option === "pickup" ? "Showroom pickup" : r.delivery_location,
+    rentalAmount: rental, securityDeposit: deposit,
+    depositHandling: SETTING("deposit_handling") || "collected",
+    deliveryFee, addons: r.addons || "None", taxesProcessing: processing,
+    totalDueNow: Math.round(dueNow * 100) / 100,
+    remainingBalance: Math.round(Math.max(0, total - dueNow) * 100) / 100
+  };
+}
+
+const PAYABLE_STATUSES = ["Approved", "Quote sent", "Quote accepted", "Payment required"];
+
+route("GET", "/api/public/payment-options", (req, res) => {
+  if (!U.rateLimit(req.ip, "payopt", 60, 10 * 60e3)) return bad(res, "Slow down.", 429);
+  const r = verifyCustomer(res, req.query.id, req.query.phone); if (!r) return;
+  const avail = JSON.parse(r.availability_reasons || "{}");
+  if (["Booking confirmed", "Completed"].includes(r.status))
+    return json(res, 200, { state: "confirmed", message: "Your booking is confirmed. See you at handover." });
+  if (r.payment_status === "Payment verification required")
+    return json(res, 200, { state: "manual-pending", message: "We received your payment method choice — our team is verifying receipt. Your booking confirms right after." });
+  if (r.availability_status === "unavailable" && !PAYABLE_STATUSES.includes(r.status))
+    return json(res, 200, { state: "unavailable",
+      message: "This vehicle is unavailable for the selected dates.",
+      alternatives: avail.alternatives || [] });
+  const hold = activeHold(r.request_id);
+  if (PAYABLE_STATUSES.includes(r.status) && r.final_price && hold) {
+    return json(res, 200, {
+      state: "available",
+      message: "Your vehicle is available for the selected dates. Complete payment before the temporary hold expires.",
+      breakdown: paymentBreakdown(r),
+      holdExpiresAt: hold.expires_at + "Z",
+      methods: P.enabledMethods()
+    });
+  }
+  if (PAYABLE_STATUSES.includes(r.status) && r.final_price && r.payment_status === "Hold expired")
+    return json(res, 200, { state: "expired", message: "Your temporary hold expired. Request a fresh availability check below.", canRecheck: true });
+  return json(res, 200, { state: "pending",
+    message: "Our team is confirming availability with the vehicle provider. You will receive a payment option only after the vehicle is approved." });
+});
+
+route("POST", "/api/public/pay", async (req, res) => {
+  if (!U.rateLimit(req.ip, "pay", 15, 10 * 60e3)) return bad(res, "Slow down.", 429);
+  const r = verifyCustomer(res, req.body.requestId, req.body.phone); if (!r) return;
+  const method = U.strip(req.body.method);
+  const all = P.enabledMethods();
+  const chosen = [...all.online, ...all.manual].find(m => m.id === method);
+  if (!chosen) return bad(res, "That payment method is not enabled");
+
+  /* never accept payment for an unapproved vehicle */
+  if (!PAYABLE_STATUSES.includes(r.status) || !r.final_price)
+    return bad(res, "Payment is not available yet — the vehicle must be provider-confirmed and price-approved first", 409);
+
+  const hold = activeHold(r.request_id);
+  if (!hold) {
+    /* expired/missing hold: block, re-run availability, require provider reconfirm */
+    U.audit(null, "pay.blocked.hold-expired", "request", r.request_id, null, null, method, r.request_id);
+    const d = await runAgent(null, db.prepare("SELECT * FROM requests WHERE request_id=?").get(r.request_id));
+    db.prepare("UPDATE requests SET status='Availability being confirmed', payment_status='Awaiting provider confirmation' WHERE request_id=?").run(r.request_id);
+    await U.notify("sales", null, "RECHECK_AFTER_EXPIRY", `Hold expired — recheck ${r.request_id}`,
+      `Customer tried to pay after expiry. Agent says: ${d.result}. Provider must reconfirm before a new hold/payment session.`);
+    return json(res, 200, { state: "rechecking", message: "Your hold expired, so we're re-verifying availability with the provider. You'll get a fresh payment link if the vehicle is still free." });
+  }
+
+  const bd = paymentBreakdown(r);
+  if (chosen.kind === "manual") {
+    db.prepare("UPDATE requests SET payment_status='Payment verification required', payment_method=? WHERE request_id=?").run(method, r.request_id);
+    U.audit(null, "pay.manual.selected", "request", r.request_id, "method", null, method, r.request_id);
+    await U.notify("ops", null, "MANUAL_PAYMENT", `Manual payment chosen — ${r.request_id}`,
+      `${r.customer_name} will pay $${bd.totalDueNow} by ${chosen.label}. Verify receipt, then an admin marks it verified.`);
+    U.queueSync("CustomerRequests", db.prepare("SELECT * FROM requests WHERE request_id=?").get(r.request_id));
+    return json(res, 200, { state: "manual", method: chosen.label,
+      message: `Send $${bd.totalDueNow.toLocaleString()} by ${chosen.label} to ${SETTING("business_name")} (${SETTING("phone")}). Your booking confirms once our team verifies receipt — the hold stays active until ${hold.expires_at.slice(11, 16)} UTC.` });
+  }
+
+  const adapter = P.active();
+  if (!adapter) return bad(res, "Online payments are not configured yet — choose a manual method", 503);
+  try {
+    const category = SETTING("payment_mode") === "partial" ? "reservation-payment" : "rental-payment";
+    const maker = method === "invoice" ? adapter.createInvoice.bind(adapter) : adapter.createCheckout.bind(adapter);
+    const out = await maker({ requestId: r.request_id, category, amount: bd.totalDueNow,
+      description: `${r.vehicle_requested} · ${r.request_id}`, customerEmail: r.email });
+    db.prepare(`INSERT INTO payments (request_id, kind, category, amount, method, status, recorded_by, provider, external_ref, currency)
+      VALUES (?,?,?,?,?,?,?,?,?, 'usd')`)
+      .run(r.request_id, "payment", category, bd.totalDueNow, method, "pending", "customer", adapter.name, out.ref);
+    db.prepare("UPDATE requests SET payment_status='Payment pending', payment_method=? WHERE request_id=?").run(method, r.request_id);
+    U.audit(null, "pay.link.created", "request", r.request_id, "provider", null, `${adapter.name} ${out.ref}`, r.request_id);
+    U.queueSync("Payments", { request_id: r.request_id, category, amount: bd.totalDueNow, provider: adapter.name, ref: out.ref, status: "pending" });
+    json(res, 200, { state: "redirect", url: out.url, provider: adapter.name });
+  } catch (e) {
+    await U.notify("admin", null, "PAYMENT_LINK_FAILED", `Payment link failed — ${r.request_id}`, e.message);
+    bad(res, "Could not start the payment session — our team has been alerted. Try a manual method or WhatsApp us.", 502);
+  }
+});
+
+route("POST", "/api/public/requests/:id/choose-alternative", async (req, res) => {
+  if (!U.rateLimit(req.ip, "alt", 10, 10 * 60e3)) return bad(res, "Slow down.", 429);
+  const r = verifyCustomer(res, req.params.id, req.body.phone); if (!r) return;
+  const avail = JSON.parse(r.availability_reasons || "{}");
+  const pick = (avail.alternatives || []).find(a => a.fleetId === req.body.fleetId || a.model === req.body.model || a.name === req.body.name);
+  if (!pick) return bad(res, "That alternative is no longer offered");
+  U.audit(null, "request.alternative.chosen", "request", r.request_id, "vehicle_requested", r.vehicle_requested, pick.name, r.request_id);
+  db.prepare("UPDATE requests SET vehicle_requested=?, assigned_vehicle_id=NULL, status='Request submitted', availability_status='unchecked' WHERE request_id=?")
+    .run(pick.model, r.request_id);
+  const fresh = db.prepare("SELECT * FROM requests WHERE request_id=?").get(r.request_id);
+  const d = await runAgent(null, fresh);
+  U.queueSync("CustomerRequests", fresh);
+  json(res, 200, { ok: true, vehicle: pick.name, agentResult: d.result });
+});
+
+/* ---- unified provider webhook (lumino / mock / stripe) ---- */
+async function processPaymentEvent(providerName, ev) {
+  const r = ev.requestId && db.prepare("SELECT * FROM requests WHERE request_id=?").get(ev.requestId);
+  if (!r) return { ok: false, error: "unknown requestId" };
+  if (ev.succeeded) {
+    const hold = activeHold(r.request_id);
+    db.prepare(`UPDATE payments SET status='verified', paid_at=datetime('now'), external_ref=COALESCE(external_ref, ?)
+        WHERE request_id=? AND status='pending' AND provider=?`).run(ev.ref || null, r.request_id, providerName);
+    if (!PAYABLE_STATUSES.includes(r.status)) {
+      await U.notify("admin", null, "PAYMENT_UNEXPECTED", `Payment received in state ${r.status} — ${r.request_id}`, "Review before confirming.");
+      db.prepare("UPDATE requests SET payment_status='Payment verification required' WHERE request_id=?").run(r.request_id);
+      return { ok: true, held: true };
+    }
+    if (!hold) {
+      /* paid after hold expiry: never auto-confirm — admin review + recheck */
+      await U.notify("admin", null, "PAID_AFTER_EXPIRY", `Paid after hold expiry — ${r.request_id}`,
+        `${providerName} reports $${ev.amount} (${ev.ref}). Availability must be re-verified before confirming or refunding.`);
+      db.prepare("UPDATE requests SET payment_status='Payment verification required' WHERE request_id=?").run(r.request_id);
+      return { ok: true, held: true };
+    }
+    const out = await confirmBooking(null, r, ev.amount || r.final_price || 0, providerName, {
+      category: ev.category, customerId: null, paymentIntent: ev.ref });
+    if (out.error) {
+      await U.notify("admin", null, "PAYMENT_CONFLICT", `Paid but not confirmable — ${r.request_id}`, out.error);
+      return { ok: false, error: out.error };
+    }
+    return { ok: true, rentalId: out.rentalId };
+  }
+  if (ev.failed) {
+    db.prepare("UPDATE payments SET status='failed' WHERE request_id=? AND status='pending' AND provider=?").run(r.request_id, providerName);
+    db.prepare("UPDATE requests SET payment_status='Payment failed' WHERE request_id=? AND payment_status != 'verified'").run(r.request_id);
+    U.audit(null, "payment.failed", "request", r.request_id, "provider", null, providerName, r.request_id);
+    await U.notify("sales", null, "PAYMENT_FAILED", `Payment failed — ${r.request_id}`, `${providerName}: ${ev.type}. Hold stays active until expiry.`);
+    emails.customerEmail("PAYMENT_FAILED", r.email, {
+      requestId: r.request_id, firstName: (r.customer_name || "").split(" ")[0], vehicle: r.vehicle_requested,
+      trackUrl: `${process.env.TN_BASE_URL || ""}/track.html?id=${r.request_id}&ph=${(r.phone || "").replace(/\D/g, "").slice(-4)}`
+    }).catch(() => {});
+    return { ok: true };
+  }
+  return { ok: true, ignored: ev.type };
+}
+
+route("POST", "/api/payments/webhook/:provider", async (req, res) => {
+  const adapter = P.ADAPTERS[req.params.provider];
+  if (!adapter) return bad(res, "Unknown provider", 404);
+  if (!adapter.verifyWebhook(req.rawBody || "", req.headers)) {
+    U.audit(null, "payment.webhook.rejected", "payments", req.params.provider);
+    return bad(res, "Invalid signature", 400);
+  }
+  let body;
+  try { body = JSON.parse(req.rawBody); } catch (e) { return bad(res, "Bad payload"); }
+  const ev = adapter.parseEvent(body);
+  if (!ev.eventId) return bad(res, "Missing event id");
+  if (P.seenEvent(adapter.name, ev.eventId, ev.type, ev.requestId))
+    return json(res, 200, { ok: true, duplicate: true });
+  try {
+    const out = await processPaymentEvent(adapter.name, ev);
+    if (!out.ok) db.prepare("UPDATE payment_events SET status='error', error=? WHERE provider=? AND event_id=?")
+      .run(out.error || "", adapter.name, String(ev.eventId));
+    json(res, 200, out);
+  } catch (e) {
+    db.prepare("UPDATE payment_events SET status='error', error=? WHERE provider=? AND event_id=?")
+      .run(String(e.message).slice(0, 300), adapter.name, String(ev.eventId));
+    await U.notify("admin", null, "WEBHOOK_ERROR", `Webhook processing failed (${adapter.name})`, e.message);
+    bad(res, "Processing error", 500);
+  }
+});
+
+/* mock hosted checkout (staging only) — a branded page whose buttons
+   emit properly SIGNED webhooks, so nothing trusts the browser alone */
+route("GET", "/api/payments/mock-checkout", (req, res) => {
+  if ((process.env.TN_ENV || "staging") === "production") return bad(res, "Not available in production", 404);
+  const { token, requestId, amount, category } = req.query;
+  res.writeHead(200, { "Content-Type": "text/html" });
+  res.end(`<!DOCTYPE html><html><body style="background:#0a0a0a;color:#f2f2f2;font-family:Arial;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
+    <div style="max-width:380px;text-align:center;padding:34px;border:1px solid #333;border-radius:24px">
+      <div style="font-weight:900;letter-spacing:2px;margin-bottom:6px">MOCK CHECKOUT <span style="color:#ff6a00">· staging</span></div>
+      <p style="color:#9a9a9a;font-size:13px">Simulates the hosted Lumino page. $${Number(amount).toLocaleString()} · ${category}</p>
+      <button onclick="done('payment.succeeded')" style="width:100%;padding:14px;border:none;border-radius:999px;background:#ff6a00;font-weight:800;margin:8px 0">Simulate successful payment</button>
+      <button onclick="done('payment.failed')" style="width:100%;padding:14px;border-radius:999px;background:none;border:1px solid #444;color:#f87171;font-weight:800">Simulate failed payment</button>
+      <script>
+        async function done(type){
+          const r = await fetch('/api/payments/mock-complete', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ token: ${JSON.stringify(String(req.query.token || ""))}, requestId: ${JSON.stringify(String(requestId || ""))},
+              amount: ${Number(amount) || 0}, category: ${JSON.stringify(String(category || ""))}, type }) });
+          const d = await r.json();
+          location.href = '/track.html?id=${encodeURIComponent(String(requestId || ""))}' + (d.rentalId ? '&paid=1' : '');
+        }
+      </script>
+    </div></body></html>`);
+});
+route("POST", "/api/payments/mock-complete", async (req, res) => {
+  if ((process.env.TN_ENV || "staging") === "production") return bad(res, "Not available in production", 404);
+  /* build a signed event and run it through the REAL webhook pipeline */
+  const event = JSON.stringify({ id: "evt_mock_" + req.body.token + "_" + req.body.type, type: req.body.type,
+    amount: Number(req.body.amount) || 0, payment_id: "mockpay_" + req.body.token,
+    metadata: { requestId: U.strip(req.body.requestId), category: U.strip(req.body.category) || "rental-payment" } });
+  const sig = P.mock.signBody(event);
+  const out = await fetch(`http://localhost:${PORT}/api/payments/webhook/mock`, {
+    method: "POST", headers: { "Content-Type": "application/json", "x-mock-signature": sig }, body: event
+  }).then(r => r.json()).catch(e => ({ error: e.message }));
+  json(res, 200, out);
+});
+
+/* ---- admin payment & hold controls ---- */
+route("POST", "/api/requests/:id/hold", (req, res) => {
+  if (!req.user || !["admin", "ops", "sales"].includes(req.user.role)) return bad(res, req.user ? "Forbidden" : "Sign in required", req.user ? 403 : 401);
+  const r = getReq(res, req.params.id); if (!r) return;
+  const action = U.strip(req.body.action);
+  const hold = activeHold(r.request_id);
+  if (action === "extend") {
+    if (!hold) return bad(res, "No active hold to extend");
+    const mins = Math.min(240, Number(req.body.minutes) || 20);
+    const expires = new Date(Date.parse(hold.expires_at + "Z") + mins * 6e4).toISOString();
+    db.prepare("UPDATE holds SET expires_at=?, note=NULL WHERE hold_id=?").run(expires.replace("T", " ").slice(0, 19), hold.hold_id);
+    U.audit(req.user, "hold.extended", "hold", hold.hold_id, "expires_at", hold.expires_at, expires, r.request_id);
+    return json(res, 200, { ok: true, expires });
+  }
+  if (action === "release") {
+    if (!hold) return bad(res, "No active hold");
+    closeHold(req.user, hold, "released");
+    return json(res, 200, { ok: true });
+  }
+  if (action === "create") {
+    if (!r.assigned_vehicle_id) return bad(res, "Assign a unit first");
+    const h = createHold(req.user, r, r.assigned_vehicle_id, Number(req.body.minutes) || undefined);
+    return json(res, 200, { ok: true, expires: h.expires_at });
+  }
+  bad(res, "action must be extend | release | create");
+});
+
+route("POST", "/api/requests/:id/send-payment", async (req, res) => {
+  if (!guard("requests.write")(req, res)) return;
+  const r = getReq(res, req.params.id); if (!r) return;
+  const category = U.strip(req.body.category || "rental-payment");
+  if (!P.CATEGORIES.includes(category)) return bad(res, "Unknown category. Valid: " + P.CATEGORIES.join(", "));
+  if (P.POST_RENTAL.includes(category)) {
+    if (req.user.role !== "admin") return bad(res, "Post-rental charges require admin review", 403);
+    if (!U.strip(req.body.authorizationNote)) return bad(res, "Documented authorization required for post-rental charges");
+  } else if (!PAYABLE_STATUSES.includes(r.status) && r.status !== "Booking confirmed") {
+    return bad(res, "Payments stay blocked until provider confirmation and price approval (current: " + r.status + ")");
+  }
+  const adapter = P.active();
+  if (!adapter) return bad(res, "No online payment provider configured — record a manual payment instead", 503);
+  try {
+    const amount = Number(req.body.amount) || r.final_price;
+    const maker = req.body.kind === "invoice" ? adapter.createInvoice.bind(adapter) : adapter.createCheckout.bind(adapter);
+    const out = await maker({ requestId: r.request_id, category, amount, description: `${r.vehicle_requested} · ${category}`, customerEmail: r.email });
+    db.prepare("INSERT INTO payments (request_id, kind, category, amount, method, status, recorded_by, provider, external_ref) VALUES (?,?,?,?,?,?,?,?,?)")
+      .run(r.request_id, "payment", category, amount, req.body.kind === "invoice" ? "invoice" : "link", "pending", req.user.email, adapter.name, out.ref);
+    U.audit(req.user, "pay.link.resent", "request", r.request_id, "category", null, `${category} $${amount} via ${adapter.name}`, r.request_id);
+    emails.customerEmail("PAYMENT_REQUIRED", r.email, { requestId: r.request_id, firstName: r.customer_name.split(" ")[0], vehicle: r.vehicle_requested, amount, category, payUrl: out.url }).catch(() => {});
+    json(res, 200, { ok: true, url: out.url, provider: adapter.name });
+  } catch (e) { bad(res, e.message, 502); }
+});
+
+route("POST", "/api/requests/:id/cancel-payment", (req, res) => {
+  if (!guard("requests.write")(req, res)) return;
+  const r = getReq(res, req.params.id); if (!r) return;
+  db.prepare("UPDATE payments SET status='canceled' WHERE request_id=? AND status='pending'").run(r.request_id);
+  db.prepare("UPDATE requests SET payment_status='Payment canceled' WHERE request_id=? AND payment_status != 'verified'").run(r.request_id);
+  U.audit(req.user, "payment.canceled", "request", r.request_id, null, null, null, r.request_id);
+  json(res, 200, { ok: true });
+});
+
+route("POST", "/api/payments/:id/refund", async (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const pay = db.prepare("SELECT * FROM payments WHERE id=?").get(req.params.id);
+  if (!pay) return bad(res, "Payment not found", 404);
+  const amount = Number(req.body.amount) || pay.amount;
+  let ref = "manual", status = "refunded";
+  if (pay.provider && pay.external_ref && P.ADAPTERS[pay.provider]?.configured()) {
+    try { const out = await P.ADAPTERS[pay.provider].refund({ ref: pay.external_ref, amount }); ref = out.ref; status = out.status; }
+    catch (e) { return bad(res, "Provider refund failed: " + e.message, 502); }
+  }
+  db.prepare("INSERT INTO payments (request_id, rental_id, kind, category, amount, method, status, recorded_by, provider, external_ref, refund_status) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+    .run(pay.request_id, pay.rental_id, "refund", "refund", amount, pay.method, "verified", req.user.email, pay.provider, ref, status);
+  db.prepare("UPDATE payments SET refund_status=? WHERE id=?").run(status, pay.id);
+  db.prepare("UPDATE requests SET payment_status=? WHERE request_id=?").run(status === "refunded" ? "Refunded" : "Refund pending", pay.request_id);
+  U.audit(req.user, "payment.refund", "payment", pay.id, "amount", null, amount, pay.request_id);
+  U.queueSync("Payments", { request_id: pay.request_id, kind: "refund", amount, provider: pay.provider, ref, status });
+  json(res, 200, { ok: true, ref, status });
+});
+
+route("GET", "/api/payment-events", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, {
+    health: P.health(),
+    events: db.prepare("SELECT * FROM payment_events ORDER BY ts DESC LIMIT 100").all(),
+    failed: db.prepare("SELECT * FROM payments WHERE status IN ('failed','canceled') ORDER BY ts DESC LIMIT 50").all(),
+    holds: db.prepare("SELECT * FROM holds ORDER BY hold_id DESC LIMIT 50").all()
+  });
+});
+
+/* ============================================================
    STRIPE — hosted Checkout links + verified, idempotent webhook
    ============================================================ */
 route("POST", "/api/requests/:id/stripe-link", async (req, res) => {
@@ -1170,7 +1616,12 @@ const adminOnly = (req, res) => {
 };
 
 const EDITABLE_SETTINGS = ["business_name", "city", "address", "phone", "whatsapp", "email",
-  "instagram", "hours", "policy_version", "verify_days", "doc_retention_days"];
+  "instagram", "hours", "policy_version", "verify_days", "doc_retention_days",
+  /* payments & holds (Phase 4.1) — secrets stay in env, never here */
+  "payment_provider", "stripe_enabled", "hold_minutes", "quote_expiry_days",
+  "payment_mode", "reservation_amount", "deposit_handling",
+  "methods_card", "methods_ach", "methods_bnpl", "methods_link", "methods_invoice",
+  "methods_bank", "methods_zelle", "methods_cash", "methods_other", "tax_processing_pct"];
 route("GET", "/api/settings", (req, res) => {
   if (!adminOnly(req, res)) return;
   json(res, 200, Object.fromEntries(Object.entries(allSettings()).filter(([k]) => EDITABLE_SETTINGS.includes(k))));
@@ -1181,6 +1632,10 @@ route("PATCH", "/api/settings", (req, res) => {
     if (!(k in (req.body || {}))) continue;
     const old = SETTING(k);
     const val = U.strip(req.body[k]);
+    /* never simulate an authorization hold: only allow if the ACTIVE provider officially supports it */
+    if (k === "deposit_handling" && val === "authorization" && !(P.active()?.supports().authorization))
+      return bad(res, "Authorization-and-capture deposits are not confirmed for the active payment provider — use 'collected' or 'external' until the provider confirms support in writing");
+    if (k === "payment_provider" && !["lumino", "stripe", "mock"].includes(val)) return bad(res, "payment_provider must be lumino | stripe | mock");
     if (String(old) !== String(val)) U.audit(req.user, "settings.update", "settings", k, k, old, val);
     db.prepare("INSERT INTO settings (key, value, updated_by) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now'), updated_by=excluded.updated_by")
       .run(k, val, req.user.email);

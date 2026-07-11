@@ -53,6 +53,17 @@ const TEMPLATES = {
     shell("Return coming up", `Hi ${d.firstName},<br><br>The <b>${d.vehicle}</b> is due back ${d.when}. Return it full (premium fuel) unless you added pre-paid fuel.`, s)],
   DEPOSIT_STATUS: (d, s) => [`Deposit update — ${d.requestId}`,
     shell("Deposit status", `Hi ${d.firstName},<br><br>${d.message}`, s)],
+  VEHICLE_AVAILABLE: (d, s) => [`Available — complete payment · ${d.requestId}`,
+    shell("Your vehicle is available 🔥", `Hi ${d.firstName},<br><br>The <b>${d.vehicle}</b> is confirmed available for ${d.dates} and we're holding it for you.
+    <b>Complete payment before the temporary hold expires (${d.expires})</b> to lock it in.
+    Total: <b style="color:${ORANGE}">$${Number(d.amount || 0).toLocaleString()}</b>.${btn(d.trackUrl, "Choose payment method")}`, s)],
+  HOLD_EXPIRING: (d, s) => [`Your hold expires soon — ${d.requestId}`,
+    shell("Hold expiring", `Hi ${d.firstName},<br><br>Your temporary hold on the <b>${d.vehicle}</b> expires at <b>${d.expires}</b>.
+    After that the car goes back on the market and availability must be re-verified.${btn(d.trackUrl, "Complete payment now")}`, s)],
+  PAYMENT_SUCCESS: (d, s) => [`Payment received — ${d.requestId}`,
+    shell("Payment received ✓", `Hi ${d.firstName},<br><br>We received your payment${d.amount ? ` of <b style="color:${ORANGE}">$${Number(d.amount).toLocaleString()}</b>` : ""} for the <b>${d.vehicle}</b>. Your booking is confirmed — details on your tracking page.${btn(d.trackUrl, "View booking")}`, s)],
+  PAYMENT_FAILED: (d, s) => [`Payment didn't go through — ${d.requestId}`,
+    shell("Payment failed", `Hi ${d.firstName},<br><br>Your payment for the <b>${d.vehicle}</b> didn't complete. Your hold is still active for now — try again from your tracking page or WhatsApp us and we'll sort it.${btn(d.trackUrl, "Try again")}`, s)],
   REVIEW_REQUEST: (d, s) => [`How was the ${d.vehicle}?`,
     shell("Tell us how it went", `Hi ${d.firstName},<br><br>Hope the <b>${d.vehicle}</b> treated you right. A 30-second review helps us more than you know — reply with your thoughts or drop them on Instagram ${d.instagram || "@topnotchrentalz"}.`, s)]
 };

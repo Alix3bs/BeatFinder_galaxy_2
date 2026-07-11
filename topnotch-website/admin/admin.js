@@ -252,6 +252,13 @@ async function renderRequestDetail() {
         <div class="kv"><i>Budget / deposit</i><b>${esc(r.budget)} · ${esc(r.deposit_readiness)}</b></div>
         <div class="kv"><i>Add-ons / notes</i><b>${esc(r.addons)} · ${esc(r.special_requests)}</b></div>
         <div class="kv"><i>Assigned unit</i><b>${esc(r.assigned_vehicle_id || "—")}</b></div>
+        <div class="kv"><i>Availability agent</i><b>${esc(r.availability_status || "unchecked")}${r.availability_checked_at ? " · " + esc(String(r.availability_checked_at).slice(0, 16)) : ""}</b></div>
+        <div class="kv"><i>Payment</i><b>${esc(r.payment_status || "—")}${r.payment_method ? " · " + esc(r.payment_method) : ""}
+          <span style="display:block;margin-top:6px">
+            <button class="btn btn-ghost btn-mini" data-hold="extend">Hold +20m</button>
+            <button class="btn btn-ghost btn-mini" data-hold="release">Release hold</button>
+            <button class="btn btn-ghost btn-mini" data-hold="create">New hold</button>
+          </span></b></div>
         <div class="kv"><i>Pricing</i><b>Final ${r.final_price ? money(r.final_price) : "—"} · Cost ${r.internal_cost ? money(r.internal_cost) : "—"} · Profit ${r.profit ? money(r.profit) : "—"}</b></div>
         ${r.quote_amount ? `<div class="kv"><i>Quote</i><b>${money(r.quote_amount)} · expires ${String(r.quote_expires).slice(0, 10)} · ${r.quote_accepted_at ? "ACCEPTED" : "awaiting customer"}</b></div>` : ""}
       </div>
@@ -348,6 +355,8 @@ async function renderRequestDetail() {
   $("#wPaid")?.addEventListener("click", () => act(() => api(`/requests/${r.request_id}/payment-verified`, { amount: Number(prompt("Amount received", r.final_price)) || r.final_price, method: "card" })));
   $("#wNo")?.addEventListener("click", () => act(() => api(`/requests/${r.request_id}/decline`, { note: prompt("Reason") || "" })));
 
+  $$("[data-hold]", box).forEach(b => b.addEventListener("click", () => act(() =>
+    api(`/requests/${r.request_id}/hold`, { action: b.dataset.hold, minutes: 20 }))));
   $("#genSummary").addEventListener("click", () => bookingSummary(r));
 }
 
@@ -782,7 +791,15 @@ async function renderSettings() {
   const FIELDS = [["business_name", "Business name"], ["city", "Business location"], ["address", "Address"],
     ["phone", "Business phone"], ["whatsapp", "WhatsApp (digits only)"], ["email", "Business email"],
     ["instagram", "Instagram"], ["hours", "Hours"], ["policy_version", "Policy version"],
-    ["verify_days", "Availability verification window (days)"], ["doc_retention_days", "Customer document retention (days)"]];
+    ["verify_days", "Availability verification window (days)"], ["doc_retention_days", "Customer document retention (days)"],
+    ["payment_provider", "Payment provider (lumino | stripe | mock)"], ["stripe_enabled", "Stripe enabled (1/0)"],
+    ["hold_minutes", "Temporary hold duration (minutes)"], ["quote_expiry_days", "Quote expiration (days)"],
+    ["payment_mode", "Payment mode (full | partial)"], ["reservation_amount", "Reservation amount if partial ($)"],
+    ["deposit_handling", "Deposit handling (collected | external | authorization*)"], ["tax_processing_pct", "Taxes/processing shown to customer (%)"],
+    ["methods_card", "Method: card (1/0)"], ["methods_ach", "Method: bank/ACH (1/0)"], ["methods_bnpl", "Method: payment plan (1/0)"],
+    ["methods_link", "Method: payment link (1/0)"], ["methods_invoice", "Method: invoice (1/0)"],
+    ["methods_bank", "Manual: bank transfer (1/0)"], ["methods_zelle", "Manual: Zelle (1/0)"],
+    ["methods_cash", "Manual: cash (1/0)"], ["methods_other", "Manual: other (1/0)"]];
   el.innerHTML = `
     <h1>Company Settings</h1>
     <p class="sub">Changes go live on the customer site immediately — no code edits.</p>
@@ -803,6 +820,35 @@ async function renderSettings() {
           <td>${esc(h.reason)}</td><td><span class="badge ${h.status === "ok" ? "ok" : "bad"}">${h.status}</span>${h.error ? " " + esc(h.error) : ""}</td></tr>`).join("")}
       </table></div>
     </div>`;
+  /* Lumino / payments health + webhook events (admin) */
+  api("/payment-events").then(pe => {
+    const h = pe.health;
+    const div = document.createElement("div");
+    div.className = "panel";
+    div.innerHTML = `
+      <h2>Payments — connection health</h2>
+      <div class="detail-grid">
+        <div class="kv"><i>Active provider</i><b>${esc(h.active)}</b></div>
+        <div class="kv"><i>Lumino</i><b>${h.lumino.configured ? '<span class="badge ok">configured</span>' : '<span class="badge warn">awaiting credentials</span>'} · webhook secret ${h.lumino.webhookSecret ? "set" : "missing"} · API base ${esc(h.lumino.apiBase)}</b></div>
+        <div class="kv"><i>Stripe (optional)</i><b>${h.stripe.enabledInSettings ? "enabled" : "disabled"} · keys ${h.stripe.keys ? "set" : "missing"}</b></div>
+        <div class="kv"><i>Mock (staging only)</i><b>${h.mock.available ? "available" : "off (production)"}</b></div>
+      </div>
+      <p class="fineprint">API keys and webhook secrets live only in server env vars and are never displayed here.
+      See docs/LUMINO-INTEGRATION.md for the exact credentials to request from Lumino.</p>
+      <h2 style="margin-top:14px">Recent webhook events (${pe.events.length})</h2>
+      ${pe.events.length ? `<div class="tbl-wrap"><table class="tbl">
+        <tr><th>When</th><th>Provider</th><th>Event</th><th>Type</th><th>Request</th><th>Status</th></tr>
+        ${pe.events.slice(0, 25).map(ev => `<tr><td>${esc(ev.ts)}</td><td>${esc(ev.provider)}</td><td>${esc(ev.event_id)}</td>
+          <td>${esc(ev.type)}</td><td>${esc(ev.request_id || "")}</td>
+          <td><span class="badge ${ev.status === "processed" ? "ok" : "bad"}">${esc(ev.status)}</span>${ev.error ? " " + esc(ev.error) : ""}</td></tr>`).join("")}
+      </table></div>` : '<p class="fineprint">None yet.</p>'}
+      ${pe.failed.length ? `<h2 style="margin-top:14px">Failed / canceled payments (${pe.failed.length})</h2>
+        <div class="tbl-wrap"><table class="tbl"><tr><th>When</th><th>Request</th><th>Category</th><th>Amount</th><th>Provider</th><th>Status</th></tr>
+        ${pe.failed.slice(0, 15).map(p => `<tr><td>${esc(p.ts)}</td><td>${esc(p.request_id)}</td><td>${esc(p.category)}</td>
+          <td>${money(p.amount)}</td><td>${esc(p.provider)}</td><td><span class="badge bad">${esc(p.status)}</span></td></tr>`).join("")}</table></div>` : ""}`;
+    el.appendChild(div);
+  }).catch(() => {});
+
   $("#setSave").addEventListener("click", async () => {
     const body = {};
     FIELDS.forEach(f => body[f[0]] = $("#set_" + f[0]).value.trim());
