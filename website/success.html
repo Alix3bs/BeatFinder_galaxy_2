@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome aboard — BeatFinder Premium</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div class="cosmos"></div>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+  <div class="nebula-haze" aria-hidden="true"></div>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="index.html">
+        <img class="brand-logo" src="assets/img/logo.svg" alt="" />
+        <span>Beat<em>Finder</em></span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="account.html">Account</a></li>
+      </ul>
+      <div class="nav-cta">
+        <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="status-wrap">
+      <div class="glass status-card">
+        <div class="status-icon success" aria-hidden="true">✨</div>
+        <h1>Welcome to the constellation!</h1>
+        <p id="success-copy">
+          Your subscription is active. Premium features are unlocking in the
+          BeatFinder app right now — head back and start scanning the universe.
+        </p>
+        <div class="plan-summary" id="plan-summary" hidden>
+          <span class="name" id="summary-name"></span>
+          <span class="price" id="summary-price"></span>
+        </div>
+        <div class="status-actions">
+          <a class="btn btn-primary" href="beatfinder://premium/activated" id="open-app">Open BeatFinder</a>
+          <a class="btn btn-ghost" href="account.html">Manage Subscription</a>
+        </div>
+        <p class="status-note">
+          A receipt from Lumino is on its way to your inbox. If premium features
+          don't appear within a minute, pull to refresh in the app.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <p>© 2026 BeatFinder. All rights reserved across the galaxy.</p>
+      <ul class="footer-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="account.html">Manage Subscription</a></li>
+      </ul>
+      <span class="lumino-mark">Payments secured by <strong>Lumino</strong> ✦</span>
+    </div>
+  </footer>
+
+  <script src="assets/js/galaxy.js"></script>
+  <script src="assets/js/lumino.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      var L = window.BeatFinderLumino;
+      var plan = L.resolvePlan(L.getParam("plan")) || L.storedPlan();
+      if (plan) {
+        document.getElementById("plan-summary").hidden = false;
+        document.getElementById("summary-name").textContent = "BeatFinder " + plan.name + " — active";
+        document.getElementById("summary-price").textContent = plan.price + plan.period;
+        L.rememberPlan(plan);
+      }
+    })();
+  </script>
+</body>
+</html>

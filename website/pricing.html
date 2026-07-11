@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pricing — BeatFinder Premium</title>
+  <meta name="description" content="Choose your BeatFinder Premium plan: Starter, Premium, or Pro. Secure subscription checkout powered by Lumino." />
+  <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div class="cosmos"></div>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+  <div class="nebula-haze" aria-hidden="true"></div>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="index.html">
+        <img class="brand-logo" src="assets/img/logo.svg" alt="" />
+        <span>Beat<em>Finder</em></span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="account.html">Account</a></li>
+      </ul>
+      <div class="nav-cta">
+        <a class="btn btn-primary btn-sm" href="#plans">Unlock Premium</a>
+        <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section id="plans">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="hero-eyebrow">✦ Choose your orbit</span>
+          <h2>Plans for every <span class="accent">corner of the galaxy</span></h2>
+          <p>All plans are monthly subscriptions with secure checkout by Lumino. Upgrade, downgrade, or cancel anytime — no gravity holding you back.</p>
+        </div>
+
+        <div class="pricing-grid">
+          <!-- Starter -->
+          <div class="glass plan-card reveal">
+            <div class="plan-planet planet-starter" aria-hidden="true"></div>
+            <h3 class="plan-name">Starter</h3>
+            <p class="plan-tagline">For curious listeners entering orbit</p>
+            <div class="plan-price"><span class="currency">$</span>4.99<span class="period">/month</span></div>
+            <ul class="plan-features">
+              <li>AI beat detection</li>
+              <li>BPM finder</li>
+              <li>Song key finder</li>
+              <li>Saved projects</li>
+              <li class="dim">Beat matching tools</li>
+              <li class="dim">Unlimited scans</li>
+              <li class="dim">Advanced audio analysis</li>
+            </ul>
+            <a class="btn btn-ghost btn-block" href="checkout.html?plan=starter">Launch Starter</a>
+          </div>
+
+          <!-- Premium -->
+          <div class="glass plan-card featured reveal">
+            <span class="plan-badge">Most Popular</span>
+            <div class="plan-planet planet-premium" aria-hidden="true"></div>
+            <h3 class="plan-name">Premium</h3>
+            <p class="plan-tagline">For artists and DJs in full flight</p>
+            <div class="plan-price"><span class="currency">$</span>9.99<span class="period">/month</span></div>
+            <ul class="plan-features">
+              <li>AI beat detection</li>
+              <li>BPM finder</li>
+              <li>Song key finder</li>
+              <li>Beat matching tools</li>
+              <li>Unlimited scans</li>
+              <li>Saved projects</li>
+              <li class="dim">Advanced audio analysis</li>
+            </ul>
+            <a class="btn btn-primary btn-block" href="checkout.html?plan=premium">Unlock Premium</a>
+          </div>
+
+          <!-- Pro -->
+          <div class="glass plan-card reveal">
+            <div class="plan-planet planet-pro" aria-hidden="true"></div>
+            <h3 class="plan-name">Pro</h3>
+            <p class="plan-tagline">For producers commanding the studio</p>
+            <div class="plan-price"><span class="currency">$</span>19.99<span class="period">/month</span></div>
+            <ul class="plan-features">
+              <li>Everything in Premium</li>
+              <li>Advanced audio analysis</li>
+              <li>Rhythm pattern &amp; beat structure breakdowns</li>
+              <li>Producer-friendly workflow tools</li>
+              <li>Priority AI processing</li>
+              <li>Early access to new features</li>
+            </ul>
+            <a class="btn btn-ghost btn-block" href="checkout.html?plan=pro">Go Pro</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ-ish trust band -->
+    <section style="padding-top: 0;">
+      <div class="container">
+        <div class="glass cta-band reveal">
+          <h2>Secure checkout, zero turbulence</h2>
+          <p>
+            Payments are processed by <strong>Lumino</strong> — your card details never touch our servers.
+            Subscriptions renew monthly and can be cancelled anytime from your account page.
+          </p>
+          <div class="status-actions">
+            <a class="btn btn-primary" href="checkout.html?plan=premium">Unlock Premium</a>
+            <a class="btn btn-ghost" href="account.html">Manage Subscription</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <p>© 2026 BeatFinder. All rights reserved across the galaxy.</p>
+      <ul class="footer-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="account.html">Manage Subscription</a></li>
+      </ul>
+      <span class="lumino-mark">Payments secured by <strong>Lumino</strong> ✦</span>
+    </div>
+  </footer>
+
+  <script src="assets/js/galaxy.js"></script>
+  <script src="assets/js/main.js"></script>
+</body>
+</html>

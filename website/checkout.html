@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Preparing checkout — BeatFinder Premium</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div class="cosmos"></div>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+  <div class="nebula-haze" aria-hidden="true"></div>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="index.html">
+        <img class="brand-logo" src="assets/img/logo.svg" alt="" />
+        <span>Beat<em>Finder</em></span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="account.html">Account</a></li>
+      </ul>
+      <div class="nav-cta">
+        <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="status-wrap">
+      <div class="glass status-card">
+        <div class="status-icon launch" aria-hidden="true">🚀</div>
+        <h1 id="checkout-title">Preparing your launch…</h1>
+        <p id="checkout-copy">
+          We're routing you to Lumino's secure checkout.
+          Hold tight — engines are warming up.
+        </p>
+
+        <div class="plan-summary" id="plan-summary" hidden>
+          <span class="name" id="summary-name"></span>
+          <span class="price" id="summary-price"></span>
+        </div>
+
+        <div class="warp-track" aria-hidden="true">
+          <div class="warp-bar" id="warp-bar"></div>
+        </div>
+
+        <div class="status-actions" id="checkout-actions" hidden>
+          <a class="btn btn-primary" id="manual-link" href="#">Continue to Lumino Checkout</a>
+          <a class="btn btn-ghost" href="pricing.html">Back to Plans</a>
+        </div>
+
+        <p class="status-note">
+          🔒 Checkout is processed securely by Lumino. BeatFinder never sees your card details.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <p>© 2026 BeatFinder. All rights reserved across the galaxy.</p>
+      <ul class="footer-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="account.html">Manage Subscription</a></li>
+      </ul>
+      <span class="lumino-mark">Payments secured by <strong>Lumino</strong> ✦</span>
+    </div>
+  </footer>
+
+  <script src="assets/js/galaxy.js"></script>
+  <script src="assets/js/lumino.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      var L = window.BeatFinderLumino;
+      var plan = L.resolvePlan(L.getParam("plan"));
+      var uid = L.getParam("uid");
+
+      var title = document.getElementById("checkout-title");
+      var copy = document.getElementById("checkout-copy");
+      var actions = document.getElementById("checkout-actions");
+      var bar = document.getElementById("warp-bar");
+
+      if (!plan) {
+        // No/unknown plan — send them back to choose one.
+        title.textContent = "Choose a plan first";
+        copy.textContent = "We couldn't tell which plan you picked. Head back to pricing to choose your orbit.";
+        actions.hidden = false;
+        document.getElementById("manual-link").hidden = true;
+        bar.parentElement.hidden = true;
+        return;
+      }
+
+      // Show what they're buying
+      document.getElementById("plan-summary").hidden = false;
+      document.getElementById("summary-name").textContent = "BeatFinder " + plan.name;
+      document.getElementById("summary-price").textContent = plan.price + plan.period;
+
+      var checkoutUrl = L.buildCheckoutUrl(plan, uid);
+      var manual = document.getElementById("manual-link");
+      manual.href = checkoutUrl;
+
+      L.rememberPlan(plan);
+
+      // Warp-drive progress, then redirect to Lumino.
+      var progress = 0;
+      var timer = setInterval(function () {
+        progress = Math.min(progress + 4 + Math.random() * 9, 100);
+        bar.style.width = progress + "%";
+        if (progress >= 100) {
+          clearInterval(timer);
+          actions.hidden = false; // fallback if the redirect is blocked
+          window.location.href = checkoutUrl;
+        }
+      }, 120);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account — BeatFinder Premium</title>
+  <meta name="description" content="Manage your BeatFinder Premium subscription: view your plan, update billing, or cancel — all through Lumino's secure portal." />
+  <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div class="cosmos"></div>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+  <div class="nebula-haze" aria-hidden="true"></div>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="index.html">
+        <img class="brand-logo" src="assets/img/logo.svg" alt="" />
+        <span>Beat<em>Finder</em></span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="account.html">Account</a></li>
+      </ul>
+      <div class="nav-cta">
+        <a class="btn btn-primary btn-sm" href="pricing.html">Unlock Premium</a>
+        <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container account-wrap">
+      <div class="section-head reveal">
+        <span class="hero-eyebrow">✦ Mission Control</span>
+        <h2>Your <span class="accent">subscription</span></h2>
+        <p>View your current plan and manage billing through Lumino's secure customer portal.</p>
+      </div>
+
+      <div class="account-grid">
+        <!-- Current plan -->
+        <div class="glass account-card reveal">
+          <h2>🛰️ Current Plan</h2>
+
+          <div class="sub-status-row">
+            <span class="label">Status</span>
+            <span class="value"><span class="status-pill none" id="status-pill">No active subscription</span></span>
+          </div>
+          <div class="sub-status-row">
+            <span class="label">Plan</span>
+            <span class="value" id="plan-name">Free</span>
+          </div>
+          <div class="sub-status-row">
+            <span class="label">Price</span>
+            <span class="value" id="plan-price">—</span>
+          </div>
+          <div class="sub-status-row">
+            <span class="label">Started</span>
+            <span class="value" id="plan-started">—</span>
+          </div>
+
+          <div class="account-actions">
+            <a class="btn btn-primary" id="portal-link" href="#" hidden>Manage Billing in Lumino Portal</a>
+            <a class="btn btn-primary" id="upgrade-link" href="pricing.html">Unlock Premium</a>
+            <a class="btn btn-ghost" id="change-plan-link" href="pricing.html" hidden>Change Plan</a>
+          </div>
+        </div>
+
+        <!-- What you can manage -->
+        <div class="glass account-card reveal">
+          <h2>🔭 Manage via Lumino</h2>
+          <p style="color: var(--text-secondary); font-size: 0.93rem; line-height: 1.6; margin-bottom: 14px;">
+            Billing is handled end-to-end by Lumino. From the secure portal you can:
+          </p>
+          <ul class="manage-list">
+            <li>Update your payment method</li>
+            <li>Download invoices and receipts</li>
+            <li>Upgrade or downgrade your plan</li>
+            <li>Cancel your subscription — access continues until the end of the billing period</li>
+          </ul>
+          <div class="account-actions">
+            <a class="btn btn-ghost" id="portal-link-2" href="#">Open Lumino Portal</a>
+          </div>
+          <p class="status-note" style="text-align:left;">
+            You'll be asked to verify the email you used at checkout before
+            any billing details are shown.
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <p>© 2026 BeatFinder. All rights reserved across the galaxy.</p>
+      <ul class="footer-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="account.html">Manage Subscription</a></li>
+      </ul>
+      <span class="lumino-mark">Payments secured by <strong>Lumino</strong> ✦</span>
+    </div>
+  </footer>
+
+  <script src="assets/js/galaxy.js"></script>
+  <script src="assets/js/lumino.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      var L = window.BeatFinderLumino;
+      var plan = L.storedPlan();
+      var portal = L.config.portalUrl;
+
+      document.getElementById("portal-link").href = portal;
+      document.getElementById("portal-link-2").href = portal;
+
+      if (plan) {
+        var pill = document.getElementById("status-pill");
+        pill.textContent = "Active";
+        pill.classList.remove("none");
+        pill.classList.add("active");
+
+        document.getElementById("plan-name").textContent = "BeatFinder " + plan.name;
+        document.getElementById("plan-price").textContent = plan.price + plan.period;
+
+        try {
+          var started = localStorage.getItem("bf_plan_started");
+          if (started) {
+            document.getElementById("plan-started").textContent =
+              new Date(started).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+          }
+        } catch (e) { /* ignore */ }
+
+        document.getElementById("portal-link").hidden = false;
+        document.getElementById("upgrade-link").hidden = true;
+        document.getElementById("change-plan-link").hidden = false;
+      }
+    })();
+  </script>
+</body>
+</html>
