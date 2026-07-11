@@ -205,9 +205,21 @@ enum BeatFinderBackendSettings {
     static let presetKey = "beatfinder.backend.urlPreset"
     static let customURLKey = "beatfinder.backend.customURL"
 
+    /// Debug builds default to the local simulator backend; release builds
+    /// must never point at localhost, so they default to the production
+    /// preset (which fails with the clear "configure backend" error until a
+    /// real URL is set in Settings).
+    static var defaultPreset: BeatFinderBackendURLPreset {
+        #if DEBUG
+        return .local
+        #else
+        return .production
+        #endif
+    }
+
     static func load(defaults: UserDefaults = .standard) -> BeatFinderBackendConfiguration {
         let rawPreset = defaults.string(forKey: presetKey)
-        let preset = rawPreset.flatMap(BeatFinderBackendURLPreset.init(rawValue:)) ?? .local
+        let preset = rawPreset.flatMap(BeatFinderBackendURLPreset.init(rawValue:)) ?? defaultPreset
         let customURL = defaults.string(forKey: customURLKey) ?? ""
         return BeatFinderBackendConfiguration(preset: preset, customURLString: customURL)
     }

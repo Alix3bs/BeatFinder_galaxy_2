@@ -136,7 +136,7 @@ returns table (
 language sql
 stable
 security invoker
-set search_path = public
+set search_path = public, extensions
 as $$
   with q as (
     select public.jsonb_to_vector_384(query_embedding) as embedding
@@ -165,7 +165,7 @@ returns table (
 language sql
 stable
 security invoker
-set search_path = public
+set search_path = public, extensions
 as $$
   select
     b.id as beat_id,
