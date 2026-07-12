@@ -1,0 +1,1066 @@
+<title>TopNotch — South Florida</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root{
+    --bg:#0F130E;
+    --shell:#121711;
+    --card:#1A211A;
+    --card-2:#212A21;
+    --line:#2C362B;
+    --ink:#EDE6D6;
+    --ink-2:#A8AE9B;
+    --ink-3:#6F7565;
+    --accent:#F0603F;
+    --accent-ink:#16100D;
+    --good:#8FBF7F;
+    --good-dim:rgba(143,191,127,.14);
+    --warn:#E0B34E;
+    --display:'Didot','Bodoni MT','Bodoni 72','Playfair Display','Georgia Pro',Georgia,serif;
+    --body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+    --mono:ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#E6E3D8; --shell:#EFECE1; --card:#FFFFFF; --card-2:#F3F0E6;
+      --line:#D8D4C4; --ink:#1B2117; --ink-2:#5C6152; --ink-3:#8B9080;
+      --accent:#C24A2A; --accent-ink:#FFF6EF;
+      --good:#3E7A38; --good-dim:rgba(62,122,56,.10); --warn:#8F6B14;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F130E; --shell:#121711; --card:#1A211A; --card-2:#212A21;
+    --line:#2C362B; --ink:#EDE6D6; --ink-2:#A8AE9B; --ink-3:#6F7565;
+    --accent:#F0603F; --accent-ink:#16100D;
+    --good:#8FBF7F; --good-dim:rgba(143,191,127,.14); --warn:#E0B34E;
+  }
+  :root[data-theme="light"]{
+    --bg:#E6E3D8; --shell:#EFECE1; --card:#FFFFFF; --card-2:#F3F0E6;
+    --line:#D8D4C4; --ink:#1B2117; --ink-2:#5C6152; --ink-3:#8B9080;
+    --accent:#C24A2A; --accent-ink:#FFF6EF;
+    --good:#3E7A38; --good-dim:rgba(62,122,56,.10); --warn:#8F6B14;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:var(--body); -webkit-font-smoothing:antialiased;
+    display:flex; justify-content:center; align-items:stretch;
+  }
+  button{font:inherit; color:inherit; background:none; border:none; cursor:pointer; text-align:left}
+  button:focus-visible, input:focus-visible, a:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+  input{font:inherit; color:inherit}
+
+  /* ---------- shell ---------- */
+  .shell{
+    position:relative; width:min(430px,100vw); min-height:100dvh;
+    background:var(--shell); display:flex; flex-direction:column; overflow:hidden;
+  }
+  @media (min-width:520px){
+    body{align-items:center; padding:28px 0}
+    .shell{
+      min-height:0; height:min(880px, calc(100dvh - 56px));
+      border-radius:26px; border:1px solid var(--line);
+      box-shadow:0 40px 90px -30px rgba(0,0,0,.55);
+    }
+  }
+  .view{flex:1; overflow-y:auto; overscroll-behavior:contain; padding-bottom:96px; scrollbar-width:thin}
+  .view.no-tabs{padding-bottom:0}
+
+  @media (prefers-reduced-motion: no-preference){
+    .screen-in{animation:rise .32s cubic-bezier(.2,.7,.2,1)}
+    @keyframes rise{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+    .tl-step.live .knot{animation:pulse 1.5s ease-in-out infinite}
+    @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(240,96,63,.5)} 50%{box-shadow:0 0 0 9px rgba(240,96,63,0)}}
+  }
+
+  /* ---------- type ---------- */
+  .eyebrow{font-family:var(--mono); font-size:10.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3)}
+  .display{font-family:var(--display); font-weight:400; letter-spacing:.005em; text-wrap:balance}
+  .serif-i{font-family:var(--display); font-style:italic}
+  .mono{font-family:var(--mono)}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- header ---------- */
+  .hdr{
+    position:sticky; top:0; z-index:20; background:color-mix(in srgb, var(--shell) 88%, transparent);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px 12px; border-bottom:1px solid var(--line);
+  }
+  .wordmark{font-family:var(--display); font-size:21px; letter-spacing:.02em}
+  .wordmark em{font-style:italic}
+  .hdr .sub{font-family:var(--mono); font-size:9.5px; letter-spacing:.22em; color:var(--ink-3); margin-top:2px; text-transform:uppercase}
+  .side-btn{
+    font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-2); border:1px solid var(--line); border-radius:999px; padding:7px 12px;
+  }
+  .side-btn:hover{color:var(--ink); border-color:var(--ink-3)}
+
+  /* ---------- tab bar ---------- */
+  .tabs{
+    position:absolute; bottom:0; left:0; right:0; z-index:30;
+    display:flex; border-top:1px solid var(--line);
+    background:color-mix(in srgb, var(--shell) 92%, transparent);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .tab{
+    flex:1; padding:13px 4px 15px; text-align:center;
+    font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-3); position:relative;
+  }
+  .tab .glyph{display:block; font-family:var(--display); font-size:17px; font-style:italic; margin-bottom:4px; letter-spacing:0}
+  .tab.on{color:var(--ink)}
+  .tab.on::before{content:""; position:absolute; top:-1px; left:24%; right:24%; height:2px; background:var(--accent)}
+  .tab .dot{position:absolute; top:8px; right:22%; width:7px; height:7px; border-radius:50%; background:var(--accent)}
+
+  /* ---------- shared blocks ---------- */
+  .pad{padding:20px}
+  .stack{display:flex; flex-direction:column; gap:14px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px}
+  .rule{height:1px; background:var(--line); border:none}
+  .sect{display:flex; align-items:baseline; justify-content:space-between; margin:10px 2px 2px}
+  .btn{
+    display:block; width:100%; text-align:center; border-radius:14px; padding:15px 18px;
+    font-weight:600; font-size:15px; letter-spacing:.01em;
+  }
+  .btn-hot{background:var(--accent); color:var(--accent-ink)}
+  .btn-hot:hover{filter:brightness(1.06)}
+  .btn-ghost{border:1px solid var(--line); color:var(--ink)}
+  .btn-ghost:hover{border-color:var(--ink-3)}
+  .btn[disabled]{opacity:.45; cursor:default}
+  .chiprow{display:flex; gap:8px; overflow-x:auto; padding:2px; scrollbar-width:none}
+  .chip{
+    flex:none; font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    padding:9px 14px; border-radius:999px; border:1px solid var(--line); color:var(--ink-2); white-space:nowrap;
+  }
+  .chip.on{background:var(--ink); color:var(--shell); border-color:var(--ink)}
+  .tag{
+    display:inline-block; font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+    border:1px solid var(--line); border-radius:4px; padding:3px 7px; color:var(--ink-2);
+  }
+  .tag-good{border-color:transparent; background:var(--good-dim); color:var(--good)}
+  .tag-hot{border-color:transparent; background:rgba(240,96,63,.14); color:var(--accent)}
+
+  /* included strip */
+  .included{background:var(--good-dim); border:1px solid color-mix(in srgb, var(--good) 30%, transparent); border-radius:16px; padding:15px 16px}
+  .included h3{font-family:var(--display); font-style:italic; font-weight:400; font-size:18px; margin-bottom:9px}
+  .inc-row{display:flex; gap:10px; align-items:baseline; padding:4.5px 0; font-size:13.5px; color:var(--ink-2)}
+  .inc-row b{color:var(--ink); font-weight:600}
+  .inc-row .ck{color:var(--good); font-family:var(--mono); font-size:12px}
+
+  /* ---------- paint chips / fleet ---------- */
+  .fleet-card{display:flex; gap:14px; align-items:stretch; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; width:100%}
+  .fleet-card:hover{border-color:var(--ink-3)}
+  .swatch{flex:none; width:64px; border-radius:10px; position:relative; min-height:76px}
+  .swatch::after{content:""; position:absolute; inset:0; border-radius:10px; box-shadow:inset 0 1px 0 rgba(255,255,255,.25), inset 0 -8px 18px rgba(0,0,0,.25)}
+  .fc-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:3px}
+  .fc-name{font-family:var(--display); font-size:17.5px; line-height:1.2}
+  .fc-meta{font-family:var(--mono); font-size:10px; letter-spacing:.06em; color:var(--ink-3); text-transform:uppercase}
+  .fc-note{font-size:12px; color:var(--accent); margin-top:2px}
+  .fc-note.calm{color:var(--ink-2)}
+  .fc-price{flex:none; text-align:right; display:flex; flex-direction:column; justify-content:space-between; align-items:flex-end}
+  .fc-price .n{font-family:var(--display); font-size:19px}
+  .fc-price .per{font-family:var(--mono); font-size:9px; letter-spacing:.12em; color:var(--ink-3); text-transform:uppercase}
+  .fc-price .go{font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--accent); text-transform:uppercase}
+
+  .hero-swatch{height:190px; border-radius:18px; position:relative; overflow:hidden}
+  .hero-swatch::after{content:""; position:absolute; inset:0; box-shadow:inset 0 2px 0 rgba(255,255,255,.3), inset 0 -30px 60px rgba(0,0,0,.3); border-radius:18px}
+  .hero-swatch .lot{
+    position:absolute; top:12px; left:12px; font-family:var(--mono); font-size:10px; letter-spacing:.14em;
+    background:rgba(0,0,0,.42); color:#F2EDE0; padding:5px 9px; border-radius:5px;
+  }
+  .hero-swatch .paint{
+    position:absolute; bottom:12px; left:12px; font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+    background:rgba(0,0,0,.42); color:#F2EDE0; padding:5px 9px; border-radius:5px;
+  }
+  .spec-row{display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--line); border-radius:14px; overflow:hidden}
+  .spec{padding:12px 6px; text-align:center; border-left:1px solid var(--line)}
+  .spec:first-child{border-left:none}
+  .spec .v{font-family:var(--display); font-size:17px}
+  .spec .k{font-family:var(--mono); font-size:8.5px; letter-spacing:.14em; color:var(--ink-3); text-transform:uppercase; margin-top:3px}
+
+  .concierge{border-left:2px solid var(--accent); padding:4px 0 4px 14px; margin:4px 2px}
+  .concierge p{font-family:var(--display); font-style:italic; font-size:15.5px; line-height:1.45; color:var(--ink)}
+  .concierge .who{font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); margin-top:7px}
+
+  /* form bits */
+  .frow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 0; border-bottom:1px solid var(--line)}
+  .frow:last-child{border-bottom:none}
+  .frow label{font-size:13.5px; color:var(--ink-2)}
+  .frow input[type=date]{
+    background:var(--card-2); border:1px solid var(--line); border-radius:9px; padding:8px 10px;
+    font-family:var(--mono); font-size:12.5px; color-scheme:dark;
+  }
+  :root[data-theme="light"] .frow input[type=date]{color-scheme:light}
+  @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]) .frow input[type=date]{color-scheme:light} }
+  .step{display:flex; align-items:center; gap:0; border:1px solid var(--line); border-radius:10px; overflow:hidden}
+  .step button{padding:8px 14px; font-family:var(--mono); font-size:14px; color:var(--ink-2)}
+  .step button:hover{color:var(--ink)}
+  .step .val{padding:8px 12px; font-family:var(--mono); font-size:12.5px; border-left:1px solid var(--line); border-right:1px solid var(--line); min-width:70px; text-align:center}
+  .seg{display:flex; flex-direction:column; gap:8px}
+  .seg-opt{display:flex; justify-content:space-between; align-items:center; gap:10px; border:1px solid var(--line); border-radius:12px; padding:12px 14px; width:100%}
+  .seg-opt.on{border-color:var(--accent); background:rgba(240,96,63,.07)}
+  .seg-opt .t{font-size:13.5px; font-weight:600}
+  .seg-opt .d{font-size:11.5px; color:var(--ink-3); margin-top:2px}
+  .seg-opt .p{font-family:var(--mono); font-size:11.5px; color:var(--ink-2)}
+
+  .line-item{display:flex; justify-content:space-between; gap:10px; padding:7px 0; font-size:13.5px; color:var(--ink-2)}
+  .line-item .r{font-family:var(--mono); font-size:12.5px; color:var(--ink)}
+  .line-item.total{border-top:1px solid var(--line); margin-top:6px; padding-top:12px; color:var(--ink); font-weight:600}
+  .line-item .good{color:var(--good)}
+
+  /* tracker */
+  .tl{position:relative; padding-left:26px}
+  .tl::before{content:""; position:absolute; left:8px; top:10px; bottom:14px; width:1px; background:var(--line)}
+  .tl-step{position:relative; padding:0 0 22px}
+  .tl-step .knot{position:absolute; left:-26px; top:3px; width:17px; height:17px; border-radius:50%; border:1.5px solid var(--line); background:var(--shell); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--good)}
+  .tl-step.done .knot{border-color:var(--good); background:var(--good-dim)}
+  .tl-step.live .knot{border-color:var(--accent); background:var(--accent)}
+  .tl-step h4{font-size:14.5px; font-weight:600}
+  .tl-step .when{font-family:var(--mono); font-size:10px; color:var(--ink-3); letter-spacing:.08em; margin-top:2px}
+  .tl-step .desc{font-size:12.5px; color:var(--ink-2); margin-top:4px; line-height:1.45}
+  .tl-step.dim h4{color:var(--ink-3)}
+
+  .msg{background:var(--card-2); border:1px solid var(--line); border-radius:14px 14px 14px 4px; padding:12px 14px; max-width:88%}
+  .msg p{font-size:13.5px; line-height:1.5}
+  .msg .who{font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); margin-bottom:5px}
+
+  /* partner */
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px}
+  .stat .v{font-family:var(--display); font-size:24px}
+  .stat .k{font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); margin-top:4px}
+  .stat .s{font-size:11px; color:var(--ink-2); margin-top:5px; line-height:1.4}
+  .tier-bar{height:6px; border-radius:99px; background:var(--card-2); overflow:hidden; margin-top:10px}
+  .tier-bar i{display:block; height:100%; background:var(--accent); border-radius:99px}
+  .tier-row{display:flex; gap:10px; align-items:baseline; padding:11px 0; border-bottom:1px solid var(--line); font-size:13px}
+  .tier-row:last-child{border-bottom:none}
+  .tier-row .nm{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; width:64px; flex:none}
+  .tier-row .cut{font-family:var(--mono); font-size:12px; flex:none; width:44px; color:var(--ink)}
+  .tier-row .pk{color:var(--ink-2); font-size:12px; line-height:1.45}
+  .tier-row.you .nm{color:var(--accent)}
+
+  .req-card{border:1px solid var(--line); border-radius:16px; background:var(--card); overflow:hidden}
+  .req-head{display:flex; gap:12px; padding:14px 16px; align-items:center}
+  .avatar{flex:none; width:38px; height:38px; border-radius:50%; background:var(--card-2); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:var(--display); font-style:italic; font-size:15px}
+  .req-body{padding:0 16px 14px; display:flex; flex-direction:column; gap:8px}
+  .req-actions{display:flex; border-top:1px solid var(--line)}
+  .req-actions button{flex:1; padding:13px; text-align:center; font-weight:600; font-size:13.5px}
+  .req-actions .ok{color:var(--good)}
+  .req-actions .no{color:var(--ink-3); border-left:1px solid var(--line)}
+  .kv{display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-2)}
+  .kv .r{font-family:var(--mono); font-size:11.5px; color:var(--ink)}
+
+  .toggle{flex:none; width:44px; height:26px; border-radius:99px; background:var(--card-2); border:1px solid var(--line); position:relative}
+  .toggle i{position:absolute; top:2.5px; left:3px; width:19px; height:19px; border-radius:50%; background:var(--ink-3); transition:transform .18s, background .18s}
+  .toggle.on{background:var(--good-dim); border-color:var(--good)}
+  .toggle.on i{transform:translateX(18px); background:var(--good)}
+  @media (prefers-reduced-motion: reduce){ .toggle i{transition:none} }
+
+  /* gate */
+  .gate{min-height:100%; display:flex; flex-direction:column; justify-content:flex-end; padding:28px 24px 34px; position:relative}
+  .gate-art{position:absolute; inset:0; overflow:hidden; pointer-events:none}
+  .gate-strip{position:absolute; border-radius:99px; opacity:.85}
+  .gate-inner{position:relative; display:flex; flex-direction:column; gap:0}
+  .gate .wm{font-family:var(--display); font-size:54px; line-height:1.02; letter-spacing:.005em; margin:14px 0 4px}
+  .gate .wm em{font-style:italic}
+  .gate .lede{font-size:15.5px; line-height:1.55; color:var(--ink-2); max-width:34ch; margin:8px 0 22px}
+  .gate .lede b{color:var(--ink); font-weight:600}
+  .gate .foot{font-size:11.5px; color:var(--ink-3); line-height:1.55; margin-top:18px; max-width:38ch}
+
+  .toast{
+    position:absolute; left:50%; bottom:92px; transform:translateX(-50%);
+    background:var(--ink); color:var(--shell); font-size:12.5px; font-weight:600;
+    padding:10px 16px; border-radius:99px; z-index:50; white-space:nowrap;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .toast{animation:toastin .25s cubic-bezier(.2,.7,.2,1)}
+    @keyframes toastin{from{opacity:0; transform:translate(-50%,8px)} to{opacity:1; transform:translate(-50%,0)}}
+  }
+
+  .ig-card{background:linear-gradient(150deg, var(--card) 0%, var(--card-2) 100%); border:1px solid var(--line); border-radius:16px; padding:16px}
+  .route{display:flex; gap:12px; padding:13px 2px; border-bottom:1px solid var(--line); align-items:baseline}
+  .route:last-child{border-bottom:none}
+  .route .rd{flex:none; font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--accent); width:74px; text-transform:uppercase}
+  .route .rt{font-size:13.5px; font-weight:600}
+  .route .rs{font-size:12px; color:var(--ink-2); margin-top:3px; line-height:1.45}
+
+  .code-box{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    border:1.5px dashed var(--ink-3); border-radius:12px; padding:13px 16px; margin-top:12px;
+  }
+  .code-box .c{font-family:var(--mono); font-size:15px; letter-spacing:.14em}
+  .code-box button{font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent)}
+
+  .list-row{display:flex; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; align-items:baseline}
+  .list-row:last-child{border-bottom:none}
+  .pay-row{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:12px 0; border-bottom:1px solid var(--line)}
+  .pay-row:last-child{border-bottom:none}
+</style>
+
+<div class="shell" id="shell"></div>
+
+<script>
+"use strict";
+
+/* ---------------- data ---------------- */
+
+const CARS = [
+  {id:"hur", name:"Lamborghini Huracán EVO", year:2023, paint:{name:"Verde Mantis", hex:"#3FA33C", hi:"#8FE07F"},
+   city:"Miami", rate:899, hp:631, zero60:"2.9", seats:2, deposit:1000, lot:"TN-07",
+   note:"3 requests this week", hot:true, owner:"marcus", ownerTime:"~45 min",
+   cnote:"Weekend nights on this one go first. If you want Saturday, ask by Thursday — the owner is quick but the calendar isn't."},
+  {id:"urus", name:"Lamborghini Urus", year:2024, paint:{name:"Giallo Auge", hex:"#E7B426", hi:"#FFE38A"},
+   city:"Miami", rate:749, hp:657, zero60:"3.1", seats:5, deposit:1000, lot:"TN-11",
+   note:"Fits the whole crew + luggage", hot:false, owner:"elena", ownerTime:"~1 hr",
+   cnote:"The airport-run favorite. Seats five, swallows luggage, still turns every head on Collins."},
+  {id:"f8", name:"Ferrari F8 Tributo", year:2022, paint:{name:"Rosso Corsa", hex:"#C4231C", hi:"#F2755F"},
+   city:"Miami", rate:999, hp:710, zero60:"2.9", seats:2, deposit:1500, lot:"TN-02",
+   note:"2 requests this week", hot:true, owner:"elena", ownerTime:"~2 hrs",
+   cnote:"Our most-photographed car. If the trip is a birthday or a proposal, tell us — we'll time delivery to the minute."},
+  {id:"mcl", name:"McLaren 570S Spider", year:2021, paint:{name:"Vega Blue", hex:"#2A6BD4", hi:"#7FB2FF"},
+   city:"Fort Lauderdale", rate:799, hp:562, zero60:"3.1", seats:2, deposit:1000, lot:"TN-15",
+   note:"Roof down in 15 seconds", hot:false, owner:"marcus", ownerTime:"~45 min",
+   cnote:"Top down on A1A at golden hour is the whole point of this car. Book it for the drive, not the parking lot."},
+  {id:"cul", name:"Rolls-Royce Cullinan", year:2023, paint:{name:"Arctic White", hex:"#E9E7E0", hi:"#FFFFFF"},
+   city:"Miami", rate:1150, hp:563, zero60:"4.9", seats:5, deposit:2000, lot:"TN-01",
+   note:"Chauffeur available on request", hot:false, owner:"elena", ownerTime:"~3 hrs",
+   cnote:"The quiet flex. Weddings, closings, landing at MIA like you mean it. Owner confirms slower — ask a day ahead."},
+  {id:"g63", name:"Mercedes-AMG G 63", year:2023, paint:{name:"Obsidian Black", hex:"#23262B", hi:"#5A616D"},
+   city:"Fort Lauderdale", rate:549, hp:577, zero60:"4.3", seats:5, deposit:1000, lot:"TN-09",
+   note:"4 requests this week", hot:true, owner:"marcus", ownerTime:"~30 min",
+   cnote:"The most requested truck in the fleet, and the fastest owner to confirm. Last-minute Friday asks actually work here."},
+  {id:"p911", name:"Porsche 911 Carrera 4S", year:2022, paint:{name:"Chalk", hex:"#C9C6BD", hi:"#F4F1E8"},
+   city:"Palm Beach", rate:449, hp:443, zero60:"3.2", seats:4, deposit:750, lot:"TN-21",
+   note:"Cabriolet — Worth Ave approved", hot:false, owner:"raf", ownerTime:"~1 hr",
+   cnote:"Palm Beach in a nutshell: understated until you put your foot down. The one locals rebook."},
+  {id:"c8", name:"Chevrolet Corvette C8", year:2023, paint:{name:"Torch Red", hex:"#C8102E", hi:"#F26D7E"},
+   city:"Palm Beach", rate:299, hp:495, zero60:"2.9", seats:2, deposit:500, lot:"TN-18",
+   note:"First exotic? Start here", hot:false, owner:"raf", ownerTime:"~1 hr",
+   cnote:"Mid-engine, loud, and the friendliest price on the list. The gateway car — half our regulars started in this seat."},
+];
+
+const CITIES = ["Miami","Fort Lauderdale","Palm Beach"];
+
+const fmt = n => "$" + n.toLocaleString("en-US");
+const car = id => CARS.find(c => c.id === id);
+
+function fdate(d){ return d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function today(){ const t=new Date(); t.setHours(0,0,0,0); return t; }
+function ftime(d){ return d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}); }
+
+/* ---------------- state ---------------- */
+
+const S = {
+  mode:"gate",              // gate | renter | partner
+  rTab:"fleet", pTab:"today",
+  screen:null,              // overrides tab body: {kind:"car"|"tracker", id}
+  city:"Miami",
+  form:{start:null, days:2, delivery:"pickup"},
+  requests:[
+    { id:"seed1", carId:"g63", renter:"D. Alvarez", renterTrips:6, mine:false,
+      start:addDays(today(),2), days:3, delivery:"hotel", status:"pending_owner",
+      note:"Staying at the W Fort Lauderdale" },
+  ],
+  trips:[
+    { id:"t1", carId:"urus", start:addDays(today(),5), days:2, delivery:"door",
+      status:"confirmed", depositState:"Holds the day before pickup" },
+    { id:"t2", carId:"c8", start:addDays(today(),-22), days:2, delivery:"pickup",
+      status:"past", depositState:"Refunded ✓" },
+  ],
+  partner:{
+    name:"Marcus", tier:"Gold", cut:.78, month:8420, trips:6, resp:"42 min",
+    tripsQ:3, tripsNeeded:5,
+    listings:[
+      {carId:"hur", live:true, views:212},
+      {carId:"g63", live:true, views:388},
+      {carId:"mcl", live:false, views:97},
+    ],
+    payouts:[
+      {when:"Mon, Jul 6", what:"G 63 · 3 days", amt:1285},
+      {when:"Mon, Jun 29", what:"Huracán EVO · 2 days", amt:1402},
+      {when:"Mon, Jun 29", what:"G 63 · 2 days", amt:856},
+      {when:"Mon, Jun 22", what:"570S Spider · 4 days", amt:2493},
+    ],
+  },
+  myReq:null,               // the user's live request object
+  timers:[],
+  toastMsg:null, toastTimer:null,
+};
+
+/* ---------------- helpers ---------------- */
+
+function toast(msg){
+  S.toastMsg = msg;
+  clearTimeout(S.toastTimer);
+  S.toastTimer = setTimeout(()=>{ S.toastMsg=null; render(); }, 2400);
+  render();
+}
+
+function clearTimers(){ S.timers.forEach(clearTimeout); S.timers=[]; }
+
+function swatchStyle(p, hero){
+  return `background:
+    radial-gradient(${hero?"120% 90% at 28% 0%":"150% 110% at 30% 0%"}, ${p.hi}55, transparent 46%),
+    linear-gradient(160deg, ${p.hi}33 0%, ${p.hex} 52%, color-mix(in srgb, ${p.hex} 62%, black) 100%);`;
+}
+
+function deliveryLabel(k){
+  return k==="pickup" ? "Pickup — Miami / FLL / PBI lot" : k==="hotel" ? "Hotel delivery" : "Residence delivery";
+}
+function deliveryFee(k, days){ return k==="pickup" ? 0 : (days>=3 ? 0 : 149); }
+
+/* ---------------- request lifecycle ---------------- */
+
+function submitRequest(carId){
+  clearTimers();
+  const c = car(carId);
+  const start = S.form.start || addDays(today(),1);
+  const req = {
+    id:"my"+Date.now(), carId, mine:true, renter:"You", renterTrips:2,
+    start, days:S.form.days, delivery:S.form.delivery,
+    status:"sent", sentAt:new Date(), msgs:[
+      {who:"V. — TopNotch concierge", text:"Got it. Your request is in — I'm reaching out to the owner right now. You haven't been charged anything yet."}
+    ],
+  };
+  S.myReq = req;
+  S.requests.unshift(req);
+  S.screen = {kind:"tracker"};
+  render();
+
+  S.timers.push(setTimeout(()=>{
+    if(req.status!=="sent") return;
+    req.status="confirming";
+    req.msgs.push({who:"V. — TopNotch concierge", text:"On with the owner now. This one usually comes back fast — I'll ping you the second it's locked."});
+    render();
+  }, 2400));
+  S.timers.push(setTimeout(()=>{
+    if(req.status!=="confirming") return;
+    confirmMyRequest("Owner said yes. You're locked — "+c.name+", "+fdate(req.start)+"–"+fdate(addDays(req.start,req.days))+". Insurance is on, the deposit holds the day before and comes back after return. See you out there.");
+  }, 9500));
+}
+
+function confirmMyRequest(msgText){
+  const req = S.myReq; if(!req || req.status==="confirmed") return;
+  clearTimers();
+  req.status="confirmed"; req.confirmedAt=new Date();
+  req.msgs.push({who:"V. — TopNotch concierge", text:msgText});
+  S.trips.unshift({ id:"t"+Date.now(), carId:req.carId, start:req.start, days:req.days,
+    delivery:req.delivery, status:"confirmed", depositState:"Holds the day before pickup" });
+  render();
+}
+
+function partnerDecide(id, ok){
+  const req = S.requests.find(r=>r.id===id); if(!req) return;
+  if(req.mine){
+    if(ok){
+      confirmMyRequest("Owner said yes. You're locked — "+car(req.carId).name+". Insurance is on, the deposit holds the day before and comes back after return. See you out there.");
+      toast("Approved — the renter just got the good news");
+    } else {
+      clearTimers(); req.status="declined";
+      req.msgs.push({who:"V. — TopNotch concierge", text:"Bad news — the owner can't make those dates work. Nothing was charged. Want me to line up something close? The "+ (req.carId==="hur"?"F8 Tributo":"Huracán EVO") +" is open that weekend."});
+      toast("Declined — renter was never charged");
+    }
+  } else {
+    req.status = ok ? "confirmed" : "declined";
+    toast(ok ? "Confirmed — trip is on the books" : "Declined — renter was never charged");
+  }
+  render();
+}
+
+/* ---------------- shared UI pieces ---------------- */
+
+function headerHTML(sub, switchLabel, switchAct){
+  return `
+  <header class="hdr">
+    <div>
+      <div class="wordmark">Top<em>Notch</em></div>
+      <div class="sub">${sub}</div>
+    </div>
+    <button class="side-btn" data-act="${switchAct}">${switchLabel}</button>
+  </header>`;
+}
+
+function includedHTML(compact){
+  return `
+  <div class="included">
+    <h3>Included, always.</h3>
+    <div class="inc-row"><span class="ck">■</span><span><b>Insurance</b> — already in every price. No add-on screen, ever.</span></div>
+    <div class="inc-row"><span class="ck">■</span><span><b>Deposit</b> — fully refundable, back 3–5 days after return.</span></div>
+    ${compact?"":`<div class="inc-row"><span class="ck">■</span><span><b>Delivery</b> — airport, hotel, or your door. Free on 3+ days.</span></div>`}
+  </div>`;
+}
+
+function tabsHTML(tabs, current, prefix, badge){
+  return `<nav class="tabs">` + tabs.map(t=>`
+    <button class="tab ${current===t.id?"on":""}" data-act="${prefix}" data-id="${t.id}">
+      <span class="glyph">${t.g}</span>${t.l}
+      ${badge===t.id?`<span class="dot"></span>`:""}
+    </button>`).join("") + `</nav>`;
+}
+
+/* ---------------- gate ---------------- */
+
+function gateHTML(){
+  const strips = [
+    {c:"#3FA33C", w:220, h:10, t:"12%", l:"-40px", r:"-14deg"},
+    {c:"#E7B426", w:160, h:10, t:"19%", l:"55%", r:"-14deg"},
+    {c:"#C4231C", w:250, h:10, t:"27%", l:"14%", r:"-14deg"},
+    {c:"#2A6BD4", w:130, h:10, t:"35%", l:"70%", r:"-14deg"},
+    {c:"#C9C6BD", w:180, h:10, t:"42%", l:"-20px", r:"-14deg"},
+  ];
+  return `
+  <div class="view no-tabs"><div class="gate screen-in">
+    <div class="gate-art">${strips.map(s=>`<span class="gate-strip" style="background:${s.c}; width:${s.w}px; height:${s.h}px; top:${s.t}; left:${s.l}; transform:rotate(${s.r})"></span>`).join("")}</div>
+    <div class="gate-inner">
+      <div class="eyebrow">Miami · Fort Lauderdale · Palm Beach</div>
+      <h1 class="wm display">Top<em>Notch</em></h1>
+      <div class="eyebrow" style="color:var(--accent)">The plug for South Florida</div>
+      <p class="lede">We don't own a fleet. We know the people who do — and we broker the best garages in South Florida with <b>insurance already in the price</b> and <b>a deposit you get back</b>. Every time.</p>
+      <div class="stack">
+        <button class="btn btn-hot" data-act="enterRenter">Book a car</button>
+        <button class="btn btn-ghost" data-act="enterPartner">I have cars — the partner side</button>
+      </div>
+      <p class="foot">Cars today. The rest of the good life — places to stay, nights out, the boat — is coming. Same plug.</p>
+    </div>
+  </div></div>`;
+}
+
+/* ---------------- renter: fleet ---------------- */
+
+function fleetHTML(){
+  const list = CARS.filter(c=>c.city===S.city);
+  return `
+  <div class="pad stack screen-in">
+    <div class="chiprow" role="tablist">
+      ${CITIES.map(c=>`<button class="chip ${S.city===c?"on":""}" data-act="setCity" data-id="${c}">${c}</button>`).join("")}
+    </div>
+    ${includedHTML(false)}
+    <div class="sect">
+      <span class="eyebrow">The fleet — ${S.city}</span>
+      <span class="mono" style="font-size:10px; color:var(--ink-3)">${list.length} cars</span>
+    </div>
+    ${list.map(c=>`
+      <button class="fleet-card" data-act="openCar" data-id="${c.id}">
+        <span class="swatch" style="${swatchStyle(c.paint,false)}"></span>
+        <span class="fc-body">
+          <span class="fc-name">${c.year} ${c.name}</span>
+          <span class="fc-meta">${c.hp} hp · 0–60 ${c.zero60}s · ${c.paint.name}</span>
+          <span class="fc-note ${c.hot?"":"calm"}">${c.hot?"◆ ":""}${c.note}</span>
+        </span>
+        <span class="fc-price">
+          <span><span class="n num">${fmt(c.rate)}</span><br><span class="per">per day</span></span>
+          <span class="go">Request →</span>
+        </span>
+      </button>`).join("")}
+    <p style="font-size:11.5px; color:var(--ink-3); line-height:1.6; padding:4px 2px 0">
+      Every car belongs to a vetted local owner. TopNotch confirms your dates with them directly —
+      that's why it's a request, not a checkout. Most come back in under an hour.
+    </p>
+  </div>`;
+}
+
+/* ---------------- renter: car detail ---------------- */
+
+function carHTML(id){
+  const c = car(id);
+  const startVal = (S.form.start || addDays(today(),1)).toISOString().slice(0,10);
+  const days = S.form.days;
+  const dfee = deliveryFee(S.form.delivery, days);
+  const subtotal = c.rate*days + dfee;
+  return `
+  <div class="pad stack screen-in">
+    <button class="side-btn" style="align-self:flex-start" data-act="backFleet">← Fleet</button>
+    <div class="hero-swatch" style="${swatchStyle(c.paint,true)}">
+      <span class="lot">${c.lot} · ${c.city.toUpperCase()}</span>
+      <span class="paint">Paint — ${c.paint.name}</span>
+    </div>
+    <div>
+      <h2 class="display" style="font-size:26px; line-height:1.15">${c.year} ${c.name}</h2>
+      <div style="display:flex; gap:8px; margin-top:9px; flex-wrap:wrap">
+        <span class="tag tag-good">Insurance included</span>
+        <span class="tag tag-good">Deposit refundable</span>
+        ${c.hot?`<span class="tag tag-hot">◆ ${c.note}</span>`:""}
+      </div>
+    </div>
+    <div class="spec-row">
+      <div class="spec"><div class="v num">${c.hp}</div><div class="k">HP</div></div>
+      <div class="spec"><div class="v num">${c.zero60}s</div><div class="k">0–60</div></div>
+      <div class="spec"><div class="v num">${c.seats}</div><div class="k">Seats</div></div>
+      <div class="spec"><div class="v num">${fmt(c.deposit)}</div><div class="k">Deposit ↩</div></div>
+    </div>
+    <div class="concierge">
+      <p>“${c.cnote}”</p>
+      <div class="who">V. — TopNotch concierge · owner confirms in ${c.ownerTime}</div>
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:6px">Your dates</div>
+      <div class="frow">
+        <label for="startdate">First day</label>
+        <input type="date" id="startdate" value="${startVal}" min="${today().toISOString().slice(0,10)}">
+      </div>
+      <div class="frow">
+        <label>Days</label>
+        <div class="step">
+          <button data-act="daysDec" aria-label="Fewer days">−</button>
+          <span class="val num">${days} day${days>1?"s":""}</span>
+          <button data-act="daysInc" aria-label="More days">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:10px">Where do you want it</div>
+      <div class="seg">
+        ${[
+          {k:"pickup", t:"I'll come to it", d:"Miami, FLL or PBI lot — 10 min from arrivals", p:"Free"},
+          {k:"hotel", t:"My hotel", d:"Valet handoff, keys at the desk if you're out", p:days>=3?"Free 3+ days":"$149"},
+          {k:"door", t:"My door", d:"Anywhere Miami–Palm Beach, photos on arrival", p:days>=3?"Free 3+ days":"$149"},
+        ].map(o=>`
+        <button class="seg-opt ${S.form.delivery===o.k?"on":""}" data-act="setDelivery" data-id="${o.k}">
+          <span><span class="t">${o.t}</span><br><span class="d">${o.d}</span></span>
+          <span class="p">${o.p}</span>
+        </button>`).join("")}
+      </div>
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:6px">The math, all of it</div>
+      <div class="line-item"><span>${fmt(c.rate)} × ${days} day${days>1?"s":""}</span><span class="r num">${fmt(c.rate*days)}</span></div>
+      <div class="line-item"><span>${deliveryLabel(S.form.delivery)}</span><span class="r num">${dfee===0?"Free":fmt(dfee)}</span></div>
+      <div class="line-item"><span>Insurance</span><span class="r good">Included</span></div>
+      <div class="line-item"><span>Security deposit — refundable</span><span class="r num">${fmt(c.deposit)} ↩</span></div>
+      <div class="line-item total"><span>If the owner confirms</span><span class="r num">${fmt(subtotal)}</span></div>
+      <div class="line-item"><span><b style="color:var(--ink)">Charged today</b></span><span class="r good num">$0</span></div>
+    </div>
+    <button class="btn btn-hot" data-act="submitRequest" data-id="${c.id}">Send request to the owner</button>
+    <p style="font-size:11.5px; color:var(--ink-3); text-align:center; line-height:1.55; padding:0 8px">
+      Nothing is charged until the owner confirms — usually ${c.ownerTime}.
+      We check with the real owner so the car is really there. No fake instant-book.
+    </p>
+  </div>`;
+}
+
+/* ---------------- renter: tracker ---------------- */
+
+function trackerHTML(){
+  const req = S.myReq;
+  if(!req) return `<div class="pad screen-in"><p style="color:var(--ink-2)">No live request.</p></div>`;
+  const c = car(req.carId);
+  const stateIdx = {sent:0, confirming:1, confirmed:2, declined:2}[req.status];
+  const steps = [
+    {t:"Request sent", d:"Dates, delivery and the full price locked in writing. Card not charged.", when:req.sentAt?ftime(req.sentAt):""},
+    {t:"TopNotch is on with the owner", d:"A human — not a queue. We confirm the car is really free before you pay a cent.", when:""},
+    req.status==="declined"
+      ? {t:"Owner can't make it work", d:"It happens. You were never charged, and your concierge is already lining up a close match.", when:""}
+      : {t:"Confirmed", d:"Payment goes through, deposit holds the day before pickup, and your trip hits the Trips tab.", when:req.confirmedAt?ftime(req.confirmedAt):""},
+  ];
+  return `
+  <div class="pad stack screen-in">
+    <button class="side-btn" style="align-self:flex-start" data-act="goTrips">← Trips</button>
+    <div>
+      <div class="eyebrow" style="margin-bottom:6px">Live request · ${c.lot}</div>
+      <h2 class="display" style="font-size:24px">${c.name}</h2>
+      <div class="mono" style="font-size:11px; color:var(--ink-2); margin-top:6px">
+        ${fdate(req.start)} – ${fdate(addDays(req.start,req.days))} · ${deliveryLabel(req.delivery)}
+      </div>
+    </div>
+    <div class="card">
+      <div class="tl">
+        ${steps.map((s,i)=>{
+          const done = i<stateIdx || (i===stateIdx && (req.status==="confirmed"||req.status==="declined"));
+          const live = i===stateIdx && req.status!=="confirmed" && req.status!=="declined";
+          return `
+          <div class="tl-step ${done?"done":""} ${live?"live":""} ${i>stateIdx?"dim":""}">
+            <span class="knot">${done?"✓":""}</span>
+            <h4>${s.t}</h4>
+            ${s.when?`<div class="when">${s.when}</div>`:""}
+            <div class="desc">${s.d}</div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+    <div class="stack" style="gap:10px">
+      ${req.msgs.map(m=>`
+        <div class="msg"><div class="who">${m.who}</div><p>${m.text}</p></div>`).join("")}
+    </div>
+    ${req.status==="confirmed"?`<button class="btn btn-ghost" data-act="goTrips">View it in Trips →</button>`:""}
+    ${req.status==="declined"?`<button class="btn btn-ghost" data-act="backFleet">Back to the fleet</button>`:""}
+    <p style="font-size:11.5px; color:var(--ink-3); line-height:1.6; padding:0 4px">
+      Why not instant book? Because we'd be guessing. Every TopNotch trip is confirmed with the
+      actual owner — about 9 in 10 requests confirm, most within the hour.
+      ${req.status!=="confirmed" && req.status!=="declined" ? "Curious what the other side looks like? Tap the partner side in the header — your request is sitting in an owner's inbox right now." : ""}
+    </p>
+  </div>`;
+}
+
+/* ---------------- renter: trips ---------------- */
+
+function tripsHTML(){
+  const upcoming = S.trips.filter(t=>t.status==="confirmed");
+  const past = S.trips.filter(t=>t.status==="past");
+  const live = S.myReq && S.myReq.status!=="confirmed" && S.myReq.status!=="declined";
+  return `
+  <div class="pad stack screen-in">
+    ${live?`
+    <button class="card" style="width:100%; border-color:var(--accent)" data-act="openTracker">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+        <div>
+          <div class="eyebrow" style="color:var(--accent); margin-bottom:5px">Live request</div>
+          <div class="fc-name">${car(S.myReq.carId).name}</div>
+          <div class="fc-meta" style="margin-top:4px">${S.myReq.status==="sent"?"Request sent — concierge picking it up":"Confirming with the owner now"}</div>
+        </div>
+        <span class="mono" style="color:var(--accent); font-size:11px">TRACK →</span>
+      </div>
+    </button>`:""}
+    <div class="sect"><span class="eyebrow">Upcoming</span></div>
+    ${upcoming.length?upcoming.map(t=>{
+      const c=car(t.carId);
+      return `
+      <div class="card">
+        <div style="display:flex; gap:13px; align-items:center">
+          <span class="swatch" style="${swatchStyle(c.paint,false)}; min-height:58px; width:52px"></span>
+          <div style="flex:1; min-width:0">
+            <div class="fc-name">${c.name}</div>
+            <div class="fc-meta" style="margin-top:4px">${fdate(t.start)} – ${fdate(addDays(t.start,t.days))} · ${deliveryLabel(t.delivery)}</div>
+          </div>
+          <span class="tag tag-good">Confirmed</span>
+        </div>
+        <hr class="rule" style="margin:13px 0">
+        <div class="kv"><span>Insurance</span><span class="r" style="color:var(--good)">Active for the full trip</span></div>
+        <div class="kv" style="margin-top:6px"><span>Deposit ${fmt(c.deposit)}</span><span class="r">${t.depositState}</span></div>
+      </div>`;
+    }).join(""):`<p style="font-size:13px; color:var(--ink-3); padding:2px">Nothing on the books — the fleet is a tab away.</p>`}
+    <div class="sect"><span class="eyebrow">Past</span></div>
+    ${past.map(t=>{
+      const c=car(t.carId);
+      return `
+      <div class="card" style="opacity:.85">
+        <div style="display:flex; gap:13px; align-items:center">
+          <span class="swatch" style="${swatchStyle(c.paint,false)}; min-height:58px; width:52px"></span>
+          <div style="flex:1; min-width:0">
+            <div class="fc-name">${c.name}</div>
+            <div class="fc-meta" style="margin-top:4px">${fdate(t.start)} – ${fdate(addDays(t.start,t.days))}</div>
+            <div style="font-size:12px; color:var(--good); margin-top:4px">Deposit ${t.depositState}</div>
+          </div>
+          <button class="side-btn" data-act="openCar" data-id="${c.id}">Rebook</button>
+        </div>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+/* ---------------- renter: the list ---------------- */
+
+function listHTML(){
+  return `
+  <div class="pad stack screen-in">
+    <div>
+      <h2 class="display" style="font-size:26px">The List</h2>
+      <p style="font-size:13.5px; color:var(--ink-2); line-height:1.55; margin-top:7px; max-width:36ch">
+        No ads. No billboards. TopNotch grows because people talk — and talking pays.
+      </p>
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:8px">Send a friend</div>
+      <p style="font-size:13.5px; line-height:1.5">They get <b>$75 off</b> their first trip. You get <b>$75</b> when it completes. No caps, no expiry.</p>
+      <div class="code-box">
+        <span class="c">TN-ALX-305</span>
+        <button data-act="copyCode">Copy</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:8px">Scout for the fleet</div>
+      <p style="font-size:13.5px; line-height:1.55; color:var(--ink-2)">
+        Know someone with a car that belongs on this list? If they join off your name,
+        you earn <b style="color:var(--ink)">5% of their first three trips</b>. Our whole fleet was built this way.
+      </p>
+      <button class="btn btn-ghost" style="margin-top:12px; padding:12px" data-act="scoutToast">Refer an owner</button>
+    </div>
+    <div class="ig-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+        <div>
+          <div class="eyebrow" style="margin-bottom:6px">The fleet, in the wild</div>
+          <div class="mono" style="font-size:14px">@305.pluggedin</div>
+          <p style="font-size:12px; color:var(--ink-2); margin-top:5px; line-height:1.5">Every car on this app, shot on the streets it actually drives. Tag us and we repost.</p>
+        </div>
+        <button class="side-btn" data-act="igToast" style="color:var(--accent); border-color:var(--accent)">Follow</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:4px">At the desk</div>
+      <p style="font-size:12.5px; color:var(--ink-2); line-height:1.55; margin-bottom:6px">
+        Concierge partners — ask for TopNotch by name and they'll set the whole thing up while you're at dinner.
+      </p>
+      ${["The Setai, Miami Beach","Faena Hotel, Mid-Beach","1 Hotel South Beach","W Fort Lauderdale","The Breakers, Palm Beach"]
+        .map(h=>`<div class="list-row"><span class="mono" style="font-size:9px; color:var(--accent)">◆</span>${h}</div>`).join("")}
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:4px">Drives worth the key</div>
+      <div class="route"><span class="rd">A1A ↑</span><span><span class="rt">Lauderdale to Palm Beach, top down</span><br><span class="rs">45 miles of ocean on your right. Leave at 5pm, dinner at The Breakers by 7.</span></span></div>
+      <div class="route"><span class="rd">MacArthur</span><span><span class="rt">The skyline run</span><br><span class="rs">Causeway at dusk, Star Island on the left, downtown lit up ahead. Ten minutes, unforgettable.</span></span></div>
+      <div class="route"><span class="rd">Ocean Dr</span><span><span class="rt">South Beach, after midnight</span><br><span class="rs">First gear, windows down. This is what the loud exhaust is for.</span></span></div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- partner: today ---------------- */
+
+function pTodayHTML(){
+  const p = S.partner;
+  const pending = S.requests.filter(r=>["sent","confirming","pending_owner"].includes(r.status));
+  const pct = Math.min(100, Math.round(p.tripsQ/p.tripsNeeded*100));
+  return `
+  <div class="pad stack screen-in">
+    <div>
+      <h2 class="display" style="font-size:25px">Good evening, ${p.name}.</h2>
+      <p style="font-size:13px; color:var(--ink-2); margin-top:6px">${pending.length?`${pending.length} request${pending.length>1?"s":""} waiting on you — renters aren't charged until you say yes.`:"Inbox is clear. Your cars are working."}</p>
+    </div>
+    ${pending.length?`
+    <button class="card" style="width:100%; border-color:var(--accent)" data-act="pTab" data-id="reqs">
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <div>
+          <div class="eyebrow" style="color:var(--accent); margin-bottom:5px">Needs a reply</div>
+          <div style="font-size:14px; font-weight:600">${pending.length} pending request${pending.length>1?"s":""}</div>
+          <div style="font-size:11.5px; color:var(--ink-3); margin-top:3px">Fast replies climb the fleet ranking</div>
+        </div>
+        <span class="mono" style="color:var(--accent); font-size:11px">OPEN →</span>
+      </div>
+    </button>`:""}
+    <div class="stat-grid">
+      <div class="stat"><div class="v num">${fmt(p.month)}</div><div class="k">July payout</div><div class="s">Your ${Math.round(p.cut*100)}% cut, after nothing else</div></div>
+      <div class="stat"><div class="v num">${p.trips}</div><div class="k">Trips this month</div><div class="s">Across ${p.listings.filter(l=>l.live).length} live cars</div></div>
+      <div class="stat"><div class="v num">${p.resp}</div><div class="k">Avg response</div><div class="s">Fast owners get shown first</div></div>
+      <div class="stat"><div class="v num">0</div><div class="k">Claims, ever</div><div class="s">Insurance is on TopNotch, on every trip</div></div>
+    </div>
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:baseline">
+        <span class="eyebrow" style="color:var(--warn)">Gold partner</span>
+        <span class="mono num" style="font-size:11px; color:var(--ink-2)">${Math.round(p.cut*100)}% payout</span>
+      </div>
+      <div class="tier-bar"><i style="width:${pct}%"></i></div>
+      <p style="font-size:12px; color:var(--ink-2); margin-top:9px">${p.tripsQ} of ${p.tripsNeeded} trips this quarter — <b style="color:var(--ink)">${p.tripsNeeded-p.tripsQ} more to Black</b> and an 84% cut.</p>
+      <hr class="rule" style="margin:13px 0">
+      <div class="tier-row"><span class="nm">Chrome</span><span class="cut num">70%</span><span class="pk">Every partner starts here. Insurance covered, Monday payouts.</span></div>
+      <div class="tier-row you"><span class="nm">Gold ◆</span><span class="cut num">78%</span><span class="pk">Priority placement, direct concierge line, pro photos comped.</span></div>
+      <div class="tier-row"><span class="nm">Black</span><span class="cut num">84%</span><span class="pk">First call on concierge requests, co-branded features with @305.pluggedin.</span></div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- partner: requests ---------------- */
+
+function pReqsHTML(){
+  const active = S.requests.filter(r=>["sent","confirming","pending_owner"].includes(r.status));
+  const settled = S.requests.filter(r=>["confirmed","declined"].includes(r.status));
+  const reqCard = r => {
+    const c = car(r.carId);
+    const gross = c.rate*r.days;
+    const cut = Math.round(gross*S.partner.cut);
+    const open = ["sent","confirming","pending_owner"].includes(r.status);
+    return `
+    <div class="req-card">
+      <div class="req-head">
+        <span class="avatar">${r.renter[0]}</span>
+        <div style="flex:1">
+          <div style="font-size:14px; font-weight:600">${r.renter} ${r.mine?`<span class="tag tag-hot" style="margin-left:4px">Live demo — this is your request</span>`:""}</div>
+          <div class="mono" style="font-size:10px; color:var(--ink-3); margin-top:3px">ID verified · ${r.renterTrips} TopNotch trips · 0 incidents</div>
+        </div>
+        ${open?`<span class="tag">${r.status==="pending_owner"?"Waiting":"New"}</span>`
+             :`<span class="tag ${r.status==="confirmed"?"tag-good":""}">${r.status==="confirmed"?"Confirmed":"Declined"}</span>`}
+      </div>
+      <div class="req-body">
+        <div class="kv"><span>Car</span><span class="r">${c.name}</span></div>
+        <div class="kv"><span>Dates</span><span class="r">${fdate(r.start)} – ${fdate(addDays(r.start,r.days))} (${r.days}d)</span></div>
+        <div class="kv"><span>Handoff</span><span class="r">${deliveryLabel(r.delivery)}</span></div>
+        ${r.note?`<div class="kv"><span>Note</span><span class="r">${r.note}</span></div>`:""}
+        <div class="kv"><span>Your payout (${Math.round(S.partner.cut*100)}%)</span><span class="r good" style="color:var(--good)">${fmt(cut)}</span></div>
+      </div>
+      ${open?`
+      <div class="req-actions">
+        <button class="ok" data-act="approve" data-id="${r.id}">Approve — ${fmt(cut)}</button>
+        <button class="no" data-act="decline" data-id="${r.id}">Can't make it</button>
+      </div>`:""}
+    </div>`;
+  };
+  return `
+  <div class="pad stack screen-in">
+    <div class="sect"><span class="eyebrow">Waiting on you</span><span class="mono" style="font-size:10px; color:var(--ink-3)">${active.length} open</span></div>
+    ${active.length?active.map(reqCard).join(""):`<p style="font-size:13px; color:var(--ink-3)">Nothing pending. New requests land here the moment a renter asks.</p>`}
+    <p style="font-size:11.5px; color:var(--ink-3); line-height:1.6">
+      Renters are never charged until you approve. Decline anytime — no penalty, but your
+      response time feeds your fleet ranking.
+    </p>
+    ${settled.length?`
+    <div class="sect"><span class="eyebrow">Settled</span></div>
+    ${settled.map(reqCard).join("")}`:""}
+  </div>`;
+}
+
+/* ---------------- partner: garage ---------------- */
+
+function pGarageHTML(){
+  return `
+  <div class="pad stack screen-in">
+    <div class="sect"><span class="eyebrow">Your garage</span><span class="mono" style="font-size:10px; color:var(--ink-3)">${S.partner.listings.length} cars</span></div>
+    ${S.partner.listings.map(l=>{
+      const c = car(l.carId);
+      return `
+      <div class="card">
+        <div style="display:flex; gap:13px; align-items:center">
+          <span class="swatch" style="${swatchStyle(c.paint,false)}; min-height:58px; width:52px"></span>
+          <div style="flex:1; min-width:0">
+            <div class="fc-name">${c.name}</div>
+            <div class="fc-meta" style="margin-top:4px">${fmt(c.rate)}/day · ${l.views} views this week</div>
+            <div style="font-size:11.5px; margin-top:4px; color:${l.live?"var(--good)":"var(--ink-3)"}">${l.live?"Taking requests":"Paused — invisible to renters"}</div>
+          </div>
+          <button class="toggle ${l.live?"on":""}" role="switch" aria-checked="${l.live}" aria-label="Taking requests for ${c.name}" data-act="toggleListing" data-id="${l.carId}"><i></i></button>
+        </div>
+      </div>`;
+    }).join("")}
+    <div class="card" style="border-style:dashed; text-align:center">
+      <p style="font-size:13.5px; font-weight:600">Got another car that belongs here?</p>
+      <p style="font-size:12px; color:var(--ink-2); margin-top:5px; line-height:1.5">Send the spec sheet — if it fits the list, it's live in 48 hours. Insurance and vetting are on us.</p>
+      <button class="btn btn-ghost" style="margin-top:12px; padding:12px" data-act="addCarToast">Submit a car</button>
+    </div>
+    <p style="font-size:11.5px; color:var(--ink-3); line-height:1.6">
+      Pausing a car never costs you tier progress. Life happens — the calendar is yours.
+    </p>
+  </div>`;
+}
+
+/* ---------------- partner: earnings ---------------- */
+
+function pEarnHTML(){
+  const p = S.partner;
+  return `
+  <div class="pad stack screen-in">
+    <div class="card" style="text-align:center; padding:22px">
+      <div class="eyebrow">Next payout — Monday</div>
+      <div class="display num" style="font-size:38px; margin-top:8px">${fmt(1285+cutOfConfirmed())}</div>
+      <p style="font-size:12px; color:var(--ink-2); margin-top:7px">Direct deposit. No minimums, no holding period, no “wallet.”</p>
+    </div>
+    <div class="sect"><span class="eyebrow">Payout history</span></div>
+    <div class="card" style="padding:6px 16px">
+      ${p.payouts.map(x=>`
+      <div class="pay-row">
+        <div><div style="font-size:13.5px; font-weight:600">${x.what}</div><div class="mono" style="font-size:10px; color:var(--ink-3); margin-top:3px">${x.when}</div></div>
+        <span class="mono num" style="font-size:13px; color:var(--good)">+${fmt(x.amt)}</span>
+      </div>`).join("")}
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:8px">How the split works</div>
+      <p style="font-size:13px; color:var(--ink-2); line-height:1.6">
+        Renter pays the listed price. TopNotch covers insurance, vetting, concierge and delivery
+        out of its share — <b style="color:var(--ink)">your ${Math.round(p.cut*100)}% is the whole number</b>, not a number before fees.
+        Hit Black and it's 84%.
+      </p>
+    </div>
+  </div>`;
+}
+
+function cutOfConfirmed(){
+  return S.requests
+    .filter(r=>r.status==="confirmed")
+    .reduce((a,r)=>a+Math.round(car(r.carId).rate*r.days*S.partner.cut), 0);
+}
+
+/* ---------------- render ---------------- */
+
+const R_TABS = [
+  {id:"fleet", l:"Fleet", g:"F"},
+  {id:"trips", l:"Trips", g:"T"},
+  {id:"list", l:"The List", g:"L"},
+];
+const P_TABS = [
+  {id:"today", l:"Today", g:"T"},
+  {id:"reqs", l:"Requests", g:"R"},
+  {id:"garage", l:"Garage", g:"G"},
+  {id:"earn", l:"Earnings", g:"E"},
+];
+
+function render(){
+  const shell = document.getElementById("shell");
+  let html = "";
+
+  if(S.mode==="gate"){
+    html = gateHTML();
+  } else if(S.mode==="renter"){
+    let body;
+    if(S.screen && S.screen.kind==="car") body = carHTML(S.screen.id);
+    else if(S.screen && S.screen.kind==="tracker") body = trackerHTML();
+    else body = {fleet:fleetHTML, trips:tripsHTML, list:listHTML}[S.rTab]();
+    const liveReq = S.myReq && !["confirmed","declined"].includes(S.myReq.status);
+    html =
+      headerHTML("Rentals · South Florida", "Partner side ⇄", "toPartner") +
+      `<div class="view" id="view">${body}</div>` +
+      tabsHTML(R_TABS, S.screen?null:S.rTab, "rTab", liveReq?"trips":null);
+  } else {
+    const body = {today:pTodayHTML, reqs:pReqsHTML, garage:pGarageHTML, earn:pEarnHTML}[S.pTab]();
+    const pending = S.requests.some(r=>["sent","confirming","pending_owner"].includes(r.status));
+    html =
+      headerHTML("Fleet partner · Marcus R.", "Renter side ⇄", "toRenter") +
+      `<div class="view" id="view">${body}</div>` +
+      tabsHTML(P_TABS, S.pTab, "pTab", pending?"reqs":null);
+  }
+
+  if(S.toastMsg) html += `<div class="toast" role="status">${S.toastMsg}</div>`;
+  shell.innerHTML = html;
+}
+
+/* ---------------- events ---------------- */
+
+document.addEventListener("click", e=>{
+  const el = e.target.closest("[data-act]");
+  if(!el) return;
+  const act = el.dataset.act, id = el.dataset.id;
+  const scrollTop = ()=>{ const v=document.getElementById("view"); if(v) v.scrollTop=0; };
+
+  switch(act){
+    case "enterRenter": S.mode="renter"; S.rTab="fleet"; S.screen=null; render(); break;
+    case "enterPartner": S.mode="partner"; S.pTab="today"; render(); break;
+    case "toPartner": S.mode="partner"; render(); break;
+    case "toRenter": S.mode="renter"; render(); break;
+    case "rTab": S.rTab=id; S.screen=null; render(); scrollTop(); break;
+    case "pTab": S.pTab=id; render(); scrollTop(); break;
+    case "setCity": S.city=id; render(); break;
+    case "openCar":
+      S.mode="renter"; S.screen={kind:"car", id};
+      S.form={start:addDays(today(),1), days:2, delivery:"pickup"};
+      render(); scrollTop(); break;
+    case "backFleet": S.screen=null; S.rTab="fleet"; render(); scrollTop(); break;
+    case "goTrips": S.screen=null; S.rTab="trips"; render(); scrollTop(); break;
+    case "openTracker": S.screen={kind:"tracker"}; render(); scrollTop(); break;
+    case "daysDec": S.form.days=Math.max(1,S.form.days-1); render(); break;
+    case "daysInc": S.form.days=Math.min(14,S.form.days+1); render(); break;
+    case "setDelivery": S.form.delivery=id; render(); break;
+    case "submitRequest": submitRequest(id); scrollTop(); break;
+    case "approve": partnerDecide(id,true); break;
+    case "decline": partnerDecide(id,false); break;
+    case "toggleListing": {
+      const l=S.partner.listings.find(x=>x.carId===id);
+      if(l){ l.live=!l.live; toast(l.live?"Taking requests again":"Paused — no tier penalty"); }
+      break;
+    }
+    case "copyCode":
+      (navigator.clipboard ? navigator.clipboard.writeText("TN-ALX-305") : Promise.reject())
+        .then(()=>toast("Code copied — worth $75 to a friend"))
+        .catch(()=>toast("Your code: TN-ALX-305"));
+      break;
+    case "scoutToast": toast("We'll text you an intro link — check your messages"); break;
+    case "igToast": toast("Opens @305.pluggedin on Instagram"); break;
+    case "addCarToast": toast("Spec sheet form sent to your email"); break;
+  }
+});
+
+document.addEventListener("change", e=>{
+  if(e.target.id==="startdate" && e.target.value){
+    const [y,m,d] = e.target.value.split("-").map(Number);
+    S.form.start = new Date(y, m-1, d);
+  }
+});
+
+render();
+</script>
