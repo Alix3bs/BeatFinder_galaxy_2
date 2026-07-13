@@ -150,6 +150,13 @@ async function renderAll() {
     if (t === "users") await renderUsers();
     if (t === "settings") await renderSettings();
     if (t === "system") await renderSystem();
+    if (t === "autopilot") await renderAutopilot();
+    if (t === "goals") await renderGoals();
+    if (t === "backlog") await renderBacklog();
+    if (t === "evals") await renderEvals();
+    if (t === "independence") await renderIndependence();
+    if (t === "experiments") await renderExperiments();
+    if (t === "memory") await renderMemory();
   } catch (e) {
     if (e.message !== "Signed out")
       $("#tab-" + t).innerHTML = `<h1>${t}</h1><p class="sub">${esc(e.message)}</p>`;
@@ -889,6 +896,227 @@ async function renderSystem() {
       ${row("Backup storage", (h.storage.backupsBytes / 1048576).toFixed(1) + " MB")}
       ${row("Rejected uploads (24h)", h.uploads.failed24h)}
     </div>`;
+}
+
+/* ============================================================
+   AUTOPILOT (Phase 5.2) — every panel shows ONLY concise reasoning
+   summaries, decisions and evidence. No chain-of-thought is ever
+   sent by the server, so none can be shown here.
+   ============================================================ */
+const apRow = (k, v) => `<div class="rem-item"><span class="rem-dot"></span>${k}<span class="rem-when">${v}</span></div>`;
+const apBadge = (txt, cls) => `<span class="badge ${cls || "dim"}">${esc(txt)}</span>`;
+
+async function renderAutopilot() {
+  const el = $("#tab-autopilot");
+  const s = await api("/autopilot/status");
+  const rep = await api("/autopilot/report").catch(() => null);
+  const pauseBtn = f => `<button class="btn btn-sm ${s.paused[f] ? "btn-primary" : "btn-ghost"}" data-pause="${f}">
+    ${s.paused[f] ? "▶ Resume" : "⏸ Pause"} ${f.replace(/_/g, " ")}</button>`;
+  el.innerHTML = `
+    <h1>Autopilot</h1>
+    <p class="sub">Mode: <b style="color:var(--orange)">${esc(s.mode)}</b> ·
+      AI model: ${s.llm.configured ? esc(s.llm.model) : "not configured — deterministic workflows only"} ·
+      AI cost today $${Number(s.cost.today.u).toFixed(2)} / cap $${s.cost.dailyCap}
+      ${s.aiPauseReason ? " · " + apBadge("AI paused: " + s.aiPauseReason, "warn") : ""}</p>
+    <div class="panel"><h2>Permanent mission (cannot be edited at runtime)</h2>
+      <p class="fineprint">${esc(s.mission)}</p></div>
+    <div class="stat-row">
+      <div class="stat"><b>${s.tasks.verified24h}</b><span>Tasks verified (24h)</span></div>
+      <div class="stat"><b>${s.tasks.queued + s.tasks.running}</b><span>Queued / running</span></div>
+      <div class="stat"><b>${s.tasks.escalated}</b><span>Escalated to humans</span></div>
+      <div class="stat"><b>${s.metrics.manualReviews}</b><span>Manual reviews open</span></div>
+      <div class="stat"><b>${s.metrics.failedSync}</b><span>Failed Excel rows</span></div>
+      <div class="stat"><b>$${Number(s.cost.month.u).toFixed(2)}</b><span>AI cost (30d) / cap $${s.cost.monthlyCap}</span></div>
+    </div>
+    <div class="panel"><h2>Emergency controls</h2>
+      <p class="fineprint">Pausing stops new automated actions of that type immediately. Nothing queued is deleted; deterministic safety flows (payment verification, booking gates) always stay on.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${["ai", "customer_messages", "provider_messages", "improvements"].map(pauseBtn).join("")}
+        <button class="btn btn-sm btn-ghost" id="apMode">Switch to ${s.mode === "build" ? "maintenance" : "build"} mode</button>
+      </div></div>
+    <div class="panel"><div class="panel-head"><h2>Recent agent tasks</h2>
+      <button class="btn btn-sm btn-ghost" id="apReportSend">Send daily report now</button></div>
+      <div id="apTasks"><p class="fineprint">Loading…</p></div></div>
+    ${rep ? `<div class="panel"><h2>Today's report preview</h2><pre style="white-space:pre-wrap;font-size:12px;color:var(--chrome, #ccc)">${esc(rep.text)}</pre></div>` : ""}`;
+  $$("#tab-autopilot [data-pause]").forEach(b => b.addEventListener("click", async () => {
+    await api("/autopilot/pause", { flag: b.dataset.pause, on: !s.paused[b.dataset.pause] });
+    renderAutopilot();
+  }));
+  $("#apMode").addEventListener("click", async () => {
+    await api("/autopilot/mode", { mode: s.mode === "build" ? "maintenance" : "build" });
+    renderAutopilot();
+  });
+  $("#apReportSend").addEventListener("click", async () => { await api("/autopilot/report/send", {}); alert("Daily report sent to admin notifications" + "."); });
+  const tasks = await api("/autopilot/tasks");
+  $("#apTasks").innerHTML = tasks.length ? `<table class="tbl"><thead><tr>
+      <th>Task</th><th>Objective</th><th>Tool</th><th>Status</th><th>Attempts</th><th>Reasoning summary (safe)</th></tr></thead><tbody>
+    ${tasks.slice(0, 40).map(t => `<tr><td>${esc(t.task_id)}</td><td>${esc(t.objective)}</td><td>${esc(t.tool)}</td>
+      <td>${apBadge(t.status, t.status === "verified" ? "ok" : t.status === "escalated" ? "bad" : "dim")}</td>
+      <td>${t.attempts}/3</td><td class="fineprint">${esc(t.reasoning_summary || "—")}</td></tr>`).join("")}</tbody></table>`
+    : '<p class="fineprint">No agent tasks yet. Hourly housekeeping queues them automatically.</p>';
+}
+
+async function renderGoals() {
+  const el = $("#tab-goals");
+  const goals = await api("/autopilot/goals");
+  el.innerHTML = `
+    <h1>Goals</h1>
+    <p class="sub">Every goal needs a metric and a target. The permanent mission is locked — the server refuses runtime edits from anyone, including the agent.</p>
+    <div class="panel"><div class="panel-head"><h2>All goals (${goals.length})</h2>
+      <button class="btn btn-sm btn-primary" id="goalAdd">+ New goal</button></div>
+      <table class="tbl"><thead><tr><th>ID</th><th>Name</th><th>Metric</th><th>Target</th><th>Current</th><th>Status</th><th>Next action</th><th></th></tr></thead><tbody>
+      ${goals.map(g => `<tr>
+        <td>${esc(g.goal_id)}${g.permanent ? " 🔒" : ""}</td><td>${esc(g.name)}</td><td>${esc(g.metric)}</td>
+        <td>${esc(g.target ?? "—")}</td><td>${esc(g.current_value ?? "—")}</td>
+        <td>${apBadge(g.status, ["Completed"].includes(g.status) ? "ok" : ["Failed", "Blocked", "Reopened"].includes(g.status) ? "bad" : "dim")}</td>
+        <td class="fineprint">${esc(g.next_action || "")}</td>
+        <td>${g.permanent ? "" : `<button class="btn btn-sm btn-ghost" data-goal="${esc(g.goal_id)}">Edit status</button>`}</td></tr>`).join("")}
+      </tbody></table></div>`;
+  $("#goalAdd").addEventListener("click", async () => {
+    const name = prompt("Goal name (measurable):"); if (!name) return;
+    const metric = prompt("Metric (what number moves):"); if (!metric) return;
+    const target = prompt("Target value:"); if (!target) return;
+    await api("/autopilot/goals", { name, metric, target }).catch(e => alert(e.message));
+    renderGoals();
+  });
+  $$("#tab-goals [data-goal]").forEach(b => b.addEventListener("click", async () => {
+    const status = prompt("New status (Proposed, Approved, Active, Blocked, Awaiting human, Testing, Completed, Failed, Reopened, Monitoring):");
+    if (!status) return;
+    await api("/autopilot/goals/" + b.dataset.goal, { status }, "PATCH").catch(e => alert(e.message));
+    renderGoals();
+  }));
+}
+
+async function renderBacklog() {
+  const el = $("#tab-backlog");
+  const rows = await api("/autopilot/proposals");
+  el.innerHTML = `
+    <h1>Improvement Backlog</h1>
+    <p class="sub">The nightly cycle proposes at most 3 improvements. Nothing changes production by itself — low-risk items still go through staging + evaluation; medium/high-risk items need your approval first.</p>
+    <div class="panel"><div class="panel-head"><h2>Proposals (${rows.length})</h2>
+      <button class="btn btn-sm btn-primary" id="apImprove">Run improvement cycle now</button></div>
+      ${rows.length ? `<table class="tbl"><thead><tr><th>Title</th><th>Why</th><th>Expected impact</th><th>Risk</th><th>Status</th><th>Verification plan</th><th></th></tr></thead><tbody>
+      ${rows.map(p => `<tr><td>${esc(p.title)}</td><td class="fineprint">${esc(p.reason)}</td><td>${esc(p.expected_impact)}</td>
+        <td>${apBadge(p.risk, p.risk === "low" ? "ok" : "warn")}</td>
+        <td>${apBadge(p.status, p.status === "staging-passed" ? "ok" : p.status === "rolled-back" ? "bad" : "dim")}${p.approved_by ? `<div class="fineprint">by ${esc(p.approved_by)}</div>` : ""}</td>
+        <td class="fineprint">${esc(p.verification)}</td>
+        <td style="white-space:nowrap">
+          ${p.status === "proposed" && p.risk !== "low" ? `<button class="btn btn-sm btn-ghost" data-approve="${p.id}">Approve</button>` : ""}
+          ${["proposed", "approved"].includes(p.status) ? `<button class="btn btn-sm btn-ghost" data-stage="${p.id}">Stage + eval</button>` : ""}
+        </td></tr>`).join("")}</tbody></table>`
+      : '<p class="fineprint">No proposals yet — run a cycle or wait for tonight\'s 8:00 PM run.</p>'}</div>`;
+  $("#apImprove").addEventListener("click", async () => { await api("/autopilot/improve", {}); renderBacklog(); });
+  $$("#tab-backlog [data-approve]").forEach(b => b.addEventListener("click", async () => { await api(`/autopilot/proposals/${b.dataset.approve}/approve`, {}); renderBacklog(); }));
+  $$("#tab-backlog [data-stage]").forEach(b => b.addEventListener("click", async () => {
+    const out = await api(`/autopilot/proposals/${b.dataset.stage}/stage`, {}).catch(e => ({ error: e.message }));
+    alert(out.error ? out.error : out.rolledBack ? `Auto-rolled back: candidate ${out.candidate} scored below baseline ${out.baseline}. Goal reopened.` : `Staging passed: ${out.candidate} ≥ baseline ${out.baseline}.`);
+    renderBacklog();
+  }));
+}
+
+async function renderEvals() {
+  const el = $("#tab-evals");
+  const d = await api("/autopilot/evals");
+  el.innerHTML = `
+    <h1>Evaluations</h1>
+    <p class="sub">Every human correction becomes a permanent test case. AI-affecting changes must meet the baseline (${d.baseline}%) with zero regressions before rollout.</p>
+    <div class="panel"><div class="panel-head"><h2>Runs (${d.runs.length})</h2>
+      <button class="btn btn-sm btn-primary" id="evalRun">Run evaluation now</button></div>
+      ${d.runs.length ? `<table class="tbl"><thead><tr><th>When</th><th>Label</th><th>Baseline</th><th>Score</th><th>Result</th><th>Regressions</th></tr></thead><tbody>
+      ${d.runs.map(r => `<tr><td>${esc(r.ts)}</td><td>${esc(r.label)}</td><td>${r.baseline_score}%</td><td>${r.candidate_score}%</td>
+        <td>${apBadge(r.passed ? "PASSED" : "FAILED", r.passed ? "ok" : "bad")}</td><td class="fineprint">${esc(r.regressions || "none")}</td></tr>`).join("")}</tbody></table>` : '<p class="fineprint">No runs yet.</p>'}</div>
+    <div class="panel"><h2>Test cases (${d.cases.length})</h2>
+      <table class="tbl"><thead><tr><th>#</th><th>Name</th><th>Category</th><th>Source</th></tr></thead><tbody>
+      ${d.cases.map(c => `<tr><td>${c.id}</td><td>${esc(c.name)}</td><td>${esc(c.category)}</td><td>${apBadge(c.source, c.source === "human-correction" ? "warn" : "dim")}</td></tr>`).join("")}</tbody></table></div>
+    <div class="panel"><div class="panel-head"><h2>Human corrections (${d.corrections.length})</h2>
+      <button class="btn btn-sm btn-ghost" id="corrAdd">+ Log a correction</button></div>
+      ${d.corrections.length ? `<table class="tbl"><thead><tr><th>When</th><th>Request</th><th>AI did</th><th>Human corrected to</th><th>Why</th><th>Eval case</th></tr></thead><tbody>
+      ${d.corrections.map(c => `<tr><td>${esc(c.ts)}</td><td>${esc(c.request_ref)}</td><td>${esc(c.ai_action)}</td><td>${esc(c.correction)}</td><td class="fineprint">${esc(c.reason)}</td><td>#${c.eval_case_id}</td></tr>`).join("")}</tbody></table>`
+      : '<p class="fineprint">No corrections logged. When you override an AI decision, log it here — it becomes a permanent test.</p>'}</div>`;
+  $("#evalRun").addEventListener("click", async () => { await api("/autopilot/evals/run", {}); renderEvals(); });
+  $("#corrAdd").addEventListener("click", async () => {
+    const aiAction = prompt("What did the AI/automation do?"); if (!aiAction) return;
+    const correction = prompt("What was the correct action?"); if (!correction) return;
+    const reason = prompt("Why? (this becomes the test's expected behavior)") || "";
+    const category = prompt("Category (availability, pricing, messaging, other):") || "other";
+    await api("/autopilot/corrections", { aiAction, correction, reason, category, requestRef: prompt("Request ID (optional):") || "" });
+    renderEvals();
+  });
+}
+
+async function renderIndependence() {
+  const el = $("#tab-independence");
+  const [oi, sc] = await Promise.all([api("/autopilot/independence"), api("/autopilot/completion")]);
+  const item = i => apRow(`${i.id}. ${esc(i.name)} (${i.pts} pts)`,
+    `${i.stagingVerified ? "✓ staging" : "—"} · ${i.productionVerified ? "✓ production" : esc(i.note)}`);
+  el.innerHTML = `
+    <h1>Owner Independence</h1>
+    <div class="stat-row">
+      <div class="stat"><b>Level ${oi.level}</b><span>${esc(oi.levelName)}</span></div>
+      <div class="stat"><b>${oi.interventionsPerBooking}</b><span>Owner actions / booking</span></div>
+      <div class="stat"><b>${oi.minutesPerBooking} min</b><span>Est. owner time / booking</span></div>
+      <div class="stat"><b>${sc.stagingScore}/100</b><span>Completion (staging-verified)</span></div>
+      <div class="stat"><b>${sc.productionScore}/100</b><span>Completion (production-verified)</span></div>
+      <div class="stat"><b>${sc.observation.daysElapsed}/${sc.observation.required}</b><span>Observation days</span></div>
+    </div>
+    <div class="panel"><h2>Recommendation</h2><p class="fineprint">${esc(oi.recommendation)}</p></div>
+    <div class="panel"><h2>100-point completion checklist</h2>
+      <p class="fineprint">${esc(sc.honesty)}</p>
+      ${sc.items.map(item).join("")}
+      <p class="fineprint" style="margin-top:10px">${sc.canDeclare100
+        ? "✅ All 100 production points verified + 30-day observation complete — 100% may be declared."
+        : "100% completion has NOT been reached. Mock or staging-only integrations never earn production points."}</p></div>
+    <div class="panel"><h2>Always stays human (by design)</h2>
+      ${oi.stillHuman.map(x => apRow(esc(x), "human approval required")).join("")}</div>
+    <div class="panel"><h2>Owner actions counted</h2>
+      ${Object.entries(oi.stats).map(([k, v]) => apRow(esc(k.replace(/([A-Z])/g, " $1").toLowerCase()), v)).join("")}</div>`;
+}
+
+async function renderExperiments() {
+  const el = $("#tab-experiments");
+  const rows = await api("/autopilot/experiments");
+  el.innerHTML = `
+    <h1>Experiments</h1>
+    <p class="sub">One variable at a time, with guardrails. The server refuses experiments on safety, security, consent, deposits, legal policies, payouts, payment verification, access control or privacy.</p>
+    <div class="panel"><div class="panel-head"><h2>All experiments (${rows.length})</h2>
+      <button class="btn btn-sm btn-primary" id="expAdd">+ New experiment</button></div>
+      ${rows.length ? `<table class="tbl"><thead><tr><th>Name</th><th>Hypothesis</th><th>Metric</th><th>Guardrails</th><th>Min N</th><th>Status</th><th>Result → decision</th><th></th></tr></thead><tbody>
+      ${rows.map(x => `<tr><td>${esc(x.name)}</td><td class="fineprint">${esc(x.hypothesis)}</td><td>${esc(x.primary_metric)}</td>
+        <td class="fineprint">${esc(x.guardrails)}</td><td>${x.min_sample}</td>
+        <td>${apBadge(x.status, x.status === "completed" ? "ok" : "dim")}</td>
+        <td class="fineprint">${esc(x.result || "—")}${x.decision ? " → " + esc(x.decision) : ""}</td>
+        <td><button class="btn btn-sm btn-ghost" data-exp="${x.id}">Update</button></td></tr>`).join("")}</tbody></table>`
+      : '<p class="fineprint">No experiments yet.</p>'}</div>`;
+  $("#expAdd").addEventListener("click", async () => {
+    const name = prompt("Experiment name:"); if (!name) return;
+    const hypothesis = prompt("Hypothesis (what you expect and why):"); if (!hypothesis) return;
+    const primary_metric = prompt("Primary metric:"); if (!primary_metric) return;
+    const min_sample = prompt("Minimum sample size before judging:", "50"); if (!min_sample) return;
+    await api("/autopilot/experiments", { name, hypothesis, primary_metric, min_sample }).catch(e => alert(e.message));
+    renderExperiments();
+  });
+  $$("#tab-experiments [data-exp]").forEach(b => b.addEventListener("click", async () => {
+    const status = prompt("Status (running, completed, stopped):"); if (!status) return;
+    const result = prompt("Result (numbers, not vibes):") || "";
+    const decision = prompt("Decision (adopt, revert, iterate):") || "";
+    await api("/autopilot/experiments/" + b.dataset.exp, { status, result, decision }, "PATCH");
+    renderExperiments();
+  }));
+}
+
+async function renderMemory() {
+  const el = $("#tab-memory");
+  const layer = el.dataset.layer || "workflow";
+  const d = await api(`/autopilot/memory?layer=${layer}`);
+  el.innerHTML = `
+    <h1>Memory</h1>
+    <p class="sub">Layered long-term memory. Each entry is a compact lesson or fact — customer memory never leaks into other customers' contexts.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      ${d.layers.map(l => `<button class="btn btn-sm ${l === d.layer ? "btn-primary" : "btn-ghost"}" data-layer="${l}">${l}</button>`).join("")}</div>
+    <div class="panel"><h2>${esc(d.layer)} memory (${d.rows.length})</h2>
+      ${d.rows.length ? `<table class="tbl"><thead><tr><th>When</th><th>Key</th><th>Value</th><th>Source</th></tr></thead><tbody>
+      ${d.rows.map(r => `<tr><td>${esc(r.ts)}</td><td>${esc(r.key)}</td><td class="fineprint" style="max-width:480px;word-break:break-word">${esc(r.value_json)}</td><td>${esc(r.source)}</td></tr>`).join("")}</tbody></table>`
+      : '<p class="fineprint">Nothing recorded in this layer yet.</p>'}</div>`;
+  $$("#tab-memory [data-layer]").forEach(b => b.addEventListener("click", () => { el.dataset.layer = b.dataset.layer; renderMemory(); }));
 }
 
 boot();

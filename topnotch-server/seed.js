@@ -66,7 +66,10 @@ const DEFAULT_SETTINGS = {
   deposit_handling: "collected",     // collected | external | authorization (authorization only if provider supports it)
   methods_card: "1", methods_ach: "0", methods_bnpl: "0", methods_link: "1", methods_invoice: "1",
   methods_bank: "1", methods_zelle: "1", methods_cash: "1", methods_other: "0",
-  tax_processing_pct: "3"            // shown to customer as taxes/processing estimate
+  tax_processing_pct: "3",           // shown to customer as taxes/processing estimate
+  /* Phase 5.2 — Autopilot cost caps (editable in Admin → Settings; keys stay in env) */
+  ai_daily_cost_cap: "25",
+  ai_monthly_cost_cap: "300"
 };
 
 function seed() {

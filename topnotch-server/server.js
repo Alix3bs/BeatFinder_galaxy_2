@@ -25,6 +25,7 @@ const stripe = require("./lib/stripe");
 const emails = require("./lib/emails");
 const P = require("./lib/payments");
 const agent = require("./lib/agent");
+const AP = require("./lib/autopilot");
 const { seed } = require("./seed");
 seed();
 
@@ -1621,7 +1622,9 @@ const EDITABLE_SETTINGS = ["business_name", "city", "address", "phone", "whatsap
   "payment_provider", "stripe_enabled", "hold_minutes", "quote_expiry_days",
   "payment_mode", "reservation_amount", "deposit_handling",
   "methods_card", "methods_ach", "methods_bnpl", "methods_link", "methods_invoice",
-  "methods_bank", "methods_zelle", "methods_cash", "methods_other", "tax_processing_pct"];
+  "methods_bank", "methods_zelle", "methods_cash", "methods_other", "tax_processing_pct",
+  /* autopilot cost caps (Phase 5.2) — model + API keys stay in env, never here */
+  "ai_daily_cost_cap", "ai_monthly_cost_cap"];
 route("GET", "/api/settings", (req, res) => {
   if (!adminOnly(req, res)) return;
   json(res, 200, Object.fromEntries(Object.entries(allSettings()).filter(([k]) => EDITABLE_SETTINGS.includes(k))));
@@ -1699,6 +1702,184 @@ route("GET", "/api/system/health", (req, res) => {
     storage: { uploadsBytes: dirSize(UPLOAD_DIR), backupsBytes: dirSize(backup.BACKUP_DIR) },
     uploads: { failed24h: q(`SELECT count(*) n FROM audit WHERE action='upload.rejected' AND ts > ${day}`).n }
   });
+});
+
+/* ============================================================
+   AUTOPILOT (Phase 5.2) — admin-only. Every payload contains ONLY
+   concise reasoning summaries and safe metadata: no chain-of-thought,
+   no secrets, no raw prompts.
+   ============================================================ */
+route("GET", "/api/autopilot/status", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const q = sql => { try { return db.prepare(sql).get().n; } catch (e) { return 0; } };
+  json(res, 200, {
+    mission: AP.PERMANENT_MISSION,
+    mode: AP.getState("mode") || "build",
+    paused: Object.fromEntries(AP.PAUSE_FLAGS.map(f => [f, AP.isPaused(f)])),
+    aiPauseReason: AP.getState("ai_pause_reason") || null,
+    llm: { model: process.env.OPENAI_MODEL || null, configured: !!(process.env.OPENAI_MODEL && process.env.OPENAI_API_KEY) },
+    cost: { today: AP.costToday(), month: AP.costMonth(),
+      dailyCap: Number(SETTING("ai_daily_cost_cap") || 25), monthlyCap: Number(SETTING("ai_monthly_cost_cap") || 300) },
+    tasks: {
+      queued: q("SELECT count(*) n FROM ap_tasks WHERE status='queued'"),
+      running: q("SELECT count(*) n FROM ap_tasks WHERE status='running'"),
+      verified24h: q("SELECT count(*) n FROM ap_tasks WHERE status='verified' AND updated_at > datetime('now','-1 day')"),
+      escalated: q("SELECT count(*) n FROM ap_tasks WHERE status='escalated'")
+    },
+    lastDailyReport: AP.getState("last_daily_report") || null,
+    forbiddenActions: AP.FORBIDDEN,
+    metrics: AP.computeMetrics()
+  });
+});
+
+/* emergency controls — pause never deletes queued work */
+route("POST", "/api/autopilot/pause", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const out = AP.setPause(U.strip(req.body.flag), !!req.body.on, req.user.email);
+  if (out.error) return bad(res, out.error);
+  if (U.strip(req.body.flag) === "ai" && !req.body.on) AP.setState("ai_pause_reason", "");
+  json(res, 200, out);
+});
+route("POST", "/api/autopilot/mode", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const mode = U.strip(req.body.mode);
+  if (!["build", "maintenance"].includes(mode)) return bad(res, "mode must be build | maintenance");
+  AP.setState("mode", mode);
+  U.audit(req.user, "autopilot.mode", "state", "mode", "mode", null, mode);
+  json(res, 200, { ok: true, mode });
+});
+
+/* goals */
+route("GET", "/api/autopilot/goals", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, db.prepare("SELECT * FROM ap_goals ORDER BY permanent DESC, priority ASC, updated_at DESC").all());
+});
+route("POST", "/api/autopilot/goals", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const out = AP.createGoal(req.body || {}, req.user.email);
+  if (out.error) return bad(res, out.error);
+  json(res, 200, out);
+});
+route("PATCH", "/api/autopilot/goals/:id", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const out = AP.updateGoal(req.params.id, req.body || {}, req.user.email);
+  if (out.blocked) return bad(res, out.error, 403);
+  if (out.error) return bad(res, out.error);
+  json(res, 200, out);
+});
+
+/* tasks (agent loop) — reasoning_summary is the ONLY reasoning exposed */
+route("GET", "/api/autopilot/tasks", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, db.prepare(`SELECT task_id, goal_id, objective, why, success_criteria, tool, status, attempts,
+    verified, reasoning_summary, created_at, updated_at FROM ap_tasks ORDER BY rowid DESC LIMIT 200`).all());
+});
+route("POST", "/api/autopilot/tasks", async (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const out = AP.queueTask(req.body || {}, req.user.email);
+  if (out.error) return bad(res, out.error);
+  const run = await AP.runTask(out.taskId);
+  json(res, 200, { ...out, run });
+});
+route("POST", "/api/autopilot/tasks/:id/retry", async (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const run = await AP.runTask(req.params.id);
+  if (run.error) return bad(res, run.error);
+  json(res, 200, run);
+});
+
+/* improvement backlog */
+route("GET", "/api/autopilot/proposals", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, db.prepare("SELECT * FROM ap_proposals ORDER BY id DESC LIMIT 100").all());
+});
+route("POST", "/api/autopilot/improve", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, AP.improvementCycle());
+});
+route("POST", "/api/autopilot/proposals/:id/approve", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  db.prepare("UPDATE ap_proposals SET approved_by=?, status='approved' WHERE id=? AND status IN ('proposed','approved')")
+    .run(req.user.email, req.params.id);
+  U.audit(req.user, "proposal.approve", "proposal", req.params.id, null, null, null);
+  json(res, 200, { ok: true });
+});
+route("POST", "/api/autopilot/proposals/:id/stage", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const out = AP.stageProposal(Number(req.params.id), req.body?.candidateScore, req.user.email);
+  if (out.error) return bad(res, out.error);
+  json(res, 200, out);
+});
+
+/* evaluations + human corrections */
+route("GET", "/api/autopilot/evals", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, {
+    baseline: Number(AP.getState("eval_baseline") || 0),
+    cases: db.prepare("SELECT id, name, category, source, ts FROM ap_eval_cases ORDER BY id DESC LIMIT 200").all(),
+    runs: db.prepare("SELECT * FROM ap_eval_runs ORDER BY id DESC LIMIT 50").all(),
+    corrections: db.prepare("SELECT id, request_ref, ai_action, correction, reason, category, eval_case_id, ts FROM ap_corrections ORDER BY id DESC LIMIT 100").all()
+  });
+});
+route("POST", "/api/autopilot/evals/run", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, AP.runEval("manual by " + req.user.email));
+});
+route("POST", "/api/autopilot/corrections", (req, res) => {
+  if (!guard("requests.write")(req, res)) return;   // any staff member can log a correction
+  const out = AP.recordCorrection(req.body || {}, req.user.email);
+  json(res, 200, out);
+});
+
+/* owner independence + completion score */
+route("GET", "/api/autopilot/independence", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, AP.ownerIndependence());
+});
+route("GET", "/api/autopilot/completion", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, AP.completionScore());
+});
+
+/* experiments */
+route("GET", "/api/autopilot/experiments", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, db.prepare("SELECT * FROM ap_experiments ORDER BY id DESC LIMIT 100").all());
+});
+route("POST", "/api/autopilot/experiments", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const out = AP.createExperiment(req.body || {}, req.user.email);
+  if (out.blocked) return bad(res, out.error, 403);
+  if (out.error) return bad(res, out.error);
+  json(res, 200, out);
+});
+route("PATCH", "/api/autopilot/experiments/:id", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const allowed = ["status", "result", "decision"];
+  const x = db.prepare("SELECT * FROM ap_experiments WHERE id=?").get(req.params.id);
+  if (!x) return bad(res, "not found", 404);
+  for (const k of allowed) if (k in (req.body || {})) x[k] = U.stripLong(req.body[k]);
+  db.prepare("UPDATE ap_experiments SET status=?, result=?, decision=? WHERE id=?").run(x.status, x.result, x.decision, req.params.id);
+  U.audit(req.user, "experiment.update", "experiment", req.params.id, "status", null, x.status);
+  json(res, 200, { ok: true });
+});
+
+/* memory (read-only view; layered) */
+route("GET", "/api/autopilot/memory", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  const layer = U.strip(req.query.layer || "workflow");
+  if (!AP.MEMORY_LAYERS.includes(layer)) return bad(res, "unknown layer");
+  json(res, 200, { layers: AP.MEMORY_LAYERS, layer, rows: AP.recall(layer, req.query.q ? `%${U.strip(req.query.q)}%` : "%", 100) });
+});
+
+/* daily report */
+route("GET", "/api/autopilot/report", (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, AP.buildDailyReport());
+});
+route("POST", "/api/autopilot/report/send", async (req, res) => {
+  if (!adminOnly(req, res)) return;
+  json(res, 200, await AP.sendDailyReport());
 });
 
 /* ============================================================
@@ -1867,6 +2048,9 @@ setInterval(() => U.drainOutbox().catch(() => {}), 60e3).unref();
 /* daily housekeeping: encrypted backup, document retention,
    stale-verification alerts, quote-expiring emails */
 backup.schedule();
+/* Phase 5.2 — Autopilot: permanent goal, eval seed, hourly housekeeping,
+   daily 8:00 PM America/New_York report + improvement cycle */
+AP.startSchedulers();
 async function dailyTick() {
   /* delete expired customer documents (photos of licenses etc.) */
   const days = Number(SETTING("doc_retention_days") || 90);

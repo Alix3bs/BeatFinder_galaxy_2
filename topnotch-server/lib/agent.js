@@ -61,8 +61,11 @@ function evaluateUnit(v, req, sd, ed, days) {
 function customerIssues(req) {
   const issues = [];
   if (req.driver_age === "Under 25") issues.push("driver under minimum age");
-  if (!/confirmed/i.test(req.license_status || "")) issues.push("license not confirmed");
-  if (!/confirmed/i.test(req.insurance_status || "")) issues.push("insurance not confirmed");
+  /* must START with "confirmed" — the site sends "Not confirmed" for missing
+     coverage, which a bare /confirmed/i substring match would wrongly accept
+     (bug caught by eval case 'no insurance', Phase 5.2) */
+  if (!/^confirmed/i.test(req.license_status || "")) issues.push("license not confirmed");
+  if (!/^confirmed/i.test(req.insurance_status || "")) issues.push("insurance not confirmed");
   if (!/ready/i.test(req.deposit_readiness || "")) issues.push("deposit readiness needs discussion");
   return issues;
 }
