@@ -15,6 +15,7 @@
     --good:#8FBF7F;
     --good-dim:rgba(143,191,127,.14);
     --warn:#E0B34E;
+    --bad:#E06A5A;
     --display:'Didot','Bodoni MT','Bodoni 72','Playfair Display','Georgia Pro',Georgia,serif;
     --body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
     --mono:ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,monospace;
@@ -24,20 +25,20 @@
       --bg:#E6E3D8; --shell:#EFECE1; --card:#FFFFFF; --card-2:#F3F0E6;
       --line:#D8D4C4; --ink:#1B2117; --ink-2:#5C6152; --ink-3:#8B9080;
       --accent:#C24A2A; --accent-ink:#FFF6EF;
-      --good:#3E7A38; --good-dim:rgba(62,122,56,.10); --warn:#8F6B14;
+      --good:#3E7A38; --good-dim:rgba(62,122,56,.10); --warn:#8F6B14; --bad:#B2402F;
     }
   }
   :root[data-theme="dark"]{
     --bg:#0F130E; --shell:#121711; --card:#1A211A; --card-2:#212A21;
     --line:#2C362B; --ink:#EDE6D6; --ink-2:#A8AE9B; --ink-3:#6F7565;
     --accent:#F0603F; --accent-ink:#16100D;
-    --good:#8FBF7F; --good-dim:rgba(143,191,127,.14); --warn:#E0B34E;
+    --good:#8FBF7F; --good-dim:rgba(143,191,127,.14); --warn:#E0B34E; --bad:#E06A5A;
   }
   :root[data-theme="light"]{
     --bg:#E6E3D8; --shell:#EFECE1; --card:#FFFFFF; --card-2:#F3F0E6;
     --line:#D8D4C4; --ink:#1B2117; --ink-2:#5C6152; --ink-3:#8B9080;
     --accent:#C24A2A; --accent-ink:#FFF6EF;
-    --good:#3E7A38; --good-dim:rgba(62,122,56,.10); --warn:#8F6B14;
+    --good:#3E7A38; --good-dim:rgba(62,122,56,.10); --warn:#8F6B14; --bad:#B2402F;
   }
 
   *{box-sizing:border-box; margin:0; padding:0}
@@ -129,6 +130,7 @@
   .btn-hot:hover{filter:brightness(1.06)}
   .btn-ghost{border:1px solid var(--line); color:var(--ink)}
   .btn-ghost:hover{border-color:var(--ink-3)}
+  .btn-danger{border:1px solid color-mix(in srgb, var(--bad) 55%, transparent); color:var(--bad)}
   .btn[disabled]{opacity:.45; cursor:default}
   .chiprow{display:flex; gap:8px; overflow-x:auto; padding:2px; scrollbar-width:none}
   .chip{
@@ -142,6 +144,13 @@
   }
   .tag-good{border-color:transparent; background:var(--good-dim); color:var(--good)}
   .tag-hot{border-color:transparent; background:rgba(240,96,63,.14); color:var(--accent)}
+  .tag-warn{border-color:transparent; background:rgba(224,179,78,.14); color:var(--warn)}
+
+  .banner{border-radius:12px; padding:11px 14px; font-size:12.5px; line-height:1.5}
+  .banner-warn{background:rgba(224,179,78,.1); border:1px solid color-mix(in srgb, var(--warn) 35%, transparent); color:var(--ink-2)}
+  .banner-warn b{color:var(--warn)}
+  .banner-bad{background:rgba(224,106,90,.08); border:1px solid color-mix(in srgb, var(--bad) 40%, transparent); color:var(--ink-2)}
+  .banner-bad b{color:var(--bad)}
 
   /* included strip */
   .included{background:var(--good-dim); border:1px solid color-mix(in srgb, var(--good) 30%, transparent); border-radius:16px; padding:15px 16px}
@@ -158,8 +167,7 @@
   .fc-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:3px}
   .fc-name{font-family:var(--display); font-size:17.5px; line-height:1.2}
   .fc-meta{font-family:var(--mono); font-size:10px; letter-spacing:.06em; color:var(--ink-3); text-transform:uppercase}
-  .fc-note{font-size:12px; color:var(--accent); margin-top:2px}
-  .fc-note.calm{color:var(--ink-2)}
+  .fc-note{font-size:12px; color:var(--ink-2); margin-top:2px}
   .fc-price{flex:none; text-align:right; display:flex; flex-direction:column; justify-content:space-between; align-items:flex-end}
   .fc-price .n{font-family:var(--display); font-size:19px}
   .fc-price .per{font-family:var(--mono); font-size:9px; letter-spacing:.12em; color:var(--ink-3); text-transform:uppercase}
@@ -206,15 +214,44 @@
   .seg-opt .d{font-size:11.5px; color:var(--ink-3); margin-top:2px}
   .seg-opt .p{font-family:var(--mono); font-size:11.5px; color:var(--ink-2)}
 
+  .field{display:flex; flex-direction:column; gap:6px; margin-bottom:13px}
+  .field label{font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
+  .field input{
+    background:var(--card-2); border:1px solid var(--line); border-radius:11px; padding:12px 13px;
+    font-size:14.5px; width:100%;
+  }
+  .field input::placeholder{color:var(--ink-3)}
+  .field .hint{font-size:11px; color:var(--ink-3)}
+  .ferr{font-size:12.5px; color:var(--bad); line-height:1.45}
+
   .line-item{display:flex; justify-content:space-between; gap:10px; padding:7px 0; font-size:13.5px; color:var(--ink-2)}
   .line-item .r{font-family:var(--mono); font-size:12.5px; color:var(--ink)}
   .line-item.total{border-top:1px solid var(--line); margin-top:6px; padding-top:12px; color:var(--ink); font-weight:600}
   .line-item .good{color:var(--good)}
 
+  /* signature services */
+  .svc{display:flex; gap:12px; align-items:flex-start; width:100%; padding:12px 2px; border-bottom:1px solid var(--line); text-align:left}
+  .svc:last-child{border-bottom:none}
+  .svc .box{flex:none; width:20px; height:20px; margin-top:1px; border-radius:6px; border:1.5px solid var(--ink-3); display:flex; align-items:center; justify-content:center; font-size:12px; color:var(--accent-ink)}
+  .svc.on .box{background:var(--accent); border-color:var(--accent)}
+  .svc .st{font-size:13.5px; font-weight:600}
+  .svc .sd{font-size:11.5px; color:var(--ink-2); margin-top:3px; line-height:1.45}
+  .svc .sf{font-size:11px; color:var(--warn); margin-top:3px; line-height:1.4}
+
+  /* privacy radio */
+  .radio-opt{display:flex; gap:12px; width:100%; border:1px solid var(--line); border-radius:14px; padding:13px 14px; text-align:left; align-items:flex-start}
+  .radio-opt.on{border-color:var(--good); background:var(--good-dim)}
+  .radio-opt .rb{flex:none; width:18px; height:18px; margin-top:1px; border-radius:50%; border:1.5px solid var(--ink-3); position:relative}
+  .radio-opt.on .rb{border-color:var(--good)}
+  .radio-opt.on .rb::after{content:""; position:absolute; inset:3.5px; border-radius:50%; background:var(--good)}
+  .radio-opt .rt{font-size:13.5px; font-weight:600}
+  .radio-opt .rd{font-size:12px; color:var(--ink-2); margin-top:4px; line-height:1.5}
+
   /* tracker */
   .tl{position:relative; padding-left:26px}
   .tl::before{content:""; position:absolute; left:8px; top:10px; bottom:14px; width:1px; background:var(--line)}
   .tl-step{position:relative; padding:0 0 22px}
+  .tl-step:last-child{padding-bottom:2px}
   .tl-step .knot{position:absolute; left:-26px; top:3px; width:17px; height:17px; border-radius:50%; border:1.5px solid var(--line); background:var(--shell); display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--good)}
   .tl-step.done .knot{border-color:var(--good); background:var(--good-dim)}
   .tl-step.live .knot{border-color:var(--accent); background:var(--accent)}
@@ -223,7 +260,7 @@
   .tl-step .desc{font-size:12.5px; color:var(--ink-2); margin-top:4px; line-height:1.45}
   .tl-step.dim h4{color:var(--ink-3)}
 
-  .msg{background:var(--card-2); border:1px solid var(--line); border-radius:14px 14px 14px 4px; padding:12px 14px; max-width:88%}
+  .msg{background:var(--card-2); border:1px solid var(--line); border-radius:14px 14px 14px 4px; padding:12px 14px; max-width:92%}
   .msg p{font-size:13.5px; line-height:1.5}
   .msg .who{font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); margin-bottom:5px}
 
@@ -250,8 +287,8 @@
   .req-actions button{flex:1; padding:13px; text-align:center; font-weight:600; font-size:13.5px}
   .req-actions .ok{color:var(--good)}
   .req-actions .no{color:var(--ink-3); border-left:1px solid var(--line)}
-  .kv{display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-2)}
-  .kv .r{font-family:var(--mono); font-size:11.5px; color:var(--ink)}
+  .kv{display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-2); gap:10px}
+  .kv .r{font-family:var(--mono); font-size:11.5px; color:var(--ink); text-align:right}
 
   .toggle{flex:none; width:44px; height:26px; border-radius:99px; background:var(--card-2); border:1px solid var(--line); position:relative}
   .toggle i{position:absolute; top:2.5px; left:3px; width:19px; height:19px; border-radius:50%; background:var(--ink-3); transition:transform .18s, background .18s}
@@ -264,22 +301,27 @@
   .gate-art{position:absolute; inset:0; overflow:hidden; pointer-events:none}
   .gate-strip{position:absolute; border-radius:99px; opacity:.85}
   .gate-inner{position:relative; display:flex; flex-direction:column; gap:0}
-  .gate .wm{font-family:var(--display); font-size:54px; line-height:1.02; letter-spacing:.005em; margin:14px 0 4px}
+  .gate .wm{font-family:var(--display); font-size:46px; line-height:1.02; letter-spacing:.005em; margin:12px 0 4px}
   .gate .wm em{font-style:italic}
-  .gate .lede{font-size:15.5px; line-height:1.55; color:var(--ink-2); max-width:34ch; margin:8px 0 22px}
+  .gate .lede{font-size:14.5px; line-height:1.55; color:var(--ink-2); max-width:36ch; margin:8px 0 18px}
   .gate .lede b{color:var(--ink); font-weight:600}
-  .gate .foot{font-size:11.5px; color:var(--ink-3); line-height:1.55; margin-top:18px; max-width:38ch}
+  .gate .foot{font-size:11.5px; color:var(--ink-3); line-height:1.55; margin-top:16px; max-width:40ch}
 
   .toast{
     position:absolute; left:50%; bottom:92px; transform:translateX(-50%);
     background:var(--ink); color:var(--shell); font-size:12.5px; font-weight:600;
-    padding:10px 16px; border-radius:99px; z-index:50; white-space:nowrap;
+    padding:10px 16px; border-radius:99px; z-index:50; white-space:nowrap; max-width:92%;
+    overflow:hidden; text-overflow:ellipsis;
     box-shadow:0 10px 30px rgba(0,0,0,.35);
   }
   @media (prefers-reduced-motion: no-preference){
     .toast{animation:toastin .25s cubic-bezier(.2,.7,.2,1)}
     @keyframes toastin{from{opacity:0; transform:translate(-50%,8px)} to{opacity:1; transform:translate(-50%,0)}}
   }
+
+  .modal-back{position:absolute; inset:0; z-index:60; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; justify-content:center}
+  .modal{background:var(--shell); border:1px solid var(--line); border-radius:20px 20px 0 0; padding:22px 20px 28px; width:100%; max-height:86%; overflow-y:auto}
+  @media (min-width:520px){ .modal{border-radius:20px; margin-bottom:24px; width:calc(100% - 32px)} }
 
   .ig-card{background:linear-gradient(150deg, var(--card) 0%, var(--card-2) 100%); border:1px solid var(--line); border-radius:16px; padding:16px}
   .route{display:flex; gap:12px; padding:13px 2px; border-bottom:1px solid var(--line); align-items:baseline}
@@ -299,6 +341,8 @@
   .list-row:last-child{border-bottom:none}
   .pay-row{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:12px 0; border-bottom:1px solid var(--line)}
   .pay-row:last-child{border-bottom:none}
+  .acct-row{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:13px 0; border-bottom:1px solid var(--line)}
+  .acct-row:last-child{border-bottom:none}
 </style>
 
 <div class="shell" id="shell"></div>
@@ -306,173 +350,198 @@
 <script>
 "use strict";
 
-/* ---------------- data ---------------- */
+/* ================= security note =================
+ * Nothing sensitive lives in this file: no passwords, tokens, or payment data
+ * are ever written to localStorage or client code. Authentication uses
+ * HttpOnly cookies set by the server; the CSRF token is held in JS memory
+ * only. Every customer-controlled value is escaped with esc() before it is
+ * inserted into HTML. */
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ---------------- fleet data (display copy only — quote math is server-side) */
 
 const CARS = [
   {id:"hur", name:"Lamborghini Huracán EVO", year:2023, paint:{name:"Verde Mantis", hex:"#3FA33C", hi:"#8FE07F"},
    city:"Miami", rate:899, hp:631, zero60:"2.9", seats:2, deposit:1000, lot:"TN-07",
-   note:"3 requests this week", hot:true, owner:"marcus", ownerTime:"~45 min",
-   cnote:"Weekend nights on this one go first. If you want Saturday, ask by Thursday — the owner is quick but the calendar isn't."},
+   note:"V10, no turbos — the loud one",
+   cnote:"The one people plan a whole weekend around. If your dates are flexible, say so in the request — it helps the provider say yes."},
   {id:"urus", name:"Lamborghini Urus", year:2024, paint:{name:"Giallo Auge", hex:"#E7B426", hi:"#FFE38A"},
    city:"Miami", rate:749, hp:657, zero60:"3.1", seats:5, deposit:1000, lot:"TN-11",
-   note:"Fits the whole crew + luggage", hot:false, owner:"elena", ownerTime:"~1 hr",
+   note:"Seats five, swallows luggage",
    cnote:"The airport-run favorite. Seats five, swallows luggage, still turns every head on Collins."},
   {id:"f8", name:"Ferrari F8 Tributo", year:2022, paint:{name:"Rosso Corsa", hex:"#C4231C", hi:"#F2755F"},
    city:"Miami", rate:999, hp:710, zero60:"2.9", seats:2, deposit:1500, lot:"TN-02",
-   note:"2 requests this week", hot:true, owner:"elena", ownerTime:"~2 hrs",
-   cnote:"Our most-photographed car. If the trip is a birthday or a proposal, tell us — we'll time delivery to the minute."},
+   note:"Twin-turbo V8, 710 hp",
+   cnote:"If the trip is a birthday or a proposal, tell us in the request — we'll coordinate timing with the provider."},
   {id:"mcl", name:"McLaren 570S Spider", year:2021, paint:{name:"Vega Blue", hex:"#2A6BD4", hi:"#7FB2FF"},
    city:"Fort Lauderdale", rate:799, hp:562, zero60:"3.1", seats:2, deposit:1000, lot:"TN-15",
-   note:"Roof down in 15 seconds", hot:false, owner:"marcus", ownerTime:"~45 min",
+   note:"Roof down in 15 seconds",
    cnote:"Top down on A1A at golden hour is the whole point of this car. Book it for the drive, not the parking lot."},
   {id:"cul", name:"Rolls-Royce Cullinan", year:2023, paint:{name:"Arctic White", hex:"#E9E7E0", hi:"#FFFFFF"},
    city:"Miami", rate:1150, hp:563, zero60:"4.9", seats:5, deposit:2000, lot:"TN-01",
-   note:"Chauffeur available on request", hot:false, owner:"elena", ownerTime:"~3 hrs",
-   cnote:"The quiet flex. Weddings, closings, landing at MIA like you mean it. Owner confirms slower — ask a day ahead."},
+   note:"Chauffeur available on request",
+   cnote:"The quiet flex. Weddings, closings, landing at MIA like you mean it."},
   {id:"g63", name:"Mercedes-AMG G 63", year:2023, paint:{name:"Obsidian Black", hex:"#23262B", hi:"#5A616D"},
    city:"Fort Lauderdale", rate:549, hp:577, zero60:"4.3", seats:5, deposit:1000, lot:"TN-09",
-   note:"4 requests this week", hot:true, owner:"marcus", ownerTime:"~30 min",
-   cnote:"The most requested truck in the fleet, and the fastest owner to confirm. Last-minute Friday asks actually work here."},
+   note:"The South Florida uniform",
+   cnote:"The truck that works for everything — dinner, the boat ramp, five people and a cooler."},
   {id:"p911", name:"Porsche 911 Carrera 4S", year:2022, paint:{name:"Chalk", hex:"#C9C6BD", hi:"#F4F1E8"},
    city:"Palm Beach", rate:449, hp:443, zero60:"3.2", seats:4, deposit:750, lot:"TN-21",
-   note:"Cabriolet — Worth Ave approved", hot:false, owner:"raf", ownerTime:"~1 hr",
-   cnote:"Palm Beach in a nutshell: understated until you put your foot down. The one locals rebook."},
+   note:"Cabriolet — Worth Ave approved",
+   cnote:"Palm Beach in a nutshell: understated until you put your foot down."},
   {id:"c8", name:"Chevrolet Corvette C8", year:2023, paint:{name:"Torch Red", hex:"#C8102E", hi:"#F26D7E"},
    city:"Palm Beach", rate:299, hp:495, zero60:"2.9", seats:2, deposit:500, lot:"TN-18",
-   note:"First exotic? Start here", hot:false, owner:"raf", ownerTime:"~1 hr",
-   cnote:"Mid-engine, loud, and the friendliest price on the list. The gateway car — half our regulars started in this seat."},
+   note:"First exotic? Start here",
+   cnote:"Mid-engine, loud, and the friendliest price on the list."},
+];
+
+const SERVICES = [
+  {id:"arrival-reset", name:"Arrival Reset Kit",
+   desc:"Chilled water, phone charger, mints, umbrella, cleaning wipes — waiting in the car.", safety:""},
+  {id:"welcome-basket", name:"South Florida Welcome Basket",
+   desc:"Local snacks, sunscreen, towels, water, welcome card.",
+   safety:"Dietary and allergy confirmation required before assembly. Alcohol is never included by default."},
+  {id:"golden-hour", name:"Golden-Hour Drive Plan",
+   desc:"Curated scenic route, recommended departure time, parking info, optional restaurant or photo-stop coordination.",
+   safety:"Restaurant reservations are only promised once confirmed."},
+  {id:"surprise-drop", name:"Proposal / Surprise Drop",
+   desc:"Flowers, vehicle-safe ribbon, surprise reveal coordination, photographer request, timing coordination.", safety:""},
+  {id:"hotel-valet", name:"Hotel Valet Handoff",
+   desc:"Hotel valet coordination, arrival timing, key handoff plan, vehicle-condition evidence.",
+   safety:"The hotel must confirm permission before this is approved."},
+  {id:"fbo-keys", name:"FBO Tarmac-to-Keys",
+   desc:"Private-airport arrival coordination, luggage assistance, vehicle delivery, driver or chauffeur request.",
+   safety:"FBO authorization must be confirmed before this is approved."},
+  {id:"content-run", name:"South Florida Content Run",
+   desc:"Legal scenic locations, photo/video coordinator, route planning, timing coordination.",
+   safety:"Creator, location and price are confirmed separately."},
+  {id:"night-chauffeur", name:"Night-Out Chauffeur / Vehicle Retrieval",
+   desc:"Chauffeur request, safe vehicle-return plan, your transportation home, next-day delivery option.",
+   safety:"Built so nobody drives after drinking — that's the point of it."},
+  {id:"family-arrival", name:"Family Arrival Setup",
+   desc:"Correct child-seat size, luggage assistance, airport or hotel delivery, water and family arrival kit.",
+   safety:"Child-seat age, height and weight requirements must be confirmed."},
+  {id:"rain-kit", name:"Rain-Proof Miami Kit",
+   desc:"Umbrella, towels, weather plan, alternate indoor recommendations, updated delivery instructions.", safety:""},
 ];
 
 const CITIES = ["Miami","Fort Lauderdale","Palm Beach"];
+const HUMAN_COPY = "No contact or booking information is sent to third-party AI. You receive the same access, price and booking priority.";
+const AI_COPY = "TopNotch Autopilot may send your contact and booking details to OpenAI only to organize your request, summarize conversations and draft replies. AI does not decide availability, payments, deposits, damage, refunds, provider payouts or provider approval. You can withdraw this permission in Account settings.";
+const PREVIEW_MSG = "Preview mode: this request was not sent because no TopNotch server is connected. Nothing was booked or charged.";
 
-const fmt = n => "$" + n.toLocaleString("en-US");
-const car = id => CARS.find(c => c.id === id);
+const fmt = (n) => "$" + Number(n).toLocaleString("en-US");
+const car = (id) => CARS.find((c) => c.id === id);
+const svc = (id) => SERVICES.find((s) => s.id === id);
 
-function fdate(d){ return d.toLocaleDateString("en-US",{month:"short",day:"numeric"}); }
-function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
-function today(){ const t=new Date(); t.setHours(0,0,0,0); return t; }
-function ftime(d){ return d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}); }
+function fdateStr(iso){
+  const [y,m,d] = String(iso).split("-").map(Number);
+  return new Date(y, m-1, d).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+}
+function fdateEnd(iso, days){
+  const [y,m,d] = String(iso).split("-").map(Number);
+  const x = new Date(y, m-1, d); x.setDate(x.getDate()+Number(days));
+  return x.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+}
+function tomorrowISO(){
+  const t = new Date(); t.setDate(t.getDate()+1);
+  return t.toISOString().slice(0,10);
+}
+function ftime(iso){ return new Date(iso).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"}); }
 
 /* ---------------- state ---------------- */
 
 const S = {
-  mode:"gate",              // gate | renter | partner
+  backend:null,            // null=checking, true=live server, false=preview
+  mode:"gate",             // gate | renter | partner
+  gateView:"menu",         // menu | signup | signin | forgot | reset | verify
+  auth:null,               // signed-in customer object (server view)
+  csrf:null,               // held in memory only — never persisted
   rTab:"fleet", pTab:"today",
-  screen:null,              // overrides tab body: {kind:"car"|"tracker", id}
+  screen:null,             // {kind:"car"|"tracker"|"previewfail", id}
   city:"Miami",
-  form:{start:null, days:2, delivery:"pickup"},
-  requests:[
-    { id:"seed1", carId:"g63", renter:"D. Alvarez", renterTrips:6, mine:false,
-      start:addDays(today(),2), days:3, delivery:"hotel", status:"pending_owner",
-      note:"Staying at the W Fort Lauderdale" },
-  ],
-  trips:[
-    { id:"t1", carId:"urus", start:addDays(today(),5), days:2, delivery:"door",
-      status:"confirmed", depositState:"Holds the day before pickup" },
-    { id:"t2", carId:"c8", start:addDays(today(),-22), days:2, delivery:"pickup",
-      status:"past", depositState:"Refunded ✓" },
-  ],
-  partner:{
-    name:"Marcus", tier:"Gold", cut:.78, month:8420, trips:6, resp:"42 min",
-    tripsQ:3, tripsNeeded:5,
-    listings:[
-      {carId:"hur", live:true, views:212},
-      {carId:"g63", live:true, views:388},
-      {carId:"mcl", live:false, views:97},
-    ],
+  form:{start:tomorrowISO(), days:2, delivery:"pickup", services:new Set(), aiChoice:"human",
+        contact:{name:"", mobile:"", email:""}},
+  myReq:null,              // latest live request (server view)
+  history:[],              // account/guest request history from server
+  provider:null,           // provider portal session (partner side, live mode)
+  provReqs:[],             // provider inbox (live)
+  err:null, busy:false, notice:null,
+  delModal:false, delErr:null,
+  pollTimer:null,
+  toastMsg:null, toastTimer:null,
+  /* Preview-mode sample data for the partner demo — always labeled as sample,
+   * never presented as live demand. */
+  sample:{
+    listings:[ {carId:"hur", live:true}, {carId:"g63", live:true}, {carId:"mcl", live:false} ],
     payouts:[
       {when:"Mon, Jul 6", what:"G 63 · 3 days", amt:1285},
       {when:"Mon, Jun 29", what:"Huracán EVO · 2 days", amt:1402},
-      {when:"Mon, Jun 29", what:"G 63 · 2 days", amt:856},
       {when:"Mon, Jun 22", what:"570S Spider · 4 days", amt:2493},
     ],
   },
-  myReq:null,               // the user's live request object
-  timers:[],
-  toastMsg:null, toastTimer:null,
 };
+
+/* ---------------- api ---------------- */
+
+async function api(pathName, opts = {}){
+  const token = pathName.startsWith("/provider") ? S.provCsrf : S.csrf;
+  const res = await fetch("/api" + pathName, {
+    method: opts.method || "GET",
+    headers: { "content-type": "application/json", ...(token ? { "x-tn-csrf": token } : {}) },
+    credentials: "same-origin",
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let data = {};
+  try { data = await res.json(); } catch { /* empty */ }
+  if (!res.ok) { const e = new Error(data.error || ("Request failed (" + res.status + ")")); e.status = res.status; throw e; }
+  return data;
+}
+
+async function detectBackend(){
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 2500);
+    const res = await fetch("/api/health", { signal: ctl.signal });
+    clearTimeout(t);
+    S.backend = res.ok;
+  } catch { S.backend = false; }
+  if (S.backend) {
+    try {
+      const me = await api("/customer/me");
+      if (me.customer) { S.auth = me.customer; S.csrf = me.csrf; }
+      else if (me.guest) { S.csrf = me.csrf; }
+    } catch { /* not signed in */ }
+  }
+  render();
+}
 
 /* ---------------- helpers ---------------- */
 
 function toast(msg){
   S.toastMsg = msg;
   clearTimeout(S.toastTimer);
-  S.toastTimer = setTimeout(()=>{ S.toastMsg=null; render(); }, 2400);
+  S.toastTimer = setTimeout(() => { S.toastMsg = null; render(); }, 3200);
   render();
 }
-
-function clearTimers(){ S.timers.forEach(clearTimeout); S.timers=[]; }
+function stopPoll(){ clearInterval(S.pollTimer); S.pollTimer = null; }
 
 function swatchStyle(p, hero){
   return `background:
     radial-gradient(${hero?"120% 90% at 28% 0%":"150% 110% at 30% 0%"}, ${p.hi}55, transparent 46%),
     linear-gradient(160deg, ${p.hi}33 0%, ${p.hex} 52%, color-mix(in srgb, ${p.hex} 62%, black) 100%);`;
 }
-
 function deliveryLabel(k){
   return k==="pickup" ? "Pickup — Miami / FLL / PBI lot" : k==="hotel" ? "Hotel delivery" : "Residence delivery";
 }
 function deliveryFee(k, days){ return k==="pickup" ? 0 : (days>=3 ? 0 : 149); }
 
-/* ---------------- request lifecycle ---------------- */
-
-function submitRequest(carId){
-  clearTimers();
-  const c = car(carId);
-  const start = S.form.start || addDays(today(),1);
-  const req = {
-    id:"my"+Date.now(), carId, mine:true, renter:"You", renterTrips:2,
-    start, days:S.form.days, delivery:S.form.delivery,
-    status:"sent", sentAt:new Date(), msgs:[
-      {who:"V. — TopNotch concierge", text:"Got it. Your request is in — I'm reaching out to the owner right now. You haven't been charged anything yet."}
-    ],
-  };
-  S.myReq = req;
-  S.requests.unshift(req);
-  S.screen = {kind:"tracker"};
-  render();
-
-  S.timers.push(setTimeout(()=>{
-    if(req.status!=="sent") return;
-    req.status="confirming";
-    req.msgs.push({who:"V. — TopNotch concierge", text:"On with the owner now. This one usually comes back fast — I'll ping you the second it's locked."});
-    render();
-  }, 2400));
-  S.timers.push(setTimeout(()=>{
-    if(req.status!=="confirming") return;
-    confirmMyRequest("Owner said yes. You're locked — "+c.name+", "+fdate(req.start)+"–"+fdate(addDays(req.start,req.days))+". Insurance is on, the deposit holds the day before and comes back after return. See you out there.");
-  }, 9500));
+function previewBadge(){
+  return S.backend===false ? `<div class="banner banner-warn" role="status"><b>Preview mode</b> — no TopNotch server is connected. You can explore every screen, but nothing can be created, sent, booked or charged.</div>` : "";
 }
 
-function confirmMyRequest(msgText){
-  const req = S.myReq; if(!req || req.status==="confirmed") return;
-  clearTimers();
-  req.status="confirmed"; req.confirmedAt=new Date();
-  req.msgs.push({who:"V. — TopNotch concierge", text:msgText});
-  S.trips.unshift({ id:"t"+Date.now(), carId:req.carId, start:req.start, days:req.days,
-    delivery:req.delivery, status:"confirmed", depositState:"Holds the day before pickup" });
-  render();
-}
-
-function partnerDecide(id, ok){
-  const req = S.requests.find(r=>r.id===id); if(!req) return;
-  if(req.mine){
-    if(ok){
-      confirmMyRequest("Owner said yes. You're locked — "+car(req.carId).name+". Insurance is on, the deposit holds the day before and comes back after return. See you out there.");
-      toast("Approved — the renter just got the good news");
-    } else {
-      clearTimers(); req.status="declined";
-      req.msgs.push({who:"V. — TopNotch concierge", text:"Bad news — the owner can't make those dates work. Nothing was charged. Want me to line up something close? The "+ (req.carId==="hur"?"F8 Tributo":"Huracán EVO") +" is open that weekend."});
-      toast("Declined — renter was never charged");
-    }
-  } else {
-    req.status = ok ? "confirmed" : "declined";
-    toast(ok ? "Confirmed — trip is on the books" : "Declined — renter was never charged");
-  }
-  render();
-}
-
-/* ---------------- shared UI pieces ---------------- */
+/* ---------------- shared UI ---------------- */
 
 function headerHTML(sub, switchLabel, switchAct){
   return `
@@ -485,13 +554,13 @@ function headerHTML(sub, switchLabel, switchAct){
   </header>`;
 }
 
-function includedHTML(compact){
+function includedHTML(){
   return `
   <div class="included">
     <h3>Included, always.</h3>
-    <div class="inc-row"><span class="ck">■</span><span><b>Insurance</b> — already in every price. No add-on screen, ever.</span></div>
-    <div class="inc-row"><span class="ck">■</span><span><b>Deposit</b> — fully refundable, back 3–5 days after return.</span></div>
-    ${compact?"":`<div class="inc-row"><span class="ck">■</span><span><b>Delivery</b> — airport, hotel, or your door. Free on 3+ days.</span></div>`}
+    <div class="inc-row"><span class="ck">■</span><span><b>Insurance</b> — included in the quoted price, subject to eligibility and verification.</span></div>
+    <div class="inc-row"><span class="ck">■</span><span><b>Deposit</b> — refundable after the documented vehicle-return review and rental-agreement requirements.</span></div>
+    <div class="inc-row"><span class="ck">■</span><span><b>Delivery</b> — airport, hotel, or your door. Free on 3+ days.</span></div>
   </div>`;
 }
 
@@ -503,31 +572,80 @@ function tabsHTML(tabs, current, prefix, badge){
     </button>`).join("") + `</nav>`;
 }
 
-/* ---------------- gate ---------------- */
+function fieldHTML(id, label, type, placeholder, hint, value){
+  return `
+  <div class="field">
+    <label for="${id}">${label}</label>
+    <input id="${id}" type="${type}" placeholder="${esc(placeholder)}" value="${esc(value||"")}" autocomplete="${type==="password"?"new-password":"on"}">
+    ${hint?`<span class="hint">${hint}</span>`:""}
+  </div>`;
+}
+
+/* ---------------- gate & auth ---------------- */
 
 function gateHTML(){
   const strips = [
-    {c:"#3FA33C", w:220, h:10, t:"12%", l:"-40px", r:"-14deg"},
-    {c:"#E7B426", w:160, h:10, t:"19%", l:"55%", r:"-14deg"},
-    {c:"#C4231C", w:250, h:10, t:"27%", l:"14%", r:"-14deg"},
-    {c:"#2A6BD4", w:130, h:10, t:"35%", l:"70%", r:"-14deg"},
-    {c:"#C9C6BD", w:180, h:10, t:"42%", l:"-20px", r:"-14deg"},
+    {c:"#3FA33C", w:220, t:"8%", l:"-40px"},
+    {c:"#E7B426", w:160, t:"14%", l:"55%"},
+    {c:"#C4231C", w:250, t:"21%", l:"14%"},
+    {c:"#2A6BD4", w:130, t:"28%", l:"70%"},
   ];
-  return `
-  <div class="view no-tabs"><div class="gate screen-in">
-    <div class="gate-art">${strips.map(s=>`<span class="gate-strip" style="background:${s.c}; width:${s.w}px; height:${s.h}px; top:${s.t}; left:${s.l}; transform:rotate(${s.r})"></span>`).join("")}</div>
-    <div class="gate-inner">
+  const art = `<div class="gate-art">${strips.map(s=>`<span class="gate-strip" style="background:${s.c}; width:${s.w}px; height:10px; top:${s.t}; left:${s.l}; transform:rotate(-14deg)"></span>`).join("")}</div>`;
+  const inner = {
+    menu: `
       <div class="eyebrow">Miami · Fort Lauderdale · Palm Beach</div>
       <h1 class="wm display">Top<em>Notch</em></h1>
       <div class="eyebrow" style="color:var(--accent)">The plug for South Florida</div>
-      <p class="lede">We don't own a fleet. We know the people who do — and we broker the best garages in South Florida with <b>insurance already in the price</b> and <b>a deposit you get back</b>. Every time.</p>
-      <div class="stack">
-        <button class="btn btn-hot" data-act="enterRenter">Book a car</button>
-        <button class="btn btn-ghost" data-act="enterPartner">I have cars — the partner side</button>
+      <p class="lede">We don't own a fleet. We know the people who do — and we broker the best garages in South Florida. Every request is confirmed with the actual provider before a quote is approved or a card is charged.</p>
+      ${previewBadge()}
+      <div class="stack" style="margin-top:14px">
+        <button class="btn btn-hot" data-act="gateView" data-id="signup">Create an account</button>
+        <button class="btn btn-ghost" data-act="gateView" data-id="signin">Sign in</button>
+        <button class="btn btn-ghost" data-act="enterGuest">Continue as guest</button>
+        <button class="btn btn-ghost" data-act="enterPartner">I have cars — fleet-partner side</button>
       </div>
-      <p class="foot">Cars today. The rest of the good life — places to stay, nights out, the boat — is coming. Same plug.</p>
-    </div>
-  </div></div>`;
+      <p class="foot">Guests get the same fleet, pricing, booking priority and signature services. An account just remembers your details, requests and privacy choice.</p>`,
+    signup: `
+      <button class="side-btn" style="align-self:flex-start; margin-bottom:14px" data-act="gateView" data-id="menu">← Back</button>
+      <h1 class="display" style="font-size:30px; margin-bottom:4px">Create an account</h1>
+      <p style="font-size:13px; color:var(--ink-2); margin-bottom:16px">So the provider's confirmation can always reach you.</p>
+      ${S.err?`<div class="banner banner-bad" style="margin-bottom:12px"><b>Couldn't create the account.</b> ${esc(S.err)}</div>`:""}
+      ${fieldHTML("f-name","Full name","text","Alex Rivera","")}
+      ${fieldHTML("f-mobile","Mobile number","tel","+1 305 555 0100","The provider's confirmation goes here")}
+      ${fieldHTML("f-email","Email","email","you@example.com","")}
+      ${fieldHTML("f-pass","Password","password","At least 10 characters","10 characters minimum")}
+      <button class="btn btn-hot" data-act="doRegister" ${S.busy?"disabled":""}>${S.busy?"Creating…":"Create account"}</button>
+      <p class="foot">We'll email a verification code. Your AI privacy setting defaults to Human-only service — nothing goes to third-party AI unless you turn that on yourself.</p>`,
+    signin: `
+      <button class="side-btn" style="align-self:flex-start; margin-bottom:14px" data-act="gateView" data-id="menu">← Back</button>
+      <h1 class="display" style="font-size:30px; margin-bottom:16px">Sign in</h1>
+      ${S.err?`<div class="banner banner-bad" style="margin-bottom:12px"><b>Sign-in failed.</b> ${esc(S.err)}</div>`:""}
+      ${S.notice?`<div class="banner banner-warn" style="margin-bottom:12px">${esc(S.notice)}</div>`:""}
+      ${fieldHTML("f-email","Email","email","you@example.com","")}
+      ${fieldHTML("f-pass","Password","password","Your password","")}
+      <button class="btn btn-hot" data-act="doLogin" ${S.busy?"disabled":""}>${S.busy?"Signing in…":"Sign in"}</button>
+      <div style="display:flex; gap:14px; margin-top:14px; justify-content:center">
+        <button class="side-btn" data-act="gateView" data-id="forgot">Forgot password</button>
+        <button class="side-btn" data-act="gateView" data-id="reset">Have a reset code</button>
+      </div>`,
+    forgot: `
+      <button class="side-btn" style="align-self:flex-start; margin-bottom:14px" data-act="gateView" data-id="signin">← Back</button>
+      <h1 class="display" style="font-size:28px; margin-bottom:6px">Reset your password</h1>
+      <p style="font-size:13px; color:var(--ink-2); margin-bottom:16px">We'll email a single-use code that expires in 30 minutes.</p>
+      ${S.notice?`<div class="banner banner-warn" style="margin-bottom:12px">${esc(S.notice)}</div>`:""}
+      ${S.err?`<div class="banner banner-bad" style="margin-bottom:12px">${esc(S.err)}</div>`:""}
+      ${fieldHTML("f-email","Email","email","you@example.com","")}
+      <button class="btn btn-hot" data-act="doForgot" ${S.busy?"disabled":""}>Email me a reset code</button>`,
+    reset: `
+      <button class="side-btn" style="align-self:flex-start; margin-bottom:14px" data-act="gateView" data-id="signin">← Back</button>
+      <h1 class="display" style="font-size:28px; margin-bottom:16px">Enter your reset code</h1>
+      ${S.notice?`<div class="banner banner-warn" style="margin-bottom:12px">${esc(S.notice)}</div>`:""}
+      ${S.err?`<div class="banner banner-bad" style="margin-bottom:12px">${esc(S.err)}</div>`:""}
+      ${fieldHTML("f-token","Reset code","text","Paste the code from the email","Single-use, expires 30 minutes after it was sent")}
+      ${fieldHTML("f-pass","New password","password","At least 10 characters","")}
+      <button class="btn btn-hot" data-act="doReset" ${S.busy?"disabled":""}>Set new password</button>`,
+  }[S.gateView];
+  return `<div class="view no-tabs"><div class="gate screen-in">${art}<div class="gate-inner">${inner}</div></div></div>`;
 }
 
 /* ---------------- renter: fleet ---------------- */
@@ -536,10 +654,11 @@ function fleetHTML(){
   const list = CARS.filter(c=>c.city===S.city);
   return `
   <div class="pad stack screen-in">
+    ${previewBadge()}
     <div class="chiprow" role="tablist">
       ${CITIES.map(c=>`<button class="chip ${S.city===c?"on":""}" data-act="setCity" data-id="${c}">${c}</button>`).join("")}
     </div>
-    ${includedHTML(false)}
+    ${includedHTML()}
     <div class="sect">
       <span class="eyebrow">The fleet — ${S.city}</span>
       <span class="mono" style="font-size:10px; color:var(--ink-3)">${list.length} cars</span>
@@ -550,7 +669,7 @@ function fleetHTML(){
         <span class="fc-body">
           <span class="fc-name">${c.year} ${c.name}</span>
           <span class="fc-meta">${c.hp} hp · 0–60 ${c.zero60}s · ${c.paint.name}</span>
-          <span class="fc-note ${c.hot?"":"calm"}">${c.hot?"◆ ":""}${c.note}</span>
+          <span class="fc-note">${c.note}</span>
         </span>
         <span class="fc-price">
           <span><span class="n num">${fmt(c.rate)}</span><br><span class="per">per day</span></span>
@@ -558,20 +677,21 @@ function fleetHTML(){
         </span>
       </button>`).join("")}
     <p style="font-size:11.5px; color:var(--ink-3); line-height:1.6; padding:4px 2px 0">
-      Every car belongs to a vetted local owner. TopNotch confirms your dates with them directly —
-      that's why it's a request, not a checkout. Most come back in under an hour.
+      Every car belongs to a local provider. TopNotch confirms your exact vehicle and dates with
+      them before any quote is approved or payment is accepted — that's why it's a request,
+      not an instant checkout.
     </p>
   </div>`;
 }
 
-/* ---------------- renter: car detail ---------------- */
+/* ---------------- renter: car detail + request form ---------------- */
 
 function carHTML(id){
   const c = car(id);
-  const startVal = (S.form.start || addDays(today(),1)).toISOString().slice(0,10);
   const days = S.form.days;
   const dfee = deliveryFee(S.form.delivery, days);
   const subtotal = c.rate*days + dfee;
+  const guest = !S.auth;
   return `
   <div class="pad stack screen-in">
     <button class="side-btn" style="align-self:flex-start" data-act="backFleet">← Fleet</button>
@@ -582,26 +702,30 @@ function carHTML(id){
     <div>
       <h2 class="display" style="font-size:26px; line-height:1.15">${c.year} ${c.name}</h2>
       <div style="display:flex; gap:8px; margin-top:9px; flex-wrap:wrap">
-        <span class="tag tag-good">Insurance included</span>
-        <span class="tag tag-good">Deposit refundable</span>
-        ${c.hot?`<span class="tag tag-hot">◆ ${c.note}</span>`:""}
+        <span class="tag tag-good">Insurance included*</span>
+        <span class="tag tag-good">Deposit refundable*</span>
+        <span class="tag">Request to book</span>
       </div>
+      <p style="font-size:10.5px; color:var(--ink-3); margin-top:7px; line-height:1.5">
+        *Insurance is included in the quoted price, subject to eligibility and verification.
+        The deposit is refundable after the documented vehicle-return review and rental-agreement requirements.
+      </p>
     </div>
     <div class="spec-row">
       <div class="spec"><div class="v num">${c.hp}</div><div class="k">HP</div></div>
       <div class="spec"><div class="v num">${c.zero60}s</div><div class="k">0–60</div></div>
       <div class="spec"><div class="v num">${c.seats}</div><div class="k">Seats</div></div>
-      <div class="spec"><div class="v num">${fmt(c.deposit)}</div><div class="k">Deposit ↩</div></div>
+      <div class="spec"><div class="v num">${fmt(c.deposit)}</div><div class="k">Deposit</div></div>
     </div>
     <div class="concierge">
       <p>“${c.cnote}”</p>
-      <div class="who">V. — TopNotch concierge · owner confirms in ${c.ownerTime}</div>
+      <div class="who">V. — TopNotch concierge</div>
     </div>
     <div class="card">
       <div class="eyebrow" style="margin-bottom:6px">Your dates</div>
       <div class="frow">
         <label for="startdate">First day</label>
-        <input type="date" id="startdate" value="${startVal}" min="${today().toISOString().slice(0,10)}">
+        <input type="date" id="startdate" value="${S.form.start}" min="${new Date().toISOString().slice(0,10)}">
       </div>
       <div class="frow">
         <label>Days</label>
@@ -627,54 +751,138 @@ function carHTML(id){
       </div>
     </div>
     <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px">
+        <span class="eyebrow">Signature services</span>
+        <span class="tag tag-warn">Request — confirmed separately</span>
+      </div>
+      <p style="font-size:11.5px; color:var(--ink-3); line-height:1.5; margin-bottom:4px">
+        Optional. Selecting one charges nothing and promises nothing — a service is approved only
+        after a vendor is assigned, the price is verified, you approve that price, timing is
+        confirmed, safety questions are completed, and any required hotel, property or FBO
+        permission is received.
+      </p>
+      ${SERVICES.map(s=>`
+      <button class="svc ${S.form.services.has(s.id)?"on":""}" data-act="toggleSvc" data-id="${s.id}" role="checkbox" aria-checked="${S.form.services.has(s.id)}">
+        <span class="box">${S.form.services.has(s.id)?"✓":""}</span>
+        <span>
+          <span class="st">${s.name}</span>
+          <div class="sd">${s.desc}</div>
+          ${s.safety?`<div class="sf">◆ ${s.safety}</div>`:""}
+        </span>
+      </button>`).join("")}
+    </div>
+    ${guest?`
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:10px">Where the confirmation reaches you</div>
+      <p style="font-size:11.5px; color:var(--ink-3); line-height:1.5; margin-bottom:12px">
+        You're booking as a guest — same fleet, price and priority. We just need somewhere to send
+        the provider's answer.
+      </p>
+      ${fieldHTML("g-name","Full name","text","Alex Rivera","",S.form.contact.name)}
+      ${fieldHTML("g-mobile","Mobile number","tel","+1 305 555 0100","",S.form.contact.mobile)}
+      ${fieldHTML("g-email","Email","email","you@example.com","",S.form.contact.email)}
+    </div>`:""}
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px">
+        <span class="eyebrow">Your privacy, your call</span>
+      </div>
+      <div class="stack" style="gap:9px">
+        <button class="radio-opt ${S.form.aiChoice==="human"?"on":""}" data-act="setAI" data-id="human" role="radio" aria-checked="${S.form.aiChoice==="human"}">
+          <span class="rb"></span>
+          <span><span class="rt">Human-only service</span>
+          <div class="rd">${HUMAN_COPY}</div></span>
+        </button>
+        <button class="radio-opt ${S.form.aiChoice==="ai"?"on":""}" data-act="setAI" data-id="ai" role="radio" aria-checked="${S.form.aiChoice==="ai"}">
+          <span class="rb"></span>
+          <span><span class="rt">Allow AI-assisted service</span>
+          <div class="rd">${AI_COPY}</div></span>
+        </button>
+      </div>
+      <p style="font-size:10.5px; color:var(--ink-3); margin-top:9px; line-height:1.5">
+        Human-only is the default and never affects your booking. Your choice, the policy version
+        and the time are recorded with this request.
+      </p>
+    </div>
+    <div class="card">
       <div class="eyebrow" style="margin-bottom:6px">The math, all of it</div>
       <div class="line-item"><span>${fmt(c.rate)} × ${days} day${days>1?"s":""}</span><span class="r num">${fmt(c.rate*days)}</span></div>
       <div class="line-item"><span>${deliveryLabel(S.form.delivery)}</span><span class="r num">${dfee===0?"Free":fmt(dfee)}</span></div>
-      <div class="line-item"><span>Insurance</span><span class="r good">Included</span></div>
-      <div class="line-item"><span>Security deposit — refundable</span><span class="r num">${fmt(c.deposit)} ↩</span></div>
-      <div class="line-item total"><span>If the owner confirms</span><span class="r num">${fmt(subtotal)}</span></div>
+      <div class="line-item"><span>Insurance (subject to eligibility)</span><span class="r good">Included</span></div>
+      <div class="line-item"><span>Security deposit — refundable after return review</span><span class="r num">${fmt(c.deposit)}</span></div>
+      ${S.form.services.size?`<div class="line-item"><span>Signature services × ${S.form.services.size}</span><span class="r">Priced after confirmation</span></div>`:""}
+      <div class="line-item total"><span>Estimated — final quote comes from the provider</span><span class="r num">${fmt(subtotal)}</span></div>
       <div class="line-item"><span><b style="color:var(--ink)">Charged today</b></span><span class="r good num">$0</span></div>
     </div>
-    <button class="btn btn-hot" data-act="submitRequest" data-id="${c.id}">Send request to the owner</button>
+    ${S.err?`<div class="banner banner-bad"><b>Couldn't send the request.</b> ${esc(S.err)}</div>`:""}
+    <button class="btn btn-hot" data-act="submitRequest" data-id="${c.id}" ${S.busy?"disabled":""}>${S.busy?"Sending…":"Send request to the provider"}</button>
     <p style="font-size:11.5px; color:var(--ink-3); text-align:center; line-height:1.55; padding:0 8px">
-      Nothing is charged until the owner confirms — usually ${c.ownerTime}.
-      We check with the real owner so the car is really there. No fake instant-book.
+      Nothing is charged until the provider confirms the exact vehicle and dates and you approve
+      the quote. No fake instant-book, no invented wait times — you'll see the real status as it
+      happens.
     </p>
   </div>`;
 }
 
-/* ---------------- renter: tracker ---------------- */
+/* ---------------- renter: preview failure (honest) ---------------- */
+
+function previewFailHTML(){
+  const c = car(S.screen.id);
+  return `
+  <div class="pad stack screen-in">
+    <button class="side-btn" style="align-self:flex-start" data-act="backFleet">← Fleet</button>
+    <div class="card" style="border-color:color-mix(in srgb, var(--warn) 45%, transparent)">
+      <div class="eyebrow" style="color:var(--warn); margin-bottom:8px">Not sent</div>
+      <h2 class="display" style="font-size:22px; margin-bottom:10px">${c?c.name:"Your request"}</h2>
+      <p style="font-size:14px; line-height:1.6">${PREVIEW_MSG}</p>
+    </div>
+    <p style="font-size:12px; color:var(--ink-3); line-height:1.6; padding:0 4px">
+      There's no request number, no tracking, and no provider reviewing anything — because
+      nothing was created. When the app is connected to a TopNotch server, this same button
+      sends a real request and you can follow the provider's actual confirmation here.
+    </p>
+    <button class="btn btn-ghost" data-act="backFleet">Back to the fleet</button>
+  </div>`;
+}
+
+/* ---------------- renter: tracker (live server data only) ---------------- */
 
 function trackerHTML(){
-  const req = S.myReq;
-  if(!req) return `<div class="pad screen-in"><p style="color:var(--ink-2)">No live request.</p></div>`;
-  const c = car(req.carId);
-  const stateIdx = {sent:0, confirming:1, confirmed:2, declined:2}[req.status];
+  const r = S.myReq;
+  if(!r) return `<div class="pad screen-in"><p style="color:var(--ink-2)">No live request.</p></div>`;
+  const c = car(r.carId);
+  const done = { sent:0, waiting:1, decided:2 };
+  const stage = r.status === "pending_provider" ? 1 : 2;
+  const declined = r.status === "declined";
+  const booked = r.status === "booked";
+  const approved = r.status === "approved";
   const steps = [
-    {t:"Request sent", d:"Dates, delivery and the full price locked in writing. Card not charged.", when:req.sentAt?ftime(req.sentAt):""},
-    {t:"TopNotch is on with the owner", d:"A human — not a queue. We confirm the car is really free before you pay a cent.", when:""},
-    req.status==="declined"
-      ? {t:"Owner can't make it work", d:"It happens. You were never charged, and your concierge is already lining up a close match.", when:""}
-      : {t:"Confirmed", d:"Payment goes through, deposit holds the day before pickup, and your trip hits the Trips tab.", when:req.confirmedAt?ftime(req.confirmedAt):""},
+    {t:"Request sent", d:"Dates, delivery and the estimate locked in writing. Card not charged.", when:ftime(r.createdAt)},
+    {t:"Waiting on provider confirmation", d:"TopNotch is a brokerage — the provider must confirm the exact vehicle and dates before an approved quote or any payment. No countdown, no invented estimate: the real answer lands here.", when:""},
+    declined
+      ? {t:"Provider can't make it work", d:"It happens. You were never charged. Ask the concierge for a close match.", when:""}
+      : {t: booked ? "Booked" : "Approved — your quote is confirmed", d: booked ? "Payment recorded. Deposit is refundable after the documented vehicle-return review and rental-agreement requirements." : "The provider confirmed the exact vehicle and dates. Review the quote below — payment only happens if you approve it.", when:""},
   ];
   return `
   <div class="pad stack screen-in">
     <button class="side-btn" style="align-self:flex-start" data-act="goTrips">← Trips</button>
     <div>
-      <div class="eyebrow" style="margin-bottom:6px">Live request · ${c.lot}</div>
-      <h2 class="display" style="font-size:24px">${c.name}</h2>
+      <div class="eyebrow" style="margin-bottom:6px">Live request · ${esc(r.id)}</div>
+      <h2 class="display" style="font-size:24px">${c?c.name:esc(r.carName||"")}</h2>
       <div class="mono" style="font-size:11px; color:var(--ink-2); margin-top:6px">
-        ${fdate(req.start)} – ${fdate(addDays(req.start,req.days))} · ${deliveryLabel(req.delivery)}
+        ${fdateStr(r.start)} – ${fdateEnd(r.start, r.days)} · ${deliveryLabel(r.delivery)}
       </div>
+      ${r.services && r.services.length?`<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px">
+        ${r.services.map(s=>`<span class="tag tag-warn">${esc(svc(s.id)?svc(s.id).name:s.id)} — confirmed separately</span>`).join("")}
+      </div>`:""}
     </div>
     <div class="card">
       <div class="tl">
         ${steps.map((s,i)=>{
-          const done = i<stateIdx || (i===stateIdx && (req.status==="confirmed"||req.status==="declined"));
-          const live = i===stateIdx && req.status!=="confirmed" && req.status!=="declined";
+          const isDone = i < stage || (i === stage && (declined || approved || booked));
+          const isLive = i === stage && !declined && !approved && !booked;
           return `
-          <div class="tl-step ${done?"done":""} ${live?"live":""} ${i>stateIdx?"dim":""}">
-            <span class="knot">${done?"✓":""}</span>
+          <div class="tl-step ${isDone?"done":""} ${isLive?"live":""} ${i>stage?"dim":""}">
+            <span class="knot">${isDone?"✓":""}</span>
             <h4>${s.t}</h4>
             ${s.when?`<div class="when">${s.when}</div>`:""}
             <div class="desc">${s.d}</div>
@@ -682,16 +890,27 @@ function trackerHTML(){
         }).join("")}
       </div>
     </div>
+    ${approved && r.quote?`
+    <div class="card" style="border-color:color-mix(in srgb, var(--good) 45%, transparent)">
+      <div class="eyebrow" style="color:var(--good); margin-bottom:8px">Approved quote</div>
+      <div class="line-item"><span>Rental (${r.days} day${r.days>1?"s":""})</span><span class="r num">${fmt(r.quote.rental)}</span></div>
+      <div class="line-item"><span>Delivery</span><span class="r num">${r.quote.deliveryFee===0?"Free":fmt(r.quote.deliveryFee)}</span></div>
+      <div class="line-item"><span>Insurance (eligibility verified)</span><span class="r good">Included</span></div>
+      <div class="line-item"><span>Deposit — refundable after return review</span><span class="r num">${fmt(r.quote.deposit)}</span></div>
+      <div class="line-item total"><span>Total if you approve</span><span class="r num">${fmt(r.quote.total)}</span></div>
+      <button class="btn btn-hot" style="margin-top:12px" data-act="payRequest" data-id="${esc(r.id)}" ${S.busy?"disabled":""}>Approve quote &amp; pay ${fmt(r.quote.total)}</button>
+      <p style="font-size:10.5px; color:var(--ink-3); margin-top:8px; text-align:center">Demo payment — no live processor is connected.</p>
+    </div>`:""}
     <div class="stack" style="gap:10px">
-      ${req.msgs.map(m=>`
-        <div class="msg"><div class="who">${m.who}</div><p>${m.text}</p></div>`).join("")}
+      ${(r.events||[]).map(m=>`
+        <div class="msg"><div class="who">${m.by==="provider"?"Provider — via TopNotch":"TopNotch"} · ${ftime(m.at)}${m.ai?" · <span style='color:var(--accent)'>AI-assisted</span>":""}</div><p>${esc(m.text)}</p></div>`).join("")}
     </div>
-    ${req.status==="confirmed"?`<button class="btn btn-ghost" data-act="goTrips">View it in Trips →</button>`:""}
-    ${req.status==="declined"?`<button class="btn btn-ghost" data-act="backFleet">Back to the fleet</button>`:""}
+    ${booked?`<button class="btn btn-ghost" data-act="goTrips">View it in Trips →</button>`:""}
+    ${declined?`<button class="btn btn-ghost" data-act="backFleet">Back to the fleet</button>`:""}
     <p style="font-size:11.5px; color:var(--ink-3); line-height:1.6; padding:0 4px">
-      Why not instant book? Because we'd be guessing. Every TopNotch trip is confirmed with the
-      actual owner — about 9 in 10 requests confirm, most within the hour.
-      ${req.status!=="confirmed" && req.status!=="declined" ? "Curious what the other side looks like? Tap the partner side in the header — your request is sitting in an owner's inbox right now." : ""}
+      Why not instant book? Because we'd be guessing. This tracker shows the provider's real
+      answer, whenever it arrives — not a timer we made up.
+      ${r.status==="pending_provider" ? "This request is sitting in the provider portal right now — the fleet-partner side of this app is where it gets answered." : ""}
     </p>
   </div>`;
 }
@@ -699,56 +918,179 @@ function trackerHTML(){
 /* ---------------- renter: trips ---------------- */
 
 function tripsHTML(){
-  const upcoming = S.trips.filter(t=>t.status==="confirmed");
-  const past = S.trips.filter(t=>t.status==="past");
-  const live = S.myReq && S.myReq.status!=="confirmed" && S.myReq.status!=="declined";
+  const live = S.history.filter(r=>r.status==="pending_provider" || r.status==="approved");
+  const booked = S.history.filter(r=>r.status==="booked");
+  const past = S.history.filter(r=>r.status==="declined");
+  const empty = !S.history.length;
   return `
   <div class="pad stack screen-in">
-    ${live?`
-    <button class="card" style="width:100%; border-color:var(--accent)" data-act="openTracker">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
-        <div>
-          <div class="eyebrow" style="color:var(--accent); margin-bottom:5px">Live request</div>
-          <div class="fc-name">${car(S.myReq.carId).name}</div>
-          <div class="fc-meta" style="margin-top:4px">${S.myReq.status==="sent"?"Request sent — concierge picking it up":"Confirming with the owner now"}</div>
+    ${previewBadge()}
+    ${S.backend===false?`<p style="font-size:12.5px; color:var(--ink-3); line-height:1.6">Trips appear here once the app is connected to a TopNotch server and you've sent a real request. Nothing is simulated in preview.</p>`:""}
+    ${S.backend && empty?`<p style="font-size:13px; color:var(--ink-3); padding:2px">Nothing on the books yet — the fleet is a tab away.</p>`:""}
+    ${live.length?`<div class="sect"><span class="eyebrow">Live requests</span></div>`:""}
+    ${live.map(r=>{
+      const c=car(r.carId);
+      return `
+      <button class="card" style="width:100%; border-color:var(--accent)" data-act="openTracker" data-id="${esc(r.id)}">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px">
+          <div>
+            <div class="eyebrow" style="color:var(--accent); margin-bottom:5px">${r.status==="approved"?"Quote approved — awaiting your payment":"Waiting on provider confirmation"}</div>
+            <div class="fc-name">${c?c.name:esc(r.carName||"")}</div>
+            <div class="fc-meta" style="margin-top:4px">${fdateStr(r.start)} – ${fdateEnd(r.start,r.days)}</div>
+          </div>
+          <span class="mono" style="color:var(--accent); font-size:11px">TRACK →</span>
         </div>
-        <span class="mono" style="color:var(--accent); font-size:11px">TRACK →</span>
-      </div>
-    </button>`:""}
-    <div class="sect"><span class="eyebrow">Upcoming</span></div>
-    ${upcoming.length?upcoming.map(t=>{
-      const c=car(t.carId);
+      </button>`;
+    }).join("")}
+    ${booked.length?`<div class="sect"><span class="eyebrow">Booked</span></div>`:""}
+    ${booked.map(r=>{
+      const c=car(r.carId);
       return `
       <div class="card">
         <div style="display:flex; gap:13px; align-items:center">
-          <span class="swatch" style="${swatchStyle(c.paint,false)}; min-height:58px; width:52px"></span>
+          ${c?`<span class="swatch" style="${swatchStyle(c.paint,false)}; min-height:58px; width:52px"></span>`:""}
           <div style="flex:1; min-width:0">
-            <div class="fc-name">${c.name}</div>
-            <div class="fc-meta" style="margin-top:4px">${fdate(t.start)} – ${fdate(addDays(t.start,t.days))} · ${deliveryLabel(t.delivery)}</div>
+            <div class="fc-name">${c?c.name:esc(r.carName||"")}</div>
+            <div class="fc-meta" style="margin-top:4px">${fdateStr(r.start)} – ${fdateEnd(r.start,r.days)} · ${deliveryLabel(r.delivery)}</div>
           </div>
-          <span class="tag tag-good">Confirmed</span>
+          <span class="tag tag-good">Booked</span>
         </div>
         <hr class="rule" style="margin:13px 0">
-        <div class="kv"><span>Insurance</span><span class="r" style="color:var(--good)">Active for the full trip</span></div>
-        <div class="kv" style="margin-top:6px"><span>Deposit ${fmt(c.deposit)}</span><span class="r">${t.depositState}</span></div>
+        <div class="kv"><span>Insurance</span><span class="r" style="color:var(--good)">Included in the quoted price</span></div>
+        <div class="kv" style="margin-top:6px"><span>Deposit ${r.quote?fmt(r.quote.deposit):""}</span><span class="r">Refundable after the return review</span></div>
       </div>`;
-    }).join(""):`<p style="font-size:13px; color:var(--ink-3); padding:2px">Nothing on the books — the fleet is a tab away.</p>`}
-    <div class="sect"><span class="eyebrow">Past</span></div>
-    ${past.map(t=>{
-      const c=car(t.carId);
+    }).join("")}
+    ${past.length?`<div class="sect"><span class="eyebrow">Declined</span></div>`:""}
+    ${past.map(r=>{
+      const c=car(r.carId);
       return `
-      <div class="card" style="opacity:.85">
+      <div class="card" style="opacity:.8">
         <div style="display:flex; gap:13px; align-items:center">
-          <span class="swatch" style="${swatchStyle(c.paint,false)}; min-height:58px; width:52px"></span>
+          ${c?`<span class="swatch" style="${swatchStyle(c.paint,false)}; min-height:58px; width:52px"></span>`:""}
           <div style="flex:1; min-width:0">
-            <div class="fc-name">${c.name}</div>
-            <div class="fc-meta" style="margin-top:4px">${fdate(t.start)} – ${fdate(addDays(t.start,t.days))}</div>
-            <div style="font-size:12px; color:var(--good); margin-top:4px">Deposit ${t.depositState}</div>
+            <div class="fc-name">${c?c.name:esc(r.carName||"")}</div>
+            <div class="fc-meta" style="margin-top:4px">${fdateStr(r.start)} – ${fdateEnd(r.start,r.days)} · never charged</div>
           </div>
-          <button class="side-btn" data-act="openCar" data-id="${c.id}">Rebook</button>
+          ${c?`<button class="side-btn" data-act="openCar" data-id="${c.id}">Retry</button>`:""}
         </div>
       </div>`;
     }).join("")}
+  </div>`;
+}
+
+/* ---------------- renter: account ---------------- */
+
+function accountHTML(){
+  if (!S.auth) {
+    return `
+    <div class="pad stack screen-in">
+      ${previewBadge()}
+      <div>
+        <h2 class="display" style="font-size:26px">You're a guest here.</h2>
+        <p style="font-size:13.5px; color:var(--ink-2); line-height:1.6; margin-top:8px; max-width:38ch">
+          And that's fine — guests get the same fleet, the same prices, the same booking priority
+          and the same signature services. An account just remembers your contact details, links
+          your requests, keeps trip history and saves your AI privacy choice.
+        </p>
+      </div>
+      <button class="btn btn-hot" data-act="gateSignup">Create an account</button>
+      <button class="btn btn-ghost" data-act="gateSignin">Sign in</button>
+    </div>`;
+  }
+  const c = S.auth;
+  return `
+  <div class="pad stack screen-in">
+    ${previewBadge()}
+    <div style="display:flex; gap:14px; align-items:center">
+      <span class="avatar" style="width:48px; height:48px; font-size:20px">${esc((c.name||"?")[0])}</span>
+      <div>
+        <h2 class="display" style="font-size:24px">${esc(c.name)}</h2>
+        <div class="mono" style="font-size:10.5px; color:var(--ink-3); margin-top:3px">${esc(c.email)}
+          ${c.verified?`<span class="tag tag-good" style="margin-left:6px">Verified</span>`:`<span class="tag tag-warn" style="margin-left:6px">Email not verified</span>`}
+        </div>
+      </div>
+    </div>
+    ${!c.verified?`
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:8px">Verify your email</div>
+      <p style="font-size:12.5px; color:var(--ink-2); line-height:1.5; margin-bottom:10px">
+        A single-use code was emailed when you signed up (expires in 30 minutes). Paste it here,
+        or send a fresh one.
+      </p>
+      ${S.err?`<div class="banner banner-bad" style="margin-bottom:10px">${esc(S.err)}</div>`:""}
+      ${S.notice?`<div class="banner banner-warn" style="margin-bottom:10px">${esc(S.notice)}</div>`:""}
+      ${fieldHTML("v-token","Verification code","text","Paste the code","")}
+      <div style="display:flex; gap:8px">
+        <button class="btn btn-hot" style="padding:12px" data-act="doVerify" ${S.busy?"disabled":""}>Verify</button>
+        <button class="btn btn-ghost" style="padding:12px" data-act="doResendVerify" ${S.busy?"disabled":""}>Resend code</button>
+      </div>
+    </div>`:""}
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:10px">Profile</div>
+      ${fieldHTML("p-name","Full name","text","",null,c.name)}
+      ${fieldHTML("p-mobile","Mobile number","tel","",null,c.mobile)}
+      <button class="btn btn-ghost" style="padding:12px" data-act="saveProfile" ${S.busy?"disabled":""}>Save profile</button>
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:10px">AI privacy preference</div>
+      <div class="stack" style="gap:9px">
+        <button class="radio-opt ${c.aiPref&&c.aiPref.choice==="human"?"on":""}" data-act="setAcctAI" data-id="human" role="radio" aria-checked="${c.aiPref&&c.aiPref.choice==="human"}">
+          <span class="rb"></span>
+          <span><span class="rt">Human-only service</span>
+          <div class="rd">${HUMAN_COPY}</div></span>
+        </button>
+        <button class="radio-opt ${c.aiPref&&c.aiPref.choice==="ai"?"on":""}" data-act="setAcctAI" data-id="ai" role="radio" aria-checked="${c.aiPref&&c.aiPref.choice==="ai"}">
+          <span class="rb"></span>
+          <span><span class="rt">Allow AI-assisted service</span>
+          <div class="rd">${AI_COPY}</div></span>
+        </button>
+      </div>
+      <p style="font-size:10.5px; color:var(--ink-3); margin-top:9px; line-height:1.5">
+        You can withdraw AI permission here anytime. Recorded: ${c.aiPref?esc(c.aiPref.policyVersion):""} · ${c.aiPref?new Date(c.aiPref.at).toLocaleString():""}
+      </p>
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:6px">Requests &amp; trips</div>
+      ${S.history.length?S.history.map(r=>`
+        <button class="acct-row" style="width:100%" data-act="openTracker" data-id="${esc(r.id)}">
+          <span style="font-size:13px">${esc(r.carName||r.carId)}<br><span class="mono" style="font-size:10px; color:var(--ink-3)">${esc(r.id)} · ${fdateStr(r.start)}</span></span>
+          <span class="tag ${r.status==="booked"?"tag-good":r.status==="declined"?"":"tag-hot"}">${{pending_provider:"Pending",approved:"Approved",booked:"Booked",declined:"Declined"}[r.status]||esc(r.status)}</span>
+        </button>`).join(""):`<p style="font-size:12.5px; color:var(--ink-3)">No requests yet.</p>`}
+    </div>
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:10px">Security</div>
+      <button class="btn btn-ghost" style="padding:12px; margin-bottom:9px" data-act="doForgotFromAcct" ${S.busy?"disabled":""}>Email me a password-reset code</button>
+      <button class="btn btn-ghost" style="padding:12px; margin-bottom:9px" data-act="doLogout">Sign out</button>
+      <button class="btn btn-ghost" style="padding:12px" data-act="doLogoutAll">Sign out of all devices</button>
+    </div>
+    <div class="card" style="border-color:color-mix(in srgb, var(--bad) 40%, transparent)">
+      <div class="eyebrow" style="color:var(--bad); margin-bottom:8px">Danger zone</div>
+      <p style="font-size:12px; color:var(--ink-2); line-height:1.55; margin-bottom:10px">
+        Deleting your account signs out every session, unlinks your requests, and blocks these
+        credentials from ever signing in again. Legally required booking and financial records may
+        be retained under the Privacy Policy.
+      </p>
+      <button class="btn btn-danger" data-act="openDelete">Delete my account permanently</button>
+    </div>
+  </div>`;
+}
+
+function deleteModalHTML(){
+  return `
+  <div class="modal-back" data-act="closeDelete">
+    <div class="modal" data-stop="1">
+      <h3 class="display" style="font-size:22px; margin-bottom:8px">Delete this account?</h3>
+      <p style="font-size:13px; color:var(--ink-2); line-height:1.6; margin-bottom:12px">
+        This is permanent. Every active session is signed out, your requests are unlinked from the
+        account, and the deleted credentials can never sign in again. Legally required booking and
+        financial records may be retained under the Privacy Policy — they just stop being connected
+        to you in the app.
+      </p>
+      ${S.delErr?`<div class="banner banner-bad" style="margin-bottom:10px">${esc(S.delErr)}</div>`:""}
+      ${fieldHTML("d-pass","Confirm your password","password","Current password","Reauthentication is required to delete")}
+      <button class="btn btn-danger" style="margin-bottom:9px" data-act="doDelete" ${S.busy?"disabled":""}>${S.busy?"Deleting…":"Yes — delete permanently"}</button>
+      <button class="btn btn-ghost" data-act="closeDelete">Keep my account</button>
+    </div>
   </div>`;
 }
 
@@ -806,42 +1148,41 @@ function listHTML(){
   </div>`;
 }
 
-/* ---------------- partner: today ---------------- */
+/* ---------------- partner side ---------------- */
 
 function pTodayHTML(){
-  const p = S.partner;
-  const pending = S.requests.filter(r=>["sent","confirming","pending_owner"].includes(r.status));
-  const pct = Math.min(100, Math.round(p.tripsQ/p.tripsNeeded*100));
+  const pendingN = S.provReqs.filter(r=>r.status==="pending_provider").length;
   return `
   <div class="pad stack screen-in">
+    ${previewBadge()}
     <div>
-      <h2 class="display" style="font-size:25px">Good evening, ${p.name}.</h2>
-      <p style="font-size:13px; color:var(--ink-2); margin-top:6px">${pending.length?`${pending.length} request${pending.length>1?"s":""} waiting on you — renters aren't charged until you say yes.`:"Inbox is clear. Your cars are working."}</p>
+      <h2 class="display" style="font-size:25px">Good evening, Marcus.</h2>
+      <p style="font-size:13px; color:var(--ink-2); margin-top:6px">${S.provider&&pendingN?`${pendingN} request${pendingN>1?"s":""} waiting on you — renters aren't charged until you confirm.`:"Your cars, your calendar, your call."}</p>
     </div>
-    ${pending.length?`
+    ${S.provider&&pendingN?`
     <button class="card" style="width:100%; border-color:var(--accent)" data-act="pTab" data-id="reqs">
       <div style="display:flex; justify-content:space-between; align-items:center">
         <div>
           <div class="eyebrow" style="color:var(--accent); margin-bottom:5px">Needs a reply</div>
-          <div style="font-size:14px; font-weight:600">${pending.length} pending request${pending.length>1?"s":""}</div>
-          <div style="font-size:11.5px; color:var(--ink-3); margin-top:3px">Fast replies climb the fleet ranking</div>
+          <div style="font-size:14px; font-weight:600">${pendingN} pending request${pendingN>1?"s":""}</div>
         </div>
         <span class="mono" style="color:var(--accent); font-size:11px">OPEN →</span>
       </div>
     </button>`:""}
+    <div class="sect"><span class="eyebrow">This month</span><span class="tag tag-warn">Sample data</span></div>
     <div class="stat-grid">
-      <div class="stat"><div class="v num">${fmt(p.month)}</div><div class="k">July payout</div><div class="s">Your ${Math.round(p.cut*100)}% cut, after nothing else</div></div>
-      <div class="stat"><div class="v num">${p.trips}</div><div class="k">Trips this month</div><div class="s">Across ${p.listings.filter(l=>l.live).length} live cars</div></div>
-      <div class="stat"><div class="v num">${p.resp}</div><div class="k">Avg response</div><div class="s">Fast owners get shown first</div></div>
-      <div class="stat"><div class="v num">0</div><div class="k">Claims, ever</div><div class="s">Insurance is on TopNotch, on every trip</div></div>
+      <div class="stat"><div class="v num">$8,420</div><div class="k">July payout</div><div class="s">Your 78% cut, after nothing else</div></div>
+      <div class="stat"><div class="v num">6</div><div class="k">Trips</div><div class="s">Across 2 live cars</div></div>
+      <div class="stat"><div class="v num">3</div><div class="k">Cars listed</div><div class="s">Pause anytime — no tier penalty</div></div>
+      <div class="stat"><div class="v num">0</div><div class="k">Claims, ever</div><div class="s">Insurance handled by TopNotch on every trip</div></div>
     </div>
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:baseline">
         <span class="eyebrow" style="color:var(--warn)">Gold partner</span>
-        <span class="mono num" style="font-size:11px; color:var(--ink-2)">${Math.round(p.cut*100)}% payout</span>
+        <span class="mono num" style="font-size:11px; color:var(--ink-2)">78% payout</span>
       </div>
-      <div class="tier-bar"><i style="width:${pct}%"></i></div>
-      <p style="font-size:12px; color:var(--ink-2); margin-top:9px">${p.tripsQ} of ${p.tripsNeeded} trips this quarter — <b style="color:var(--ink)">${p.tripsNeeded-p.tripsQ} more to Black</b> and an 84% cut.</p>
+      <div class="tier-bar"><i style="width:60%"></i></div>
+      <p style="font-size:12px; color:var(--ink-2); margin-top:9px">3 of 5 trips this quarter — <b style="color:var(--ink)">2 more to Black</b> and an 84% cut.</p>
       <hr class="rule" style="margin:13px 0">
       <div class="tier-row"><span class="nm">Chrome</span><span class="cut num">70%</span><span class="pk">Every partner starts here. Insurance covered, Monday payouts.</span></div>
       <div class="tier-row you"><span class="nm">Gold ◆</span><span class="cut num">78%</span><span class="pk">Priority placement, direct concierge line, pro photos comped.</span></div>
@@ -850,48 +1191,65 @@ function pTodayHTML(){
   </div>`;
 }
 
-/* ---------------- partner: requests ---------------- */
-
 function pReqsHTML(){
-  const active = S.requests.filter(r=>["sent","confirming","pending_owner"].includes(r.status));
-  const settled = S.requests.filter(r=>["confirmed","declined"].includes(r.status));
-  const reqCard = r => {
-    const c = car(r.carId);
-    const gross = c.rate*r.days;
-    const cut = Math.round(gross*S.partner.cut);
-    const open = ["sent","confirming","pending_owner"].includes(r.status);
+  if (S.backend === false) {
     return `
+    <div class="pad stack screen-in">
+      ${previewBadge()}
+      <p style="font-size:13px; color:var(--ink-2); line-height:1.6">
+        The provider inbox shows real customer requests when a TopNotch server is connected.
+        In preview there's nothing to answer — we don't invent demand.
+      </p>
+    </div>`;
+  }
+  if (!S.provider) {
+    return `
+    <div class="pad stack screen-in">
+      <div class="card">
+        <div class="eyebrow" style="margin-bottom:8px">Provider portal sign-in</div>
+        <p style="font-size:12px; color:var(--ink-2); line-height:1.55; margin-bottom:12px">
+          Provider sessions are completely separate from customer sessions — a customer account can
+          never open this portal. Demo credentials: <span class="mono">provider@topnotch.demo</span> /
+          <span class="mono">demo-provider-pass</span>
+        </p>
+        ${S.err?`<div class="banner banner-bad" style="margin-bottom:10px">${esc(S.err)}</div>`:""}
+        ${fieldHTML("pv-email","Provider email","email","provider@topnotch.demo","")}
+        ${fieldHTML("pv-pass","Password","password","","")}
+        <button class="btn btn-hot" data-act="provLogin" ${S.busy?"disabled":""}>Enter provider portal</button>
+      </div>
+    </div>`;
+  }
+  const active = S.provReqs.filter(r=>r.status==="pending_provider");
+  const settled = S.provReqs.filter(r=>r.status!=="pending_provider");
+  const reqCard = (r) => `
     <div class="req-card">
       <div class="req-head">
-        <span class="avatar">${r.renter[0]}</span>
+        <span class="avatar">${esc((r.renterName||"?")[0])}</span>
         <div style="flex:1">
-          <div style="font-size:14px; font-weight:600">${r.renter} ${r.mine?`<span class="tag tag-hot" style="margin-left:4px">Live demo — this is your request</span>`:""}</div>
-          <div class="mono" style="font-size:10px; color:var(--ink-3); margin-top:3px">ID verified · ${r.renterTrips} TopNotch trips · 0 incidents</div>
+          <div style="font-size:14px; font-weight:600">${esc(r.renterName)}</div>
+          <div class="mono" style="font-size:10px; color:var(--ink-3); margin-top:3px">${esc(r.id)}</div>
         </div>
-        ${open?`<span class="tag">${r.status==="pending_owner"?"Waiting":"New"}</span>`
-             :`<span class="tag ${r.status==="confirmed"?"tag-good":""}">${r.status==="confirmed"?"Confirmed":"Declined"}</span>`}
+        <span class="tag ${r.status==="pending_provider"?"":r.status==="declined"?"":"tag-good"}">${{pending_provider:"New", approved:"Approved", booked:"Booked", declined:"Declined"}[r.status]||esc(r.status)}</span>
       </div>
       <div class="req-body">
-        <div class="kv"><span>Car</span><span class="r">${c.name}</span></div>
-        <div class="kv"><span>Dates</span><span class="r">${fdate(r.start)} – ${fdate(addDays(r.start,r.days))} (${r.days}d)</span></div>
+        <div class="kv"><span>Car</span><span class="r">${esc(r.carName)}</span></div>
+        <div class="kv"><span>Dates</span><span class="r">${fdateStr(r.start)} – ${fdateEnd(r.start,r.days)} (${r.days}d)</span></div>
         <div class="kv"><span>Handoff</span><span class="r">${deliveryLabel(r.delivery)}</span></div>
-        ${r.note?`<div class="kv"><span>Note</span><span class="r">${r.note}</span></div>`:""}
-        <div class="kv"><span>Your payout (${Math.round(S.partner.cut*100)}%)</span><span class="r good" style="color:var(--good)">${fmt(cut)}</span></div>
+        ${r.services&&r.services.length?`<div class="kv"><span>Signature services</span><span class="r">${r.services.map(s=>esc(svc(s.id)?svc(s.id).name:s.id)).join(", ")} — confirmed separately</span></div>`:""}
       </div>
-      ${open?`
+      ${r.status==="pending_provider"?`
       <div class="req-actions">
-        <button class="ok" data-act="approve" data-id="${r.id}">Approve — ${fmt(cut)}</button>
-        <button class="no" data-act="decline" data-id="${r.id}">Can't make it</button>
+        <button class="ok" data-act="provDecide" data-id="${esc(r.id)}" data-d="approve">Confirm vehicle &amp; dates</button>
+        <button class="no" data-act="provDecide" data-id="${esc(r.id)}" data-d="decline">Can't make it</button>
       </div>`:""}
     </div>`;
-  };
   return `
   <div class="pad stack screen-in">
     <div class="sect"><span class="eyebrow">Waiting on you</span><span class="mono" style="font-size:10px; color:var(--ink-3)">${active.length} open</span></div>
     ${active.length?active.map(reqCard).join(""):`<p style="font-size:13px; color:var(--ink-3)">Nothing pending. New requests land here the moment a renter asks.</p>`}
     <p style="font-size:11.5px; color:var(--ink-3); line-height:1.6">
-      Renters are never charged until you approve. Decline anytime — no penalty, but your
-      response time feeds your fleet ranking.
+      Renters are never charged until you confirm the exact vehicle and dates and they approve
+      the quote. Decline anytime — no penalty.
     </p>
     ${settled.length?`
     <div class="sect"><span class="eyebrow">Settled</span></div>
@@ -899,13 +1257,11 @@ function pReqsHTML(){
   </div>`;
 }
 
-/* ---------------- partner: garage ---------------- */
-
 function pGarageHTML(){
   return `
   <div class="pad stack screen-in">
-    <div class="sect"><span class="eyebrow">Your garage</span><span class="mono" style="font-size:10px; color:var(--ink-3)">${S.partner.listings.length} cars</span></div>
-    ${S.partner.listings.map(l=>{
+    <div class="sect"><span class="eyebrow">Your garage</span><span class="tag tag-warn">Sample data</span></div>
+    ${S.sample.listings.map(l=>{
       const c = car(l.carId);
       return `
       <div class="card">
@@ -913,7 +1269,7 @@ function pGarageHTML(){
           <span class="swatch" style="${swatchStyle(c.paint,false)}; min-height:58px; width:52px"></span>
           <div style="flex:1; min-width:0">
             <div class="fc-name">${c.name}</div>
-            <div class="fc-meta" style="margin-top:4px">${fmt(c.rate)}/day · ${l.views} views this week</div>
+            <div class="fc-meta" style="margin-top:4px">${fmt(c.rate)}/day</div>
             <div style="font-size:11.5px; margin-top:4px; color:${l.live?"var(--good)":"var(--ink-3)"}">${l.live?"Taking requests":"Paused — invisible to renters"}</div>
           </div>
           <button class="toggle ${l.live?"on":""}" role="switch" aria-checked="${l.live}" aria-label="Taking requests for ${c.name}" data-act="toggleListing" data-id="${l.carId}"><i></i></button>
@@ -922,7 +1278,7 @@ function pGarageHTML(){
     }).join("")}
     <div class="card" style="border-style:dashed; text-align:center">
       <p style="font-size:13.5px; font-weight:600">Got another car that belongs here?</p>
-      <p style="font-size:12px; color:var(--ink-2); margin-top:5px; line-height:1.5">Send the spec sheet — if it fits the list, it's live in 48 hours. Insurance and vetting are on us.</p>
+      <p style="font-size:12px; color:var(--ink-2); margin-top:5px; line-height:1.5">Send the spec sheet — after vetting, it goes live. Insurance handling is on us.</p>
       <button class="btn btn-ghost" style="margin-top:12px; padding:12px" data-act="addCarToast">Submit a car</button>
     </div>
     <p style="font-size:11.5px; color:var(--ink-3); line-height:1.6">
@@ -931,20 +1287,18 @@ function pGarageHTML(){
   </div>`;
 }
 
-/* ---------------- partner: earnings ---------------- */
-
 function pEarnHTML(){
-  const p = S.partner;
   return `
   <div class="pad stack screen-in">
+    <div class="sect"><span class="eyebrow">Earnings</span><span class="tag tag-warn">Sample data</span></div>
     <div class="card" style="text-align:center; padding:22px">
       <div class="eyebrow">Next payout — Monday</div>
-      <div class="display num" style="font-size:38px; margin-top:8px">${fmt(1285+cutOfConfirmed())}</div>
+      <div class="display num" style="font-size:38px; margin-top:8px">${fmt(1285)}</div>
       <p style="font-size:12px; color:var(--ink-2); margin-top:7px">Direct deposit. No minimums, no holding period, no “wallet.”</p>
     </div>
     <div class="sect"><span class="eyebrow">Payout history</span></div>
     <div class="card" style="padding:6px 16px">
-      ${p.payouts.map(x=>`
+      ${S.sample.payouts.map(x=>`
       <div class="pay-row">
         <div><div style="font-size:13.5px; font-weight:600">${x.what}</div><div class="mono" style="font-size:10px; color:var(--ink-3); margin-top:3px">${x.when}</div></div>
         <span class="mono num" style="font-size:13px; color:var(--good)">+${fmt(x.amt)}</span>
@@ -953,18 +1307,12 @@ function pEarnHTML(){
     <div class="card">
       <div class="eyebrow" style="margin-bottom:8px">How the split works</div>
       <p style="font-size:13px; color:var(--ink-2); line-height:1.6">
-        Renter pays the listed price. TopNotch covers insurance, vetting, concierge and delivery
-        out of its share — <b style="color:var(--ink)">your ${Math.round(p.cut*100)}% is the whole number</b>, not a number before fees.
-        Hit Black and it's 84%.
+        Renter pays the quoted price. TopNotch covers insurance handling, vetting, concierge and
+        delivery out of its share — <b style="color:var(--ink)">your 78% is the whole number</b>,
+        not a number before fees. Hit Black and it's 84%.
       </p>
     </div>
   </div>`;
-}
-
-function cutOfConfirmed(){
-  return S.requests
-    .filter(r=>r.status==="confirmed")
-    .reduce((a,r)=>a+Math.round(car(r.carId).rate*r.days*S.partner.cut), 0);
 }
 
 /* ---------------- render ---------------- */
@@ -973,6 +1321,7 @@ const R_TABS = [
   {id:"fleet", l:"Fleet", g:"F"},
   {id:"trips", l:"Trips", g:"T"},
   {id:"list", l:"The List", g:"L"},
+  {id:"account", l:"Account", g:"A"},
 ];
 const P_TABS = [
   {id:"today", l:"Today", g:"T"},
@@ -991,57 +1340,259 @@ function render(){
     let body;
     if(S.screen && S.screen.kind==="car") body = carHTML(S.screen.id);
     else if(S.screen && S.screen.kind==="tracker") body = trackerHTML();
-    else body = {fleet:fleetHTML, trips:tripsHTML, list:listHTML}[S.rTab]();
-    const liveReq = S.myReq && !["confirmed","declined"].includes(S.myReq.status);
+    else if(S.screen && S.screen.kind==="previewfail") body = previewFailHTML();
+    else body = {fleet:fleetHTML, trips:tripsHTML, list:listHTML, account:accountHTML}[S.rTab]();
+    const liveReq = S.history.some(r=>r.status==="pending_provider"||r.status==="approved");
     html =
-      headerHTML("Rentals · South Florida", "Partner side ⇄", "toPartner") +
+      headerHTML(S.auth?`Rentals · ${esc(S.auth.name.split(" ")[0])}`:"Rentals · Guest", "Partner side ⇄", "toPartner") +
       `<div class="view" id="view">${body}</div>` +
       tabsHTML(R_TABS, S.screen?null:S.rTab, "rTab", liveReq?"trips":null);
   } else {
     const body = {today:pTodayHTML, reqs:pReqsHTML, garage:pGarageHTML, earn:pEarnHTML}[S.pTab]();
-    const pending = S.requests.some(r=>["sent","confirming","pending_owner"].includes(r.status));
+    const pending = S.provider && S.provReqs.some(r=>r.status==="pending_provider");
     html =
-      headerHTML("Fleet partner · Marcus R.", "Renter side ⇄", "toRenter") +
+      headerHTML("Fleet partner portal", "Renter side ⇄", "toRenter") +
       `<div class="view" id="view">${body}</div>` +
       tabsHTML(P_TABS, S.pTab, "pTab", pending?"reqs":null);
   }
 
-  if(S.toastMsg) html += `<div class="toast" role="status">${S.toastMsg}</div>`;
+  if(S.delModal) html += deleteModalHTML();
+  if(S.toastMsg) html += `<div class="toast" role="status">${esc(S.toastMsg)}</div>`;
   shell.innerHTML = html;
 }
 
+/* ---------------- data loaders ---------------- */
+
+async function loadHistory(){
+  if(!S.backend) return;
+  try {
+    const out = await api("/customer/trips");
+    S.history = out.requests || [];
+  } catch { S.history = []; }
+}
+async function loadProviderInbox(){
+  if(!S.backend || !S.provider) return;
+  try {
+    const out = await api("/provider/requests");
+    S.provReqs = out.requests || [];
+  } catch(e){ if(e.status===403){ S.provider=null; } S.provReqs = []; }
+}
+function startTrackerPoll(){
+  stopPoll();
+  S.pollTimer = setInterval(async () => {
+    if(!S.myReq || !(S.screen && S.screen.kind==="tracker")) { stopPoll(); return; }
+    try {
+      const out = await api("/customer/requests/" + encodeURIComponent(S.myReq.id));
+      const prev = S.myReq.status;
+      S.myReq = out.request;
+      if(out.request.status !== prev){ await loadHistory(); render(); }
+    } catch { /* keep last known */ }
+  }, 3500);
+}
+
+/* ---------------- form value grabs ---------------- */
+
+const val = (id) => { const el = document.getElementById(id); return el ? el.value : ""; };
+
 /* ---------------- events ---------------- */
 
-document.addEventListener("click", e=>{
+document.addEventListener("click", async (e) => {
+  const stopEl = e.target.closest("[data-stop]");
   const el = e.target.closest("[data-act]");
   if(!el) return;
+  if(stopEl && el.dataset.act==="closeDelete" && stopEl.contains(el)===false) return;
   const act = el.dataset.act, id = el.dataset.id;
-  const scrollTop = ()=>{ const v=document.getElementById("view"); if(v) v.scrollTop=0; };
+  const scrollTop = () => { const v=document.getElementById("view"); if(v) v.scrollTop=0; };
+
+  /* No render between setting busy and running fn — fn reads form fields
+   * from the live DOM, and a re-render would wipe what the user typed. */
+  const guard = async (fn) => {
+    if(S.busy) return;
+    S.busy = true; S.err = null;
+    try { await fn(); }
+    catch(err){ S.err = err.message; }
+    S.busy = false; render();
+  };
 
   switch(act){
-    case "enterRenter": S.mode="renter"; S.rTab="fleet"; S.screen=null; render(); break;
-    case "enterPartner": S.mode="partner"; S.pTab="today"; render(); break;
-    case "toPartner": S.mode="partner"; render(); break;
-    case "toRenter": S.mode="renter"; render(); break;
-    case "rTab": S.rTab=id; S.screen=null; render(); scrollTop(); break;
-    case "pTab": S.pTab=id; render(); scrollTop(); break;
+    /* ---- gate & auth ---- */
+    case "gateView": S.gateView = id; S.err = null; S.notice = null; render(); break;
+    case "gateSignup": S.mode="gate"; S.gateView="signup"; S.err=null; render(); break;
+    case "gateSignin": S.mode="gate"; S.gateView="signin"; S.err=null; render(); break;
+    case "enterGuest": S.mode="renter"; S.rTab="fleet"; S.screen=null; loadHistory().then(render); render(); break;
+    case "enterPartner": S.mode="partner"; S.pTab="today"; loadProviderInbox().then(render); render(); break;
+    case "toPartner": S.mode="partner"; stopPoll(); loadProviderInbox().then(render); render(); break;
+    case "toRenter": S.mode="renter"; loadHistory().then(render); render(); break;
+
+    case "doRegister": await guard(async () => {
+      if(S.backend===false){ S.gateView="menu"; toast("Preview mode: no TopNotch server is connected, so accounts can't be created. Nothing was saved."); return; }
+      const pw = val("f-pass");
+      if(pw.length < 10) throw new Error("Password must be at least 10 characters.");
+      const out = await api("/customer/register", { method:"POST", body:{ name:val("f-name"), mobile:val("f-mobile"), email:val("f-email"), password:pw } });
+      S.auth = out.customer; S.csrf = out.csrf;
+      S.mode = "renter"; S.rTab = "account"; S.screen = null;
+      await loadHistory();
+      toast("Account created — a verification code was emailed to you");
+    }); break;
+
+    case "doLogin": await guard(async () => {
+      if(S.backend===false){ S.gateView="menu"; toast("Preview mode: no TopNotch server is connected, so sign-in isn't available. Nothing was saved."); return; }
+      const out = await api("/customer/login", { method:"POST", body:{ email:val("f-email"), password:val("f-pass") } });
+      S.auth = out.customer; S.csrf = out.csrf;
+      S.mode = "renter"; S.rTab = "fleet"; S.screen = null;
+      await loadHistory();
+      toast("Welcome back, " + out.customer.name.split(" ")[0]);
+    }); break;
+
+    case "doForgot": await guard(async () => {
+      if(S.backend===false){ toast("Preview mode: no server connected — reset emails can't be sent."); return; }
+      const out = await api("/customer/password-reset/request", { method:"POST", body:{ email:val("f-email") } });
+      S.notice = out.notice; S.gateView = "reset";
+    }); break;
+
+    case "doReset": await guard(async () => {
+      if(S.backend===false){ toast("Preview mode: no server connected."); return; }
+      const out = await api("/customer/password-reset/confirm", { method:"POST", body:{ token:val("f-token"), newPassword:val("f-pass") } });
+      S.notice = out.notice; S.gateView = "signin"; S.auth = null; S.csrf = null;
+    }); break;
+
+    /* ---- account ---- */
+    case "saveProfile": await guard(async () => {
+      const out = await api("/customer/me", { method:"PATCH", body:{ name:val("p-name"), mobile:val("p-mobile") } });
+      S.auth = out.customer; toast("Profile saved");
+    }); break;
+
+    case "setAcctAI": await guard(async () => {
+      const out = await api("/customer/me", { method:"PATCH", body:{ aiPref:id } });
+      S.auth = out.customer;
+      toast(id==="human" ? "AI permission withdrawn — Human-only service" : "AI-assisted service allowed — you can withdraw this anytime");
+    }); break;
+
+    case "doVerify": await guard(async () => {
+      await api("/customer/verify-email/confirm", { method:"POST", body:{ token:val("v-token") } });
+      const me = await api("/customer/me"); S.auth = me.customer;
+      toast("Email verified");
+    }); break;
+
+    case "doResendVerify": await guard(async () => {
+      const out = await api("/customer/verify-email/request", { method:"POST" });
+      S.notice = "A fresh code is on its way to " + (out.sentTo || "your email") + ".";
+    }); break;
+
+    case "doForgotFromAcct": await guard(async () => {
+      const out = await api("/customer/password-reset/request", { method:"POST", body:{ email:S.auth.email } });
+      toast(out.notice || "Reset code emailed");
+    }); break;
+
+    case "doLogout": await guard(async () => {
+      await api("/customer/logout", { method:"POST" });
+      S.auth = null; S.csrf = null; S.history = []; S.myReq = null;
+      S.mode = "gate"; S.gateView = "menu";
+      toast("Signed out");
+    }); break;
+
+    case "doLogoutAll": await guard(async () => {
+      const out = await api("/customer/logout-all", { method:"POST" });
+      S.auth = null; S.csrf = null; S.history = []; S.myReq = null;
+      S.mode = "gate"; S.gateView = "menu";
+      toast(`Signed out of ${out.revokedSessions} session${out.revokedSessions===1?"":"s"} everywhere`);
+    }); break;
+
+    case "openDelete": S.delModal = true; S.delErr = null; render(); break;
+    case "closeDelete": S.delModal = false; render(); break;
+    case "doDelete":
+      if(S.busy) break;
+      S.busy = true; S.delErr = null;
+      try {
+        const out = await api("/customer/me", { method:"DELETE", body:{ password:val("d-pass") } });
+        S.auth = null; S.csrf = null; S.history = []; S.myReq = null; S.delModal = false;
+        S.mode = "gate"; S.gateView = "menu";
+        S.busy = false;
+        toast("Account deleted. " + (out.notice ? "Records required by law are retained per the Privacy Policy." : ""));
+      } catch(err){ S.delErr = err.message; S.busy = false; render(); }
+      break;
+
+    /* ---- renter nav ---- */
+    case "rTab": S.rTab=id; S.screen=null; S.err=null; stopPoll();
+      if(id==="trips"||id==="account") await loadHistory();
+      render(); scrollTop(); break;
+    case "pTab": S.pTab=id; S.err=null;
+      if(id==="reqs") await loadProviderInbox();
+      render(); scrollTop(); break;
     case "setCity": S.city=id; render(); break;
     case "openCar":
-      S.mode="renter"; S.screen={kind:"car", id};
-      S.form={start:addDays(today(),1), days:2, delivery:"pickup"};
+      S.mode="renter"; S.screen={kind:"car", id}; S.err=null; stopPoll();
+      S.form={start:tomorrowISO(), days:2, delivery:"pickup", services:new Set(), aiChoice:"human", contact:{...S.form.contact}};
       render(); scrollTop(); break;
-    case "backFleet": S.screen=null; S.rTab="fleet"; render(); scrollTop(); break;
-    case "goTrips": S.screen=null; S.rTab="trips"; render(); scrollTop(); break;
-    case "openTracker": S.screen={kind:"tracker"}; render(); scrollTop(); break;
+    case "backFleet": S.screen=null; S.rTab="fleet"; S.err=null; stopPoll(); render(); scrollTop(); break;
+    case "goTrips": S.screen=null; S.rTab="trips"; stopPoll(); await loadHistory(); render(); scrollTop(); break;
+    case "openTracker": {
+      stopPoll();
+      const found = S.history.find(r=>r.id===id) || S.myReq;
+      if(found){ S.myReq = found; S.screen={kind:"tracker"};
+        if(S.backend){ try{ const out = await api("/customer/requests/"+encodeURIComponent(found.id)); S.myReq = out.request; }catch{} startTrackerPoll(); }
+      }
+      render(); scrollTop(); break;
+    }
     case "daysDec": S.form.days=Math.max(1,S.form.days-1); render(); break;
-    case "daysInc": S.form.days=Math.min(14,S.form.days+1); render(); break;
+    case "daysInc": S.form.days=Math.min(30,S.form.days+1); render(); break;
     case "setDelivery": S.form.delivery=id; render(); break;
-    case "submitRequest": submitRequest(id); scrollTop(); break;
-    case "approve": partnerDecide(id,true); break;
-    case "decline": partnerDecide(id,false); break;
+    case "toggleSvc":
+      if(S.form.services.has(id)) S.form.services.delete(id); else S.form.services.add(id);
+      render(); break;
+    case "setAI": S.form.aiChoice=id; render(); break;
+
+    /* ---- request submission — honest in both modes ---- */
+    case "submitRequest": await guard(async () => {
+      if(!S.auth){
+        S.form.contact = { name:val("g-name"), mobile:val("g-mobile"), email:val("g-email") };
+      }
+      if(S.backend===false || S.backend===null){
+        // Never silently turn a failed live request into a fake success.
+        S.screen = {kind:"previewfail", id};
+        return;
+      }
+      const body = {
+        carId:id, start:S.form.start, days:S.form.days, delivery:S.form.delivery,
+        services:[...S.form.services], aiChoice:S.form.aiChoice,
+        ...(S.auth ? {} : { contact:S.form.contact }),
+      };
+      try {
+        const out = await api("/customer/requests", { method:"POST", body });
+        S.myReq = out.request; S.csrf = out.csrf || S.csrf;
+        S.screen = {kind:"tracker"};
+        await loadHistory();
+        startTrackerPoll();
+      } catch(err){
+        if(err.status===undefined){ S.backend=false; S.screen={kind:"previewfail", id}; return; }
+        throw err;
+      }
+    }); scrollTop(); break;
+
+    case "payRequest": await guard(async () => {
+      const out = await api("/customer/requests/"+encodeURIComponent(id)+"/pay", { method:"POST", body:{ method:"demo" } });
+      S.myReq = out.request;
+      await loadHistory();
+      toast("Payment recorded — you're booked");
+    }); break;
+
+    /* ---- provider portal ---- */
+    case "provLogin": await guard(async () => {
+      const out = await api("/provider/login", { method:"POST", body:{ email:val("pv-email"), password:val("pv-pass") } });
+      S.provider = out.provider; S.provCsrf = out.csrf;
+      await loadProviderInbox();
+    }); break;
+
+    case "provDecide": await guard(async () => {
+      await api("/provider/requests/"+encodeURIComponent(id)+"/decision", { method:"POST", body:{ decision: el.dataset.d } });
+      await loadProviderInbox();
+      toast(el.dataset.d==="approve" ? "Confirmed — the renter can now approve the quote" : "Declined — the renter was never charged");
+    }); break;
+
+    /* ---- misc ---- */
     case "toggleListing": {
-      const l=S.partner.listings.find(x=>x.carId===id);
-      if(l){ l.live=!l.live; toast(l.live?"Taking requests again":"Paused — no tier penalty"); }
+      const l=S.sample.listings.find(x=>x.carId===id);
+      if(l){ l.live=!l.live; toast(l.live?"Taking requests again (sample)":"Paused (sample) — no tier penalty"); }
       break;
     }
     case "copyCode":
@@ -1055,12 +1606,12 @@ document.addEventListener("click", e=>{
   }
 });
 
-document.addEventListener("change", e=>{
+document.addEventListener("change", (e) => {
   if(e.target.id==="startdate" && e.target.value){
-    const [y,m,d] = e.target.value.split("-").map(Number);
-    S.form.start = new Date(y, m-1, d);
+    S.form.start = e.target.value;
   }
 });
 
 render();
+detectBackend();
 </script>

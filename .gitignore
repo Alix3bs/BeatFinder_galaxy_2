@@ -5,3 +5,8 @@ __pycache__/
 .beatfinder_eval_state/
 backend/tests/generated_audio/
 backend/tests/generated_audio_eval/
+
+# TopNotch runtime files
+topnotch/data.json
+topnotch/outbox.log
+topnotch/ops.log
