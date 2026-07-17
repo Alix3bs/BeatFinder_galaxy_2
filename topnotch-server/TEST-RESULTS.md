@@ -1,20 +1,20 @@
 # Phase 3 — End-to-End Launch Test Results
 
-Run: 2026-07-13T06:12:38.717Z · Node v22.22.2 · fresh database per run
+Run: 2026-07-17T03:07:01.747Z · Node v22.22.2 · fresh database per run
 
 | # | Scenario | Result | Detail |
 |---|----------|--------|--------|
-| 1 | Customer submits a valid request | ✅ PASS | TN-260713-9C410D |
-| 2 | Duplicate request is detected | ✅ PASS | flagged as dup of TN-260713-9C410D |
+| 1 | Customer submits a valid request | ✅ PASS | TN-260717-3E5727 |
+| 2 | Duplicate request is detected | ✅ PASS | flagged as dup of TN-260717-3E5727 |
 | 3 | Customer requests an unavailable vehicle | ✅ PASS | public status=booked; overlapping assign → 409 |
 | 4 | Two providers offer the same car | ✅ PASS | P-002 + P-001 |
 | 5 | Admin assigns the lowest-cost approved provider | ✅ PASS | V-1001 @ $850/day |
 | 6 | Provider declines the booking | ✅ PASS | status → Under review; sales notified |
 | 7 | Backup provider is assigned | ✅ PASS | V-1002 (P-001) confirmed |
 | 8 | Customer receives a quote | ✅ PASS | $2,498, 3-day expiry, accepted via track page |
-| 9 | Vehicle becomes booked after payment confirmation | ✅ PASS | AR-260713-9C410D |
+| 9 | Vehicle becomes booked after payment confirmation | ✅ PASS | AR-260717-3E5727 |
 | 10 | Overlapping booking is blocked | ✅ PASS | assign V-1002 for 08/11–08/13 → 409 |
-| 11 | Active rental is completed | ✅ PASS | AR-260713-9C410D (checklists enforced) |
+| 11 | Active rental is completed | ✅ PASS | AR-260717-3E5727 (checklists enforced) |
 | 12 | Vehicle becomes available after return | ✅ PASS | status + booked dates cleared |
 | 13 | Excel synchronization succeeds | ✅ PASS | rows delivered: 20 (CustomerRequests, PartnerInventory, ActiveRentals, Payments) |
 | 14 | Excel synchronization fails and retries | ✅ PASS | attempts=2, then sent |

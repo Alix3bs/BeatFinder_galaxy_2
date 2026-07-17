@@ -227,6 +227,39 @@ async function llm(purpose, prompt, maxTokens) {
 }
 
 /* ============================================================
+   4b · CUSTOMER AI-CONSENT GATE (WEBSITE ACCOUNTS pass)
+   Deterministic server code — checked BEFORE any prompt is built.
+   Human-only customers' contact/booking data is never sent to a
+   third-party AI, and AI never touches financial/safety decisions
+   regardless of consent (those are deterministic code paths).
+   ============================================================ */
+function aiConsentFor(requestId) {
+  const r = db.prepare("SELECT ai_consent, ai_consent_version, ai_consent_at, customer_id FROM requests WHERE request_id=?").get(requestId);
+  if (!r) return { allowed: false, reason: "request not found" };
+  /* a signed-in customer's LIVE preference wins — withdrawal applies immediately */
+  if (r.customer_id) {
+    const c = db.prepare("SELECT ai_consent FROM customers WHERE customer_id=?").get(r.customer_id);
+    if (c && c.ai_consent !== "ai") return { allowed: false, reason: "customer preference: Human-only service" };
+  }
+  if (r.ai_consent !== "ai") return { allowed: false, reason: "request-level choice: Human-only service" };
+  return { allowed: true, version: r.ai_consent_version, at: r.ai_consent_at };
+}
+
+/* the ONLY entry point for prompts that carry customer/booking data.
+   Returns {disabled} with the reason when consent is absent, and tags
+   every AI-drafted text as "AI-assisted" for mandatory labeling. */
+async function llmForRequest(purpose, requestId, prompt, maxTokens) {
+  const consent = aiConsentFor(requestId);
+  if (!consent.allowed) {
+    U.audit({ email: "autopilot", role: "governor" }, "ai.consent.blocked", "request", requestId, "purpose", null, purpose + " — " + consent.reason, requestId);
+    return { disabled: true, reason: consent.reason + " — deterministic handling used; no data sent to third-party AI" };
+  }
+  const out = await llm(purpose, prompt, maxTokens);
+  if (out.text) out.label = "AI-assisted";   // required label on every AI-written message
+  return out;
+}
+
+/* ============================================================
    5 · CONTEXT MANAGER — retrieve ONLY what the task needs
    ============================================================ */
 function contextFor(task) {
@@ -760,7 +793,7 @@ async function runRegistryHousekeeping() {
 module.exports = {
   PERMANENT_MISSION, GOAL_STATUSES, FORBIDDEN, PAUSE_FLAGS, TOOLS, MEMORY_LAYERS,
   ensurePermanentGoal, createGoal, updateGoal, governor, setPause, isPaused,
-  logCost, costToday, costMonth, enforceCostCaps, llm, contextFor, validateToolInput,
+  logCost, costToday, costMonth, enforceCostCaps, llm, llmForRequest, aiConsentFor, contextFor, validateToolInput,
   queueTask, runTask, remember, recall, recordCorrection, seedEvalCases, runEval,
   computeMetrics, improvementCycle, stageProposal, createExperiment,
   ownerIndependence, completionScore, monitorAndReopen,

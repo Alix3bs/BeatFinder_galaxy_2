@@ -19,6 +19,7 @@
     <a href="services.html">Services</a>
     <a href="policies.html">Policies</a>
     <a href="vip.html" class="vip-link">VIP ✦</a>
+    <a href="account.html" class="account-link" id="navAccount">Account</a>
   </div>
   <div class="nav-cta">
     <a class="btn btn-primary btn-sm" href="index.html#fleet">Request to Book</a>
@@ -30,6 +31,7 @@
   <a href="services.html">Services</a>
   <a href="policies.html">Policies</a>
   <a href="vip.html" style="color:var(--orange)">VIP Plan ✦</a>
+  <a href="account.html" id="mobAccount">Account</a>
 </div>
 
 <header class="page-hero">
@@ -60,7 +62,34 @@
       <li><span class="dot">✦</span> Yacht, villa &amp; nightlife concierge</li>
     </ul>
   </div>
+
+  <div style="margin-top:70px" id="signature">
+    <span class="eyebrow">Signature Services</span>
+    <h2 style="margin:10px 0 6px"><span class="chrome-text">Ten touches,</span> zero friction.</h2>
+    <p class="fineprint" style="max-width:640px">Every signature service is a
+    <b style="color:var(--orange)">request — confirmed separately</b>. Our team completes a safety and
+    logistics checklist, confirms the vendor and price, and nothing is promised or charged until you
+    approve it. Alcohol is never included by default, and we never encourage driving after drinking —
+    that's what the Night-Out Chauffeur is for.</p>
+    <div class="prem-grid" id="sigServicesGrid" style="margin-top:22px">
+      <p class="fineprint">Loading signature services…</p>
+    </div>
+  </div>
 </section>
+<script>
+  fetch("/api/public/services").then(r => r.json()).then(d => {
+    const esc = s => String(s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    document.getElementById("sigServicesGrid").innerHTML = (d.services || []).map(s => `
+      <div class="prem-chip" style="cursor:default;text-align:left">
+        <b>${esc(s.name)}</b>
+        <span style="display:block;margin:6px 0">${esc(s.desc)}</span>
+        <span style="color:var(--orange)">Request — confirmed separately</span>
+      </div>`).join("");
+  }).catch(() => {
+    document.getElementById("sigServicesGrid").innerHTML =
+      '<p class="fineprint">Signature services are unavailable right now — nothing was requested.</p>';
+  });
+</script>
 
 <footer>
   <div class="foot-bottom" style="margin-top:0;border-top:none">

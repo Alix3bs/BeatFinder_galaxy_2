@@ -44,13 +44,34 @@ async function api(path, body, method) {
   return data;
 }
 
+/* local storage is used ONLY to keep a copy of unsent form data for
+   recovery — it is never a fake database and never produces request IDs */
 const DB = {
   read(key) { try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch (e) { return []; } },
   append(key, row) { const rows = DB.read(key); rows.push(row); localStorage.setItem(key, JSON.stringify(rows)); }
 };
-const newRequestId = () =>
-  "TN-" + new Date().toISOString().slice(2, 10).replace(/-/g, "") + "-" +
-  Math.random().toString(36).slice(2, 6).toUpperCase();
+/* preview mode exists ONLY behind an explicit development flag and
+   never pretends a request was sent */
+const PREVIEW_MODE = new URLSearchParams(location.search).get("preview") === "dev";
+
+/* signed-in customer state (identity lives in an HttpOnly cookie;
+   this is display/prefill data only) */
+window.TN_CUST = null;
+const custCsrf = () => (document.cookie.split(/;\s*/).find(c => c.startsWith("tn_cust_csrf=")) || "").slice(13);
+fetch(API_BASE + "/customer/me", { credentials: "same-origin" })
+  .then(r => r.ok ? r.json() : null)
+  .then(d => { if (d && d.me) { window.TN_CUST = d.me; paintAccountNav(); } })
+  .catch(() => {});
+function paintAccountNav() {
+  const label = window.TN_CUST ? window.TN_CUST.name.split(" ")[0] + " ✦" : "Account";
+  const a = $("#navAccount"); if (a) a.textContent = label;
+  const m = $("#mobAccount"); if (m) m.textContent = window.TN_CUST ? "Account — " + label : "Account";
+}
+
+/* signature services catalog — stable IDs from the server */
+window.TN_SERVICES = [];
+fetch(API_BASE + "/public/services").then(r => r.json())
+  .then(d => { window.TN_SERVICES = d.services || []; }).catch(() => {});
 
 /* live availability for the fleet grid */
 api("/public/availability").then(m => { window.TN_AVAIL = m; renderFleet(); }).catch(() => {});
@@ -318,7 +339,7 @@ function openDetail(kind, id) {
       <ul class="detail-notes">${s.notes.map(n => `<li>${n}</li>`).join("")}</ul>
       <button class="btn btn-primary btn-block" id="rentNow">Request to Book</button>
     </div>`);
-  $("#rentNow").addEventListener("click", () => renderStep1());
+  $("#rentNow").addEventListener("click", () => startBooking());
 }
 
 function openCarDetail(id) {
@@ -415,7 +436,7 @@ function openCarDetail(id) {
     updateTotal();
   }));
 
-  $("#rentNow").addEventListener("click", () => renderStep1());
+  $("#rentNow").addEventListener("click", () => startBooking());
 }
 
 /* ============================================================
@@ -431,6 +452,71 @@ function saveInputs(ids) {
   });
 }
 function v(id) { return bookingContext.form[id] || ""; }
+
+/* ---------- booking auth gate ----------
+   Signed-out customers choose: sign in, create account, or continue
+   as guest. Guests get identical price, fleet access, priority and
+   signature-service access — an account only adds convenience. */
+function startBooking() {
+  if (window.TN_CUST || sessionStorage.getItem("tn_guest") === "1") return renderStep1();
+  renderAuthChoice();
+}
+
+async function custApi(path, body, method) {
+  const res = await fetch(API_BASE + "/customer" + path, {
+    method: method || (body !== undefined ? "POST" : "GET"),
+    headers: { ...(body !== undefined ? { "Content-Type": "application/json" } : {}), ...(custCsrf() ? { "x-csrf": custCsrf() } : {}) },
+    credentials: "same-origin",
+    body: body !== undefined ? JSON.stringify(body) : undefined
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+  return data;
+}
+
+function renderAuthChoice() {
+  swapModal(`
+    <div class="modal-pad">
+      <h3 class="opt-title">Book as a <span style="color:var(--orange)">member</span> or guest?</h3>
+      <p class="opt-sub">Guests get the same cars, the same price and the same priority.
+      An account saves your details, keeps trip history and remembers your privacy choices.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
+        <button class="btn btn-primary btn-block" id="acSignin">Sign in</button>
+        <button class="btn btn-ghost btn-block" id="acCreate">Create account</button>
+        <button class="btn btn-ghost btn-block" id="acGuest">Continue as guest</button>
+      </div>
+      <div id="acForm" style="margin-top:16px"></div>
+      <p class="fineprint" id="acMsg" style="text-align:center"></p>
+    </div>`);
+  $("#acGuest").addEventListener("click", () => { sessionStorage.setItem("tn_guest", "1"); renderStep1(); });
+  $("#acSignin").addEventListener("click", () => {
+    $("#acForm").innerHTML = `
+      <div class="f-label">Email</div><input class="f-input" id="acEmail" type="email">
+      <div class="f-label">Password</div><input class="f-input" id="acPass" type="password">
+      <button class="btn btn-primary btn-block" id="acGo" style="margin-top:14px">Sign In & Continue</button>`;
+    $("#acGo").addEventListener("click", async () => {
+      try {
+        const out = await custApi("/login", { email: $("#acEmail").value.trim(), password: $("#acPass").value });
+        window.TN_CUST = out.me; paintAccountNav(); renderStep1();
+      } catch (e) { $("#acMsg").textContent = e.message; }
+    });
+  });
+  $("#acCreate").addEventListener("click", () => {
+    $("#acForm").innerHTML = `
+      <div class="f-label">Full name</div><input class="f-input" id="acName">
+      <div class="f-label">Phone</div><input class="f-input" id="acPhone" type="tel">
+      <div class="f-label">Email</div><input class="f-input" id="acEmail" type="email">
+      <div class="f-label">Password (min 10 characters)</div><input class="f-input" id="acPass" type="password">
+      <button class="btn btn-primary btn-block" id="acGo" style="margin-top:14px">Create Account & Continue</button>`;
+    $("#acGo").addEventListener("click", async () => {
+      try {
+        const out = await custApi("/register", { name: $("#acName").value.trim(), phone: $("#acPhone").value.trim(), email: $("#acEmail").value.trim(), password: $("#acPass").value });
+        window.TN_CUST = out.me; paintAccountNav(); toast("Account created — a verification email is on its way.");
+        renderStep1();
+      } catch (e) { $("#acMsg").textContent = e.message; }
+    });
+  });
+}
 
 function renderStep1() {
   swapModal(`
@@ -606,14 +692,47 @@ function renderStep4() {
           </label>`).join("")}
       </div>
 
+      <div class="f-label">Signature services (optional)</div>
+      <p class="fineprint" style="margin-top:2px">Every signature service is a <b>request — confirmed separately</b>.
+      Pricing is quoted after our team confirms details and vendors; nothing is promised or charged
+      until you approve it.</p>
+      <div class="prem-grid" id="sigGrid">
+        ${(window.TN_SERVICES || []).map(s => `
+          <label class="prem-chip${(bookingContext.services || []).includes(s.id) ? " on" : ""}" data-sig="${s.id}" title="${s.desc.replace(/"/g, "&quot;")}">
+            <b>${s.name}</b><span>Request — confirmed separately</span>
+          </label>`).join("") || '<p class="fineprint">Signature services are loading…</p>'}
+      </div>
+
       <div class="f-label">Notes / special requests</div>
       <input class="f-input" id="notes" value="${v("notes")}" placeholder="Color preference, timing, surprises…">
 
       <div class="f-label">${ICONS.user} Contact</div>
-      <input class="f-input" id="cName" value="${v("cName")}" placeholder="Full name" style="margin-bottom:10px">
+      <input class="f-input" id="cName" value="${v("cName") || (window.TN_CUST ? window.TN_CUST.name : "")}" placeholder="Full name" style="margin-bottom:10px">
       <div class="f-row2">
-        <input class="f-input" id="cPhone" type="tel" value="${v("cPhone")}" placeholder="Phone number">
-        <input class="f-input" id="cEmail" type="email" value="${v("cEmail")}" placeholder="Email">
+        <input class="f-input" id="cPhone" type="tel" value="${v("cPhone") || (window.TN_CUST ? window.TN_CUST.phone : "")}" placeholder="Phone number">
+        <input class="f-input" id="cEmail" type="email" value="${v("cEmail") || (window.TN_CUST ? window.TN_CUST.email : "")}" placeholder="Email">
+      </div>
+      ${window.TN_CUST ? `<p class="fineprint" style="margin-top:6px">Booking as <b style="color:var(--orange)">${window.TN_CUST.name}</b> — this request will appear in your account history.</p>` : ""}
+
+      <div class="f-label">AI privacy choice</div>
+      <p class="fineprint" style="margin-top:2px">Either choice gives you the same access, price and booking
+      priority. AI never decides availability, payments, deposits, damage, refunds, provider payouts or
+      provider approval.</p>
+      <div class="consent-box">
+        <label class="f-check" style="margin-top:10px;font-size:13px">
+          <input type="radio" name="aiChoice" id="aiHuman" value="human" ${bookingContext.form.aiChoice === "ai" ? "" : "checked"}>
+          <span class="box">✓</span>
+          <span><b>HUMAN-ONLY SERVICE</b> — No contact or booking information is sent to third-party AI.
+          You receive the same access, price and booking priority.</span>
+        </label>
+        <label class="f-check" style="margin-top:10px;font-size:13px">
+          <input type="radio" name="aiChoice" id="aiAssist" value="ai" ${bookingContext.form.aiChoice === "ai" ? "checked" : ""}>
+          <span class="box">✓</span>
+          <span><b>ALLOW AI-ASSISTED SERVICE</b> — TopNotch Autopilot may send your contact and booking
+          details to OpenAI only to organize your request, summarize conversations and draft replies.
+          AI does not decide availability, payments, deposits, damage, refunds, provider payouts or
+          provider approval. You can withdraw this permission in Account settings.</span>
+        </label>
       </div>
       <input id="hpWebsite" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
 
@@ -642,12 +761,20 @@ function renderStep4() {
       and price are verified and payment is completed.</p>
     </div>`);
 
-  $$(".prem-chip").forEach(chip => chip.addEventListener("click", () => {
+  $$(".prem-chip[data-prem]").forEach(chip => chip.addEventListener("click", () => {
     const id = chip.dataset.prem;
     chip.classList.toggle("on");
     bookingContext.premium = chip.classList.contains("on")
       ? [...bookingContext.premium, id]
       : bookingContext.premium.filter(x => x !== id);
+  }));
+  bookingContext.services = bookingContext.services || [];
+  $$(".prem-chip[data-sig]").forEach(chip => chip.addEventListener("click", () => {
+    const id = chip.dataset.sig;
+    chip.classList.toggle("on");
+    bookingContext.services = chip.classList.contains("on")
+      ? [...bookingContext.services, id]
+      : bookingContext.services.filter(x => x !== id);
   }));
 
   $("#backBtn").addEventListener("click", renderStep3);
@@ -692,22 +819,53 @@ async function submitRequest() {
       .filter(Boolean).join(", ") || "None",
     specialRequests: f.notes || "None",
     quotedDayRate: `$${bookingContext.price}/${bookingContext.unit}`,
+    aiChoice: document.querySelector('input[name="aiChoice"]:checked')?.value === "ai" ? "ai" : "human",
+    services: bookingContext.services || [],
     consents,
     consentText: CONSENT_TEXT + (window.TN_POLICY_VERSION ? ` (policy version ${window.TN_POLICY_VERSION})` : ""),
     website: $("#hpWebsite") ? $("#hpWebsite").value : "" // honeypot — humans never fill this
   };
 
-  let requestId, note = "";
+  let out;
   try {
-    const out = await api("/public/requests", payload);
-    requestId = out.requestId;
-    if (out.duplicate) note = "<br><span style='color:var(--muted);font-size:12px'>Looks like you already have an open request for these dates — our team will merge them.</span>";
+    out = await api("/public/requests", payload);
   } catch (err) {
-    if (/HTTP 4|required|Valid/.test(err.message)) return toast(err.message);
-    /* offline demo fallback (no backend running) */
-    requestId = newRequestId();
-    DB.append("tn_requests", { ...payload, requestId, status: STATUS_FLOW[0], timestamp: new Date().toISOString() });
+    if (/HTTP 4|required|Valid|accept|Too many/.test(err.message)) return toast(err.message);
+
+    /* SECURITY: the backend is unreachable. We NEVER invent a request ID,
+       never show "Request Received", never open tracking, and never imply
+       a provider is reviewing anything. The form data is kept locally,
+       clearly labeled UNSENT, purely so the customer can retry. */
+    DB.append("tn_unsent_requests", { ...payload, unsent: true, failedAt: new Date().toISOString() });
+    if (PREVIEW_MODE) {
+      swapModal(`
+        <div class="modal-pad success-wrap">
+          <h3>Preview — no request was sent.</h3>
+          <p class="fineprint">Development preview mode. Nothing was submitted, booked or charged.</p>
+          <button class="btn btn-primary btn-sm" id="doneBtn" style="margin-top:18px">Close</button>
+        </div>`);
+      $("#doneBtn").addEventListener("click", closeModal);
+      return;
+    }
+    swapModal(`
+      <div class="modal-pad success-wrap">
+        <div class="success-ring" style="border-color:#5c2418;color:#ff8d6b">✕</div>
+        <h3>We could not send your request</h3>
+        <p><b>Nothing was booked or charged.</b> Please retry or contact TopNotch.</p>
+        <p class="fineprint">Your details are saved on this device (marked unsent) so you can try again
+        without retyping. No request number exists until the request actually reaches our team.</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px">
+          <button class="btn btn-primary btn-sm" id="retryBtn">Try Again</button>
+          <a class="btn btn-ghost btn-sm" href="https://wa.me/${BUSINESS.whatsapp}?text=Hi%2C%20my%20booking%20request%20failed%20to%20send" target="_blank" rel="noopener">WhatsApp Us</a>
+          <a class="btn btn-ghost btn-sm" href="tel:${BUSINESS.phone.replace(/\D/g, "")}">Call Us</a>
+        </div>
+      </div>`);
+    $("#retryBtn").addEventListener("click", submitRequest);
+    return;
   }
+
+  const requestId = out.requestId;
+  const note = out.duplicate ? "<br><span style='color:var(--muted);font-size:12px'>Looks like you already have an open request for these dates — our team will merge them.</span>" : "";
   bookingContext.form.lastPhone = f.cPhone;
 
   swapModal(`
@@ -717,6 +875,7 @@ async function submitRequest() {
       <p><b style="color:var(--orange)">${requestId}</b><br>
       Thank you, ${f.cName.split(" ")[0]}. Our team is checking availability with the provider now —
       expect a text at ${f.cPhone} shortly.${note}</p>
+      ${(payload.services || []).length ? `<p class="fineprint">Signature services requested: each is confirmed separately after our checklist and your price approval.</p>` : ""}
       ${statusTimeline(STATUS_FLOW[0])}
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px">
         <a class="btn btn-ghost btn-sm" href="track.html?id=${requestId}&ph=${encodeURIComponent(f.cPhone.slice(-4))}">Track This Request</a>
@@ -986,14 +1145,11 @@ if (trackBox) {
       renderTracked(r, phone);
       renderPayPanel(id, phone);
     } catch (e) {
-      /* offline demo fallback */
-      const local = DB.read("tn_requests").find(x => (x.requestId || "").toLowerCase() === id.toLowerCase());
-      if (local) {
-        renderTracked({ requestId: local.requestId, status: local.status, vehicle: local.vehicleRequested,
-          startDate: local.startDate, endDate: local.endDate, option: local.option, deliveryLocation: local.deliveryLocation }, phone);
-      } else {
-        out().innerHTML = `<p class="fineprint" style="margin-top:18px">${e.message === "Request not found" ? "No request found for <b>" + id + "</b>." : e.message} Message us on WhatsApp and we'll check instantly.</p>`;
-      }
+      /* honest failure only — local unsent drafts are NEVER shown as real requests */
+      out().innerHTML = `<p class="fineprint" style="margin-top:18px">${e.message === "Request not found"
+        ? "No request found for <b>" + id + "</b>."
+        : "We couldn't reach our booking system right now (" + e.message + "). Nothing about your request has changed."}
+        Message us on WhatsApp and we'll check instantly.</p>`;
     }
   };
 

@@ -1,14 +1,14 @@
 # Phase 5.2 — TopNotch Autopilot Test Results
 
-Run: 2026-07-13T06:12:43.125Z · fresh staging database · OPENAI_MODEL unset (deterministic fallback verified)
+Run: 2026-07-17T03:07:06.325Z · fresh staging database · OPENAI_MODEL unset (deterministic fallback verified)
 
 | # | Scenario | Result | Detail |
 |---|----------|--------|--------|
-| 1 | Agent receives a measurable objective (vague objectives rejected) | ✅ PASS | T-66131742 |
+| 1 | Agent receives a measurable objective (vague objectives rejected) | ✅ PASS | T-45A5907B |
 | 2 | Agent retrieves only relevant context (no cross-customer leakage) | ✅ PASS | own request only + policies + recent failures |
 | 3 | Agent selects a valid tool — unknown tools refused | ✅ PASS | registry: recheck-availability, chase-provider, expire-stale-quotes, verify-excel-sync, send-followup |
 | 4 | Invalid tool input rejected (type-checked before queueing) | ✅ PASS | Invalid input: 'requestId' must be string |
-| 5 | Every action is verified (DB evidence, not self-report) | ✅ PASS | db: availability_status=manual @ 2026-07-13T06:12:36.501Z |
+| 5 | Every action is verified (DB evidence, not self-report) | ✅ PASS | db: availability_status=manual @ 2026-07-17T03:06:59.410Z |
 | 6 | Success without external evidence is refused | ✅ PASS | no notification row |
 | 7 | Agent records failure honestly (status + error + memory lesson) | ✅ PASS | no open availability check |
 | 8 | 3 failed attempts → escalation with notification (no infinite retries) | ✅ PASS | attempts=3, notified ops #1 |
@@ -27,7 +27,7 @@ Run: 2026-07-13T06:12:43.125Z · fresh staging database · OPENAI_MODEL unset (d
 | 21 | Proposals always carry metric + cost + risk + verification plan | ✅ PASS | 9 proposals checked |
 | 22 | Experiments on safety/payments/privacy refused; benign ones allowed | ✅ PASS | Experiments are forbidden on safety, security, consent, deposits, legal policies… |
 | 23 | Active regression withholds the safety-gate points (score drops) | ✅ PASS | item 14 unverified → staging 18/100 |
-| 24 | Maintenance mode reopens work when performance regresses (no duplicates) | ✅ PASS | G-397697 |
+| 24 | Maintenance mode reopens work when performance regresses (no duplicates) | ✅ PASS | G-77A041 |
 | 25 | Phase 3 + 4 + 4.1 suites all still green | ✅ PASS | Phase 3: 18/18 passed — written to TEST-RESULTS.md · Phase 4: 10/10 passed → TEST-RESULTS-PHASE4.md · Phase 4.1: 20/20 passed → TEST-RESULTS-PHASE41.md |
 
 **25/25 passed.**

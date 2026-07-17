@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Account — TopNotchRentalz</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,14 H90 V36 H62 C61,60 63,74 76,88 H24 C37,74 39,60 38,36 H10 Z" fill="%23ff6a00"/></svg>'>
+<style>
+  .acct-wrap{max-width:760px;margin:0 auto;padding:0 6vw 120px}
+  .acct-card{background:linear-gradient(160deg,#141414,#0c0c0c);border:1px solid #232323;border-radius:20px;padding:26px;margin-bottom:18px}
+  .acct-card h2{font-size:17px;margin-bottom:12px}
+  .acct-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #1d1d1d;font-size:14px}
+  .acct-row:last-child{border-bottom:none}
+  .acct-row b{color:var(--chrome,#d7d7d7);font-weight:600}
+  .ai-opt{display:block;border:1px solid #2a2a2a;border-radius:14px;padding:14px 16px;margin-top:10px;cursor:pointer;transition:border-color .2s}
+  .ai-opt.on{border-color:var(--orange)}
+  .ai-opt input{margin-right:9px;accent-color:var(--orange)}
+  .ai-opt .t{font-weight:700;font-size:14px;letter-spacing:.4px}
+  .ai-opt p{font-size:12.5px;color:var(--muted,#9a9a9a);margin:6px 0 0}
+  .danger{border-color:#3a1d15}
+  .hist-item{padding:12px 0;border-bottom:1px solid #1d1d1d;font-size:13.5px}
+  .hist-item:last-child{border-bottom:none}
+  .hist-item .sub2{color:var(--muted,#9a9a9a);font-size:12px;margin-top:3px}
+  .badge2{display:inline-block;border:1px solid #333;border-radius:20px;padding:2px 10px;font-size:11px;margin-left:8px;color:var(--orange)}
+</style>
+</head>
+<body>
+
+<nav class="nav-island" id="navIsland">
+  <a class="brand" href="index.html">
+    <img class="t-mark" src="img/logo-t.png" alt="TOPNOTCH">
+    <img class="brand-word" src="img/logo-topnotch.png" alt="TOPNOTCH">
+  </a>
+  <div class="nav-links">
+    <a href="index.html#fleet">Fleet</a>
+    <a href="services.html">Services</a>
+    <a href="track.html">Track</a>
+    <a href="vip.html" class="vip-link">VIP ✦</a>
+    <a href="account.html" class="account-link" id="navAccount">Account</a>
+  </div>
+  <div class="nav-cta">
+    <a class="btn btn-primary btn-sm" href="index.html#fleet">Request to Book</a>
+    <button class="nav-burger" id="navBurger" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html#fleet">Fleet</a>
+  <a href="services.html">Services</a>
+  <a href="track.html">Track Request</a>
+  <a href="vip.html" style="color:var(--orange)">VIP Plan ✦</a>
+  <a href="account.html" id="mobAccount">Account</a>
+</div>
+
+<header class="page-hero">
+  <span class="eyebrow">TopNotch Members</span>
+  <h1 class="chrome-text">Your Account</h1>
+  <p>Accounts are optional — guests get the same cars, prices and priority.
+  An account saves your details, keeps your trip history and remembers your privacy choices.</p>
+</header>
+
+<!-- signed-out: sign in / create / reset -->
+<section class="acct-wrap" id="acctGate" hidden>
+  <div class="acct-card" id="signinCard">
+    <h2>Sign In</h2>
+    <div class="f-label">Email</div>
+    <input class="f-input" id="siEmail" type="email" autocomplete="username">
+    <div class="f-label">Password</div>
+    <input class="f-input" id="siPass" type="password" autocomplete="current-password">
+    <button class="btn btn-primary btn-block" id="siBtn" style="margin-top:18px">Sign In</button>
+    <p class="fineprint" style="text-align:center;margin-top:10px">
+      <a href="#" id="showForgot" style="color:var(--orange)">Forgot password?</a> ·
+      <a href="#" id="showCreate" style="color:var(--orange)">Create an account</a></p>
+    <p class="fineprint" id="gateMsg" style="text-align:center"></p>
+  </div>
+
+  <div class="acct-card" id="createCard" hidden>
+    <h2>Create Account</h2>
+    <div class="f-label">Full name</div>
+    <input class="f-input" id="crName" autocomplete="name">
+    <div class="f-label">Phone</div>
+    <input class="f-input" id="crPhone" type="tel" autocomplete="tel">
+    <div class="f-label">Email</div>
+    <input class="f-input" id="crEmail" type="email" autocomplete="username">
+    <div class="f-label">Password (min 10 characters)</div>
+    <input class="f-input" id="crPass" type="password" autocomplete="new-password">
+    <button class="btn btn-primary btn-block" id="crBtn" style="margin-top:18px">Create Account</button>
+    <p class="fineprint" style="text-align:center;margin-top:10px"><a href="#" id="backSignin" style="color:var(--orange)">Back to sign in</a></p>
+    <p class="fineprint" id="createMsg" style="text-align:center"></p>
+  </div>
+
+  <div class="acct-card" id="forgotCard" hidden>
+    <h2>Password Recovery</h2>
+    <div class="f-label">Email</div>
+    <input class="f-input" id="fgEmail" type="email">
+    <button class="btn btn-primary btn-block" id="fgBtn" style="margin-top:18px">Email Reset Link</button>
+    <p class="fineprint" style="text-align:center;margin-top:10px"><a href="#" id="backSignin2" style="color:var(--orange)">Back to sign in</a></p>
+    <p class="fineprint" id="forgotMsg" style="text-align:center"></p>
+  </div>
+
+  <div class="acct-card" id="resetCard" hidden>
+    <h2>Set a New Password</h2>
+    <div class="f-label">New password (min 10 characters)</div>
+    <input class="f-input" id="rsPass" type="password" autocomplete="new-password">
+    <button class="btn btn-primary btn-block" id="rsBtn" style="margin-top:18px">Save Password</button>
+    <p class="fineprint" id="resetMsg" style="text-align:center"></p>
+  </div>
+</section>
+
+<!-- signed-in dashboard -->
+<section class="acct-wrap" id="acctDash" hidden>
+  <div class="acct-card">
+    <h2>Profile <span class="badge2" id="verBadge"></span></h2>
+    <div class="acct-row"><span>Name</span><b id="pfName"></b></div>
+    <div class="acct-row"><span>Phone</span><b id="pfPhone"></b></div>
+    <div class="acct-row"><span>Email</span><b id="pfEmail"></b></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+      <button class="btn btn-ghost btn-sm" id="editBtn">Edit details</button>
+      <button class="btn btn-ghost btn-sm" id="resendVer" hidden>Re-send verification email</button>
+    </div>
+    <p class="fineprint" id="pfMsg"></p>
+  </div>
+
+  <div class="acct-card">
+    <h2>AI Privacy Preference</h2>
+    <p class="fineprint">Your choice never changes your price, fleet access or booking priority.
+    Availability, payments, deposits and provider approval are always decided by our team and
+    deterministic systems — never by AI.</p>
+    <label class="ai-opt" id="optHuman">
+      <input type="radio" name="aiPref" value="human">
+      <span class="t">HUMAN-ONLY SERVICE</span>
+      <p>No contact or booking information is sent to third-party AI. You receive the same access,
+      price and booking priority.</p>
+    </label>
+    <label class="ai-opt" id="optAi">
+      <input type="radio" name="aiPref" value="ai">
+      <span class="t">ALLOW AI-ASSISTED SERVICE</span>
+      <p>TopNotch Autopilot may send your contact and booking details to OpenAI only to organize
+      your request, summarize conversations and draft replies. AI does not decide availability,
+      payments, deposits, damage, refunds, provider payouts or provider approval. You can withdraw
+      this permission in Account settings.</p>
+    </label>
+    <p class="fineprint" id="aiMsg" style="margin-top:10px"></p>
+  </div>
+
+  <div class="acct-card">
+    <h2>Your Requests</h2>
+    <div id="histRequests"><p class="fineprint">Loading…</p></div>
+  </div>
+
+  <div class="acct-card">
+    <h2>Trip History</h2>
+    <div id="histTrips"><p class="fineprint">Loading…</p></div>
+  </div>
+
+  <div class="acct-card">
+    <h2>Sessions & Security</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" id="outBtn">Sign out</button>
+      <button class="btn btn-ghost btn-sm" id="outAllBtn">Sign out of all devices</button>
+      <button class="btn btn-ghost btn-sm" id="pwBtn">Reset password</button>
+    </div>
+    <p class="fineprint" id="secMsg"></p>
+  </div>
+
+  <div class="acct-card danger">
+    <h2>Delete Account</h2>
+    <p class="fineprint">Permanently deletes your account, sign-in details, sessions and saved
+    preferences. Completed booking records are kept for legal and accounting purposes but are
+    unlinked from any account. This cannot be undone.</p>
+    <div class="f-label">Confirm with your password</div>
+    <input class="f-input" id="delPass" type="password" autocomplete="current-password">
+    <button class="btn btn-ghost btn-sm" id="delBtn" style="margin-top:12px;border-color:#5c2418;color:#ff8d6b">Permanently delete my account</button>
+    <p class="fineprint" id="delMsg"></p>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-bottom" style="margin-top:0;border-top:none">
+    <span>© 2026 TopNotchRentalz. All rights reserved.</span>
+    <span><a href="policies.html" style="color:var(--orange)">Policies</a> · <a href="contact.html" style="color:var(--orange)">Contact</a></span>
+  </div>
+</footer>
+
+<div id="modalRoot"></div>
+<script src="js/data.js"></script>
+<script src="js/main.js"></script>
+<script src="js/account.js"></script>
+</body>
+</html>

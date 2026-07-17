@@ -26,6 +26,8 @@ const emails = require("./lib/emails");
 const P = require("./lib/payments");
 const agent = require("./lib/agent");
 const AP = require("./lib/autopilot");
+const CUST = require("./lib/customers");
+const SVC = require("./lib/services");
 const { seed } = require("./seed");
 seed();
 
@@ -236,17 +238,33 @@ route("POST", "/api/public/requests", async (req, res) => {
       AND status NOT IN ('Declined','Cancelled','Completed')`).all(vehicle, phone, email)
     .find(r => rangesOverlap(sd, ed, r.start_date.slice(0, 10), r.end_date.slice(0, 10)));
 
+  /* account linkage: customer_id comes ONLY from the server session
+     cookie — never from the request body. Guests get the same access,
+     pricing and priority with customer_id NULL. */
+  const cust = CUST.fromReq(req);
+
+  /* per-request AI privacy choice — defaults to Human-only, never preselected,
+     never required. A signed-in customer's saved preference is the fallback. */
+  const aiChoice = b.aiChoice === "ai" ? "ai" : b.aiChoice === "human" ? "human" : (cust?.ai_consent || "human");
+
   const id = U.rid("TN");
   db.prepare(`INSERT INTO requests (request_id, customer_name, phone, email, vehicle_requested, backup_vehicle,
       start_date, end_date, budget, driver_age, license_status, insurance_status, option, delivery_location,
       return_location, deposit_readiness, occasion, chauffeur, fbo, addons, special_requests, quoted_day_rate,
-      duplicate_of, ip)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      duplicate_of, ip, customer_id, ai_consent, ai_consent_version, ai_consent_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(id, name, phone, email, vehicle, U.strip(b.backupVehicle), start, end,
       U.strip(b.budget), U.strip(b.driverAge), U.strip(b.licenseStatus), U.strip(b.insuranceStatus),
       U.strip(b.option), U.strip(b.deliveryLocation), U.strip(b.returnLocation), U.strip(b.depositReadiness),
       U.strip(b.occasion), U.strip(b.chauffeurNeeded), U.strip(b.fboPickup), U.stripLong(b.addons),
-      U.stripLong(b.specialRequests), U.strip(b.quotedDayRate), dupe ? dupe.request_id : null, req.ip);
+      U.stripLong(b.specialRequests), U.strip(b.quotedDayRate), dupe ? dupe.request_id : null, req.ip,
+      cust ? cust.customer_id : null, aiChoice, SETTING("policy_version"), new Date().toISOString());
+  U.audit(cust ? { email: cust.email, role: "customer" } : null, "request.ai_consent", "request", id,
+    "ai_consent", null, aiChoice + " (policy " + SETTING("policy_version") + ")", id);
+
+  /* signature services: validated stable IDs only; each starts an ops
+     checklist and is "Request — confirmed separately" until it passes */
+  const servicesCreated = SVC.createOrders(id, Array.isArray(b.services) ? b.services.map(U.strip) : []);
 
   db.prepare("INSERT INTO consents (request_id, ip, policy_version, consent_text, items) VALUES (?,?,?,?,?)")
     .run(id, req.ip, SETTING("policy_version"), U.stripLong(b.consentText || ""), JSON.stringify(CONSENT_ITEMS));
@@ -264,9 +282,18 @@ route("POST", "/api/public/requests", async (req, res) => {
     await U.notify("sales", null, "DUPLICATE_REQUEST", `Possible duplicate ${id} (of ${dupe.request_id})`,
       `${name} re-submitted ${vehicle} for overlapping dates.`);
   }
-  /* AI availability agent — runs on every fresh request; never invents availability */
+  /* AI availability agent — runs on every fresh request; never invents availability.
+     (Deterministic code, NOT third-party AI — runs for every consent choice.) */
   if (!dupe) await runAgent(null, row);
-  json(res, 200, { ok: true, requestId: id, duplicate: !!dupe, duplicateOf: dupe?.request_id });
+  json(res, 200, { ok: true, requestId: id, duplicate: !!dupe, duplicateOf: dupe?.request_id, services: servicesCreated });
+});
+
+/* signature-services catalog — safe public metadata only (no prices) */
+route("GET", "/api/public/services", (req, res) => {
+  json(res, 200, {
+    note: "Request — confirmed separately.",
+    services: SVC.SERVICES.map(s => ({ id: s.id, name: s.name, desc: s.desc }))
+  });
 });
 
 async function runAgent(actor, r) {
@@ -1702,6 +1729,123 @@ route("GET", "/api/system/health", (req, res) => {
     storage: { uploadsBytes: dirSize(UPLOAD_DIR), backupsBytes: dirSize(backup.BACKUP_DIR) },
     uploads: { failed24h: q(`SELECT count(*) n FROM audit WHERE action='upload.rejected' AND ts > ${day}`).n }
   });
+});
+
+/* ============================================================
+   CUSTOMER ACCOUNTS — completely separate from staff/provider auth.
+   Identity comes ONLY from the tn_cust session cookie; the browser
+   can never supply or change customer_id. A customer session grants
+   access to NOTHING outside /api/customer/* and the public routes.
+   ============================================================ */
+const customerOnly = (req, res) => {
+  const c = CUST.fromReq(req);
+  if (!c) { bad(res, "Please sign in to your account", 401); return null; }
+  return c;
+};
+/* CSRF: state-changing routes on an existing session require the
+   x-csrf header to match the session's token (double-submit) */
+const customerCsrf = (req, res) => {
+  const c = customerOnly(req, res);
+  if (!c) return null;
+  if (!CUST.csrfOk(req, c)) { bad(res, "Security check failed — refresh the page and try again", 403); return null; }
+  return c;
+};
+
+route("POST", "/api/customer/register", async (req, res) => {
+  if (CUST.limited(req, "cust-register", 5, 15 * 60e3)) return bad(res, "Too many attempts — please wait a few minutes.", 429);
+  const out = await CUST.register(req.body || {}, req.ip);
+  if (out.error) return bad(res, out.error);
+  CUST.setCustomerCookies(res, out.session.token, out.session.csrf);
+  json(res, 200, { ok: true, me: CUST.publicMe(out.customer), verifyDelivery: out.verifyDelivery });
+});
+
+route("POST", "/api/customer/login", (req, res) => {
+  if (CUST.limited(req, "cust-login", 10, 15 * 60e3)) return bad(res, "Too many attempts — wait 15 minutes.", 429);
+  const out = CUST.login(req.body?.email, req.body?.password, req.ip);
+  if (out.error) return bad(res, out.error, 401);
+  CUST.setCustomerCookies(res, out.session.token, out.session.csrf);
+  json(res, 200, { ok: true, me: CUST.publicMe(out.customer) });
+});
+
+route("POST", "/api/customer/logout", (req, res) => {
+  CUST.logout(req);
+  CUST.setCustomerCookies(res, "", "");
+  json(res, 200, { ok: true });
+});
+
+route("POST", "/api/customer/logout-all", (req, res) => {
+  const c = customerCsrf(req, res); if (!c) return;
+  const n = CUST.logoutAll(c);
+  CUST.setCustomerCookies(res, "", "");
+  json(res, 200, { ok: true, revoked: n });
+});
+
+route("GET", "/api/customer/me", (req, res) => {
+  const c = customerOnly(req, res); if (!c) return;
+  json(res, 200, { me: CUST.publicMe(c) });
+});
+
+route("PATCH", "/api/customer/me", (req, res) => {
+  const c = customerCsrf(req, res); if (!c) return;
+  const out = CUST.updateMe(c, req.body || {});
+  if (out.error) return bad(res, out.error);
+  json(res, 200, out);
+});
+
+route("DELETE", "/api/customer/me", (req, res) => {
+  if (CUST.limited(req, "cust-delete", 5, 15 * 60e3)) return bad(res, "Too many attempts.", 429);
+  const c = customerCsrf(req, res); if (!c) return;
+  const out = CUST.deleteMe(c, req.body?.password);
+  if (out.error) return bad(res, out.error);
+  CUST.setCustomerCookies(res, "", "");
+  json(res, 200, { ok: true, message: "Your account and personal data were permanently deleted. Completed booking records are retained for legal and accounting purposes, unlinked from any account." });
+});
+
+route("GET", "/api/customer/trips", (req, res) => {
+  const c = customerOnly(req, res); if (!c) return;
+  json(res, 200, CUST.trips(c));
+});
+
+route("POST", "/api/customer/verify/request", async (req, res) => {
+  if (CUST.limited(req, "cust-verify", 5, 15 * 60e3)) return bad(res, "Too many attempts.", 429);
+  const c = customerCsrf(req, res); if (!c) return;
+  json(res, 200, await CUST.requestVerify(c));
+});
+
+route("POST", "/api/customer/verify/complete", (req, res) => {
+  if (CUST.limited(req, "cust-verify-c", 10, 15 * 60e3)) return bad(res, "Too many attempts.", 429);
+  const out = CUST.completeVerify(U.strip(req.body?.token));
+  if (out.error) return bad(res, out.error);
+  json(res, 200, out);
+});
+
+route("POST", "/api/customer/reset/request", async (req, res) => {
+  if (CUST.limited(req, "cust-reset", 5, 15 * 60e3)) return bad(res, "Too many attempts.", 429);
+  json(res, 200, await CUST.requestReset(req.body?.email)); // enumeration-safe: identical either way
+});
+
+route("POST", "/api/customer/reset/complete", (req, res) => {
+  if (CUST.limited(req, "cust-reset-c", 10, 15 * 60e3)) return bad(res, "Too many attempts.", 429);
+  const out = CUST.completeReset(U.strip(req.body?.token), req.body?.password);
+  if (out.error) return bad(res, out.error);
+  json(res, 200, out);
+});
+
+/* ============================================================
+   SIGNATURE SERVICE ORDERS (staff) — checklist-gated
+   ============================================================ */
+route("GET", "/api/services/orders", (req, res) => {
+  if (!guard("requests.read")(req, res)) return;
+  const rows = req.query.requestId
+    ? db.prepare("SELECT * FROM service_orders WHERE request_id=? ORDER BY id DESC").all(U.strip(req.query.requestId))
+    : db.prepare("SELECT * FROM service_orders ORDER BY id DESC LIMIT 200").all();
+  json(res, 200, { checklist: SVC.CHECKLIST, orders: rows.map(o => ({ ...o, checklist: JSON.parse(o.checklist_json || "{}") })) });
+});
+route("PATCH", "/api/services/orders/:id", (req, res) => {
+  if (!guard("requests.write")(req, res)) return;
+  const out = SVC.updateOrder(Number(req.params.id), req.body || {}, req.user);
+  if (out.error) return bad(res, out.error, out.blocked ? 409 : 400);
+  json(res, 200, out);
 });
 
 /* ============================================================
